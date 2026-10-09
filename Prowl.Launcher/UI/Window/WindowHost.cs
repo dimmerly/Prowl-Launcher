@@ -110,7 +110,7 @@ public sealed partial class Launcher
 
     private void CenterWindow() => _window.CenterWindow();
 
-    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, 0.9f, 1.5f) : 1;
+    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, 0.5f, 1.5f) : 1;
     private float DisplayScale => Math.Max(0.01f, (float)_window.FramebufferSize.X / Math.Max(1, _window.ClientSize.X)) * UiScale;
 
     private void PreparePaperFrame()

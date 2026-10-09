@@ -79,6 +79,9 @@ public sealed partial class Launcher
                         },
                         new[]
                         {
+                            50,
+                            65,
+                            75,
                             90,
                             100,
                             115,
