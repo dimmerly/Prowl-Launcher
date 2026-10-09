@@ -53,7 +53,7 @@ public sealed partial class Launcher
                         DrawOperation(p);
                     }
 
-                    bool showToolbar = (_tab == 0 && !_newProjectPage) || _tab == 1;
+                    bool showToolbar = _tab == 0 && !_newProjectPage;
                     if (showToolbar)
                     {
                         DrawToolbar(p, width);

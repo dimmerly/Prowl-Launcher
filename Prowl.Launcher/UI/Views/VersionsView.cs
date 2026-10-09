@@ -14,7 +14,12 @@ public sealed partial class Launcher
 
     private void DrawVersions(Paper p)
     {
-        Label(p, "installed-title", "launcher.versions.installed_title", 18, Ink, 30, true);
+        using (p.Row("installed-heading").Height(40).Gap(10).AlignItems(LayoutAlignment.Center).Enter())
+        {
+            Label(p, "installed-title", "launcher.versions.installed_title", 18, Ink, 30, true);
+            Button(p, "folder", "launcher.versions.install_folder", OpenInstallFolderAsync, width: 130);
+        }
+
         if (_installed.Count == 0)
         {
             Label(p, "none", "launcher.versions.none_installed", 14, Muted, 30);
@@ -107,7 +112,22 @@ public sealed partial class Launcher
             }
         }
 
-        Label(p, "available-title", "launcher.versions.available_title", 18, Ink, 35, true);
+        using (p.Row("available-heading").Height(40).Gap(10).AlignItems(LayoutAlignment.Center).Enter())
+        {
+            Label(p, "available-title", "launcher.versions.available_title", 18, Ink, 35, true);
+
+            Origami.Dropdown(p, "channel", _channel, value => _channel = value, new[]
+                {
+                    "launcher.versions.stable_and_preview",
+                    "launcher.versions.stable_only"
+                })
+                .Display(value => Loc.Get(value == 0 ? "launcher.versions.stable_and_preview" : "launcher.versions.stable_only"))
+                .Width(210)
+                .IsItemEnabled(_ => !Busy)
+                .Show();
+            Button(p, "refresh", "launcher.versions.refresh", token => RefreshAsync(token), width: 96);
+        }
+
         HashSet<long> installedReleaseIds = _installed.Select(e => e.ReleaseId).ToHashSet();
         EditorRelease[] available = _releases.Where(r => !installedReleaseIds.Contains(r.Id) && r.AssetFor(Platform.Identifier) != null && (_channel == 0 || !r.Preview))
             .ToArray();

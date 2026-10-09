@@ -48,7 +48,7 @@ return 0;
 
 void PackageWindows()
 {
-    string download = Path.ChangeExtension(archive, ".exe");
+    string download = DownloadPath("Prowl Launcher.exe");
     File.Copy(Path.Combine(publish, executable), download);
     Console.WriteLine(download);
 }
@@ -101,7 +101,9 @@ void PackageMac()
     Directory.CreateDirectory(staging);
     Directory.Move(publish, Path.Combine(staging, "Prowl Launcher.app"));
     Directory.CreateSymbolicLink(Path.Combine(staging, "Applications"), "/Applications");
-    string download = Path.ChangeExtension(archive, ".dmg");
+    string download = DownloadPath(platform == "osx-arm64"
+        ? "Prowl Launcher (Apple Silicon).dmg"
+        : "Prowl Launcher (Intel).dmg");
     Run("hdiutil", "create", "-volname", "Prowl Launcher", "-srcfolder", staging, "-format", "UDZO", download);
     Console.WriteLine(download);
 }
@@ -145,10 +147,14 @@ void PackageLinux()
 
     Environment.SetEnvironmentVariable("APPIMAGE_EXTRACT_AND_RUN", "1");
     Environment.SetEnvironmentVariable("ARCH", platform == "linux-arm64" ? "aarch64" : "x86_64");
-    string download = Path.ChangeExtension(archive, ".AppImage");
+    string download = DownloadPath(platform == "linux-arm64"
+        ? "Prowl Launcher (ARM64).AppImage"
+        : "Prowl Launcher (x64).AppImage");
     Run(tool, "--runtime-file", runtime, appDir, download);
     Console.WriteLine(download);
 }
+
+string DownloadPath(string fileName) => Path.Combine(Path.GetDirectoryName(archive)!, fileName);
 
 static void ExtractAppImageRuntime(string tool, string runtime)
 {

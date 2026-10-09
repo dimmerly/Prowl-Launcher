@@ -16,9 +16,9 @@ Windows, Linux, and macOS release packages include .NET. End users do not need a
 
 Download the file for your operating system:
 
-- Windows: `.exe` — open the downloaded launcher.
-- Linux: `.AppImage` — allow the file to run as a program, then open it.
-- macOS: `.dmg` — open the disk image, then open **Prowl Launcher**.
+- Windows: **Prowl Launcher.exe** — open the downloaded launcher.
+- Linux: **Prowl Launcher (x64).AppImage** or **Prowl Launcher (ARM64).AppImage** — allow the file to run as a program, then open it.
+- macOS: **Prowl Launcher (Apple Silicon).dmg** or **Prowl Launcher (Intel).dmg** — open the disk image, then open **Prowl Launcher**.
 
 On first launch, choose **Install** to copy the app into your user applications folder and optionally create a desktop shortcut. No administrator access is required. The launcher restarts from its installed copy; the original download stays intact. Windows also gets a Start menu entry, and Linux gets an application menu entry. **Keep portable** skips installation and remembers your choice. Source builds and screenshot captures skip this prompt.
 

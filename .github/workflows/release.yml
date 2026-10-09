@@ -104,6 +104,7 @@ jobs:
           dotnet publish Prowl.Launcher/Prowl.Launcher.csproj
           -c Release -r ${{ matrix.platform }} --self-contained true
           -p:SelfInstall=true -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false
           -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
           -o "publish/Prowl Launcher"
@@ -146,7 +147,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: launcher-${{ matrix.platform }}
-          path: artifacts/Prowl Launcher-*
+          path: artifacts/Prowl Launcher*
           if-no-files-found: error
 
   release:
