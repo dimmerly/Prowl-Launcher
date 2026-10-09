@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "GitHub 仓库",
     "launcher.settings.repository_description": "使用所有者/仓库或 GitHub URL。",
     "launcher.settings.repository_saved": "仓库已保存",
+    "launcher.settings.roundness": "圆度",
     "launcher.settings.reset_to_default": "恢复默认",
     "launcher.settings.save_repositories": "保存仓库",
     "launcher.settings.show_fps": "显示 FPS",

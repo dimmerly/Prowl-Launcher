@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "GitHub 저장소",
     "launcher.settings.repository_description": "소유자/저장소 또는 GitHub URL을 사용하세요.",
     "launcher.settings.repository_saved": "저장소 저장됨",
+    "launcher.settings.roundness": "둥글기",
     "launcher.settings.reset_to_default": "기본값으로 초기화",
     "launcher.settings.save_repositories": "저장소 저장",
     "launcher.settings.show_fps": "FPS 표시",

@@ -111,6 +111,22 @@ public sealed partial class Launcher
                     .Show();
             }
 
+            using (p.Row("theme-roundness-row")
+                .Height(42)
+                .Gap(12)
+                .Enter())
+            {
+                Label(p, "roundness-label", "launcher.settings.roundness", 14, Ink, 34);
+                Origami.Slider(p, "theme-roundness", _appearance.Data.Roundness, value =>
+                    {
+                        _appearance.Data.Roundness = MathF.Round(value, 2);
+                        _appearance.Save();
+                    }, 0, 20)
+                    .Format("F2")
+                    .Width(260)
+                    .Show();
+            }
+
             ColorSetting(
                 p,
                 "accent-color",

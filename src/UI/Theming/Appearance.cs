@@ -62,6 +62,9 @@ sealed class LauncherAppearance
         Data.InitRamps();
         Theme = OrigamiTheme.CreateDefaults();
         Data.ApplyTo(Theme);
+        Theme.Metrics.Rounding = Data.Roundness;
+        Theme.Metrics.ContainerRounding = Data.Roundness > 0f ? Data.Roundness + 2f : 0f;
+        Theme.Metrics.SmallRounding = Data.Roundness * 0.5f;
         Theme.Font = Theme.FontMedium = _font;
         Theme.FontSemiBold = Theme.FontBold = _bold;
         Theme.Metrics.FontSize = 18;

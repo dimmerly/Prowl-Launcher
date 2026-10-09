@@ -21,7 +21,7 @@ public sealed partial class Launcher
             .BackgroundColor(_appearance.Panel)
             .BorderColor(_appearance.Accent)
             .BorderWidth(1)
-            .Rounded(10)
+            .Rounded(_appearance.Theme.Metrics.ContainerRounding)
             .Enter())
         {
             using (p.Row("operation-header")

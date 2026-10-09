@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "Репозитории GitHub",
     "launcher.settings.repository_description": "Укажите владелец/репозиторий или URL GitHub.",
     "launcher.settings.repository_saved": "Репозиторий сохранён",
+    "launcher.settings.roundness": "Скругление",
     "launcher.settings.reset_to_default": "Сбросить настройки",
     "launcher.settings.save_repositories": "Сохранить репозитории",
     "launcher.settings.show_fps": "Показывать FPS",

@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "GitHub depoları",
     "launcher.settings.repository_description": "Sahip/depo veya bir GitHub URL’si kullanın.",
     "launcher.settings.repository_saved": "Depo kaydedildi",
+    "launcher.settings.roundness": "Yuvarlaklık",
     "launcher.settings.reset_to_default": "Varsayılana sıfırla",
     "launcher.settings.save_repositories": "Depoları kaydet",
     "launcher.settings.show_fps": "FPS göster",

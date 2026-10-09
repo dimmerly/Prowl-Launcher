@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "Dépôts GitHub",
     "launcher.settings.repository_description": "Utilisez propriétaire/dépôt ou une URL GitHub.",
     "launcher.settings.repository_saved": "Dépôt enregistré",
+    "launcher.settings.roundness": "Arrondi",
     "launcher.settings.reset_to_default": "Réinitialiser",
     "launcher.settings.save_repositories": "Enregistrer les dépôts",
     "launcher.settings.show_fps": "Afficher les FPS",

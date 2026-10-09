@@ -38,12 +38,12 @@ public sealed partial class Launcher
                     .BackgroundColor(_appearance.Theme.Selected)
                     .BorderColor(_appearance.Accent)
                     .BorderWidth(1)
-                    .Rounded(10)
+                    .Rounded(_appearance.Theme.Metrics.ContainerRounding)
                     .Enter())
                 {
                     p.Box("blank-icon")
                         .Size(48, 48)
-                        .Rounded(10)
+                        .Rounded(_appearance.Theme.Metrics.ContainerRounding)
                         .BackgroundColor(_appearance.Accent)
                         .IsNotInteractable()
                         .Icon(p, OrigamiIconSet.Document, System.Drawing.Color.White, size: 26);
@@ -66,7 +66,7 @@ public sealed partial class Launcher
                 .BackgroundColor(_appearance.Card)
                 .BorderColor(_appearance.Theme.BorderSoft)
                 .BorderWidth(1)
-                .Rounded(10)
+                .Rounded(_appearance.Theme.Metrics.ContainerRounding)
                 .Enter())
             {
                 Label(p, "configure-title", Loc.Get("launcher.projects.configure"), 19, Ink, 28, true);

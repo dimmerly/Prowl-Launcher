@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "Repozytoria GitHub",
     "launcher.settings.repository_description": "Użyj właściciel/repozytorium lub adresu URL GitHub.",
     "launcher.settings.repository_saved": "Repozytorium zapisane",
+    "launcher.settings.roundness": "Zaokrąglenie",
     "launcher.settings.reset_to_default": "Przywróć domyślne",
     "launcher.settings.save_repositories": "Zapisz repozytoria",
     "launcher.settings.show_fps": "Pokaż FPS",

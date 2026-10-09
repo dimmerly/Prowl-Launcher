@@ -4,6 +4,7 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+using Prowl.Vector.Spatial;
 
 namespace Prowl.Launcher;
 
@@ -75,8 +76,9 @@ public sealed partial class Launcher
     {
         string id = "sample-" + sample.Id;
         bool runnable = _samples.IsAvailable(sample);
+        float rounding = _appearance.Theme.Metrics.ContainerRounding;
         ElementBuilder card = p.Column(id).Width(width).Height(width)
-            .Gap(0).Rounded(10).Clip()
+            .Gap(0).Rounded(rounding).Clip()
             .JustifyContent(LayoutJustification.End)
             .BackgroundColor(_appearance.Card)
             .BorderColor(_appearance.Theme.BorderSoft).BorderWidth(1)
@@ -104,13 +106,21 @@ public sealed partial class Launcher
                         float w = (float)rect.Size.X, h = (float)rect.Size.Y;
                         float scale = Math.Max(w / texture.Width, h / texture.Height);
                         float iw = texture.Width * scale, ih = texture.Height * scale;
-                        canvas.DrawImage(texture, (float)rect.Min.X + (w - iw) / 2,
-                            (float)rect.Min.Y + (h - ih) / 2, iw, ih);
+                        float x = (float)rect.Min.X, y = (float)rect.Min.Y;
+                        // Fill the card's rounded shape while keeping the image's centered cover crop.
+                        canvas.SaveState();
+                        canvas.SetBrushTexture(texture);
+                        canvas.SetBrushTextureTransform(
+                            Transform2D.CreateTranslation(x + (w - iw) / 2, y + (h - ih) / 2)
+                            * Transform2D.CreateScale(iw, ih));
+                        canvas.RoundedRectFilled(x, y, w, h, rounding, Color.White);
+                        canvas.RestoreState();
                     });
             }
             float captionHeight = Math.Max(80, width * 0.25f);
             p.Box(id + "shade").PositionType(PositionType.SelfDirected)
                 .Left(0).Top(width - captionHeight - 12).Size(width, captionHeight + 12)
+                .Rounded(0, 0, rounding, rounding)
                 .BackgroundLinearGradient(0, 0, 0, 0.55f,
                     Color.FromArgb(0, 5, 8, 13), Color.FromArgb(245, 5, 8, 13))
                 .IsNotInteractable();
@@ -131,6 +141,7 @@ public sealed partial class Launcher
             {
                 using (p.Column(id + "loading").PositionType(PositionType.SelfDirected)
                     .Left(0).Top(0).Size(width, width)
+                    .Rounded(rounding)
                     .BackgroundColor(Color.FromArgb(160, 5, 8, 13))
                     .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
                     .IsNotInteractable().Enter())

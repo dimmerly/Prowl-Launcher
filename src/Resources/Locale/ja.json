@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "GitHubリポジトリ",
     "launcher.settings.repository_description": "所有者/リポジトリまたはGitHubのURLを入力してください。",
     "launcher.settings.repository_saved": "リポジトリを保存しました",
+    "launcher.settings.roundness": "丸み",
     "launcher.settings.reset_to_default": "既定に戻す",
     "launcher.settings.save_repositories": "リポジトリを保存",
     "launcher.settings.show_fps": "FPS を表示",

@@ -76,6 +76,7 @@
     "launcher.settings.repositories": "GitHub repositories",
     "launcher.settings.repository_description": "Use owner/repository or a GitHub URL.",
     "launcher.settings.repository_saved": "Repository saved",
+    "launcher.settings.roundness": "Roundness",
     "launcher.settings.reset_to_default": "Reset to default",
     "launcher.settings.save_repositories": "Save repositories",
     "launcher.settings.show_fps": "Show FPS",

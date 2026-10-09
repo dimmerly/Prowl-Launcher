@@ -10,7 +10,7 @@ public sealed partial class Launcher
         .LeadingIcon(OrigamiIconSet.File)
         .Width(subtle ? 28 : 40)
         .Height(subtle ? 28 : 40)
-        .Rounding(8)
+        .Rounding(_appearance.Theme.Metrics.Rounding)
         .Variant(subtle ? OrigamiVariant.Subtle : OrigamiVariant.Default)
         .Tooltip(Loc.Get("launcher.versions.changelog"))
         .Disabled(Busy)

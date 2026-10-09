@@ -34,7 +34,7 @@ public sealed partial class Launcher
         Color color = selected ? _appearance.Accent : Ink;
         ElementBuilder button = p.Box(id)
             .Height(44)
-            .Rounded(9)
+            .Rounded(_appearance.Theme.Metrics.Rounding)
             .Cursor(PaperCursor.Pointer)
             .Tooltip(updateVersion == null ? Loc.Get(text) : Loc.Get(text) + "\n"
                 + Loc.Get("launcher.versions.update_available", new { version = updateVersion }))
@@ -79,7 +79,7 @@ public sealed partial class Launcher
     ) => Origami.Button(p, id, Loc.Get(text))
         .Width(width * 1.15f + 16)
         .Height(40)
-        .Rounding(8)
+        .Rounding(_appearance.Theme.Metrics.Rounding)
         .LeadingIcon(LauncherIcons.ForAction(text))
         .Variant(primary ? OrigamiVariant.Primary : OrigamiVariant.Default)
         .Disabled(Busy)
@@ -92,7 +92,7 @@ public sealed partial class Launcher
         .BackgroundColor(_appearance.Card)
         .BorderColor(_appearance.Theme.BorderSoft)
         .BorderWidth(1)
-        .Rounded(10)
+        .Rounded(_appearance.Theme.Metrics.ContainerRounding)
         .Enter();
     private IDisposable VersionCard(Paper p, string id) => p.Column(id)
         .Height(UnitValue.Auto)
@@ -101,6 +101,6 @@ public sealed partial class Launcher
         .BackgroundColor(_appearance.Card)
         .BorderColor(_appearance.Theme.BorderSoft)
         .BorderWidth(1)
-        .Rounded(10)
+        .Rounded(_appearance.Theme.Metrics.ContainerRounding)
         .Enter();
 }
