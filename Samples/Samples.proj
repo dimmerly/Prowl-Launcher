@@ -1,0 +1,55 @@
+<Project DefaultTargets="Build">
+  <PropertyGroup>
+    <EngineDirectory Condition="'$(EngineDirectory)' == ''">$(MSBuildThisFileDirectory)../Engine/</EngineDirectory>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <SampleOutputRoot Condition="'$(SampleOutputRoot)' == ''">$(MSBuildThisFileDirectory)obj/launcher-samples/$(Configuration)/$(RuntimeIdentifier)/</SampleOutputRoot>
+    <SampleOutputRoot>$([System.IO.Path]::GetFullPath('$(SampleOutputRoot)'))</SampleOutputRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SampleProject Include="$(EngineDirectory)/Samples/Runtime/*/*.csproj" />
+    <SampleAsset Include="$(EngineDirectory)/Samples/Runtime/*/Assets/**/*" />
+  </ItemGroup>
+
+  <Target Name="Build">
+    <Error Condition="!Exists('$(EngineDirectory)/Prowl.Runtime/Prowl.Runtime.csproj')" Text="Check out Prowl into Engine or set EngineDirectory before building samples." />
+    <MSBuild
+      Projects="@(SampleProject)"
+      Targets="Restore"
+      Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=false" />
+    <MSBuild
+      Projects="@(SampleProject)"
+      Targets="Build"
+      BuildInParallel="false"
+      Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=false;OutputPath=$(SampleOutputRoot)Built/%(SampleProject.Filename)/;AppendTargetFrameworkToOutputPath=false;AppendRuntimeIdentifierToOutputPath=false">
+      <Output TaskParameter="TargetOutputs" ItemName="SampleAssembly" />
+    </MSBuild>
+
+    <!-- Each sample contains its own code and assets; shared dependencies are packaged in the host. -->
+    <RemoveDir Directories="$(SampleOutputRoot)Payload" />
+    <Copy
+      SourceFiles="@(SampleAssembly)"
+      DestinationFiles="@(SampleAssembly->'$(SampleOutputRoot)Payload/%(Filename)/%(Filename)%(Extension)')" />
+
+    <AssignTargetPath Files="@(SampleAsset)" RootFolder="$(EngineDirectory)/Samples/Runtime">
+      <Output TaskParameter="AssignedFiles" ItemName="SampleAssetWithPath" />
+    </AssignTargetPath>
+    <Copy
+      SourceFiles="@(SampleAssetWithPath)"
+      DestinationFiles="@(SampleAssetWithPath->'$(SampleOutputRoot)Payload/%(TargetPath)')" />
+
+    <RemoveDir Directories="$(SampleOutputRoot)Bundles" />
+    <MakeDir Directories="$(SampleOutputRoot)Bundles" />
+    <ZipDirectory
+      SourceDirectory="$(SampleOutputRoot)Payload/%(SampleAssembly.Filename)"
+      DestinationFile="$(SampleOutputRoot)Bundles/%(SampleAssembly.Filename).zip"
+      Overwrite="true" />
+
+    <!-- A separate self-contained host supplies the engine for samples, outside the launcher process. -->
+    <RemoveDir Directories="$(SampleOutputRoot)Host" />
+    <MSBuild Projects="Host/Prowl.SampleHost.csproj" Targets="Restore;Publish"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);EngineDirectory=$(EngineDirectory);SelfContained=true;PublishDir=$(SampleOutputRoot)Host/" />
+    <ZipDirectory SourceDirectory="$(SampleOutputRoot)Host" DestinationFile="$(SampleOutputRoot)Bundles/SampleHost.zip" Overwrite="true" />
+  </Target>
+</Project>

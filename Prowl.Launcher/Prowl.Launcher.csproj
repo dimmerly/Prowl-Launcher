@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../VERSION.txt').Trim())</Version>
+    <AssemblyName>Prowl.Launcher</AssemblyName>
+    <Product>Prowl Launcher</Product>
+    <Title>Prowl Launcher</Title>
+    <Description>The Prowl launcher.</Description>
+    <ApplicationIcon>Resources/prowl.ico</ApplicationIcon>
+    <SampleBundleDirectory Condition="'$(SampleBundleDirectory)' == ''">$(MSBuildProjectDirectory)/Resources/Samples</SampleBundleDirectory>
+    <SampleBundleDirectory>$([System.IO.Path]::GetFullPath('$(SampleBundleDirectory)', '$(MSBuildProjectDirectory)/../'))</SampleBundleDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Prowl.Launcher.Test" />
+    <PackageReference Include="OpenTK" Version="4.9.4" />
+    <PackageReference Include="Prowl.Paper" Version="$(ProwlPackageVersion)" />
+    <PackageReference Include="Prowl.Origami" Version="$(ProwlPackageVersion)" />
+    <PackageReference Include="Prowl.Rosetta" Version="$(ProwlPackageVersion)" />
+    <PackageReference Include="Prowl.Aperture" Version="$(ProwlPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/*.ttf" />
+    <EmbeddedResource Include="Resources/Locale/*.json" LogicalName="Prowl.Launcher.Locale.%(Filename).json" />
+    <EmbeddedResource Include="Resources/Icons/*.svg" LogicalName="Prowl.Launcher.Icons.%(Filename).svg" />
+    <EmbeddedResource Include="Resources/Samples/*.png" LogicalName="Prowl.Launcher.Samples.%(Filename).png" />
+    <EmbeddedResource Include="$(SampleBundleDirectory)/*.zip" Exclude="$(SampleBundleDirectory)/SampleHost.zip" LogicalName="Prowl.Launcher.Samples.%(Filename).zip" />
+    <EmbeddedResource Include="$(SampleBundleDirectory)/SampleHost.zip" LogicalName="Prowl.Launcher.SampleHost.zip" Condition="Exists('$(SampleBundleDirectory)/SampleHost.zip')" />
+  </ItemGroup>
+</Project>

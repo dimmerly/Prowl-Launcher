@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- Shared version for all Prowl.* NuGet packages. -->
+  <PropertyGroup>
+    <ProwlPackageVersion>3.6.7</ProwlPackageVersion>
+  </PropertyGroup>
+
+</Project>

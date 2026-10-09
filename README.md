@@ -1,1 +1,54 @@
-# Prowl-Launcher
+# Prowl Launcher
+
+The standalone Prowl project, editor-version, and sample launcher. The UI uses Paper and Origami with OpenTK; it does not reference the engine.
+
+## Build
+
+Install the .NET 10 SDK, then run:
+
+```sh
+dotnet run --project Prowl.Launcher/Prowl.Launcher.csproj
+```
+
+Windows, Linux, and macOS release packages include .NET. End users do not need an SDK.
+
+## Versions and releases
+
+`VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Commits with an already released version produce build artifacts without another release. Prerelease versions create prereleases.
+
+Launcher tests remain available locally; they are not run by CI/CD.
+
+```sh
+dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release
+```
+
+## Samples
+
+Samples run in a separate self-contained host. The launcher UI remains independent of the engine; only sample packaging uses Prowl source. `EngineRevision.txt` pins the engine commit used by release and thumbnail workflows.
+
+For local sample builds, check out `ProwlEngine/Prowl` into `Engine` at that revision, then run:
+
+```sh
+dotnet msbuild Samples/Samples.proj -t:Build -p:Configuration=Release -p:SampleOutputRoot=./artifacts/samples/
+dotnet run --project Prowl.Launcher/Prowl.Launcher.csproj -p:SampleBundleDirectory=./artifacts/samples/Bundles
+```
+
+Use an absolute `SampleBundleDirectory` if invoking MSBuild from a different working directory. An ordinary build can run without an engine checkout; sample cards appear when sample bundles are embedded.
+
+To include sample extraction in the local tests after building bundles:
+
+```sh
+dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release -p:SampleBundleDirectory=./artifacts/samples/Bundles
+```
+
+The **Generate sample thumbnails** workflow is manual. It updates checked-in images only when at least 25% of their pixels visibly change, ignoring minor color noise. New samples receive an image on their first run. It can also run locally:
+
+```sh
+dotnet run --file .github/scripts/generate-sample-thumbnails.cs -- --engine ./Engine
+```
+
+## Updates
+
+Launcher updates come from `TODO`, independently of the configurable editor repository. Downloads require HTTPS, the expected launcher repository, matching sizes, and GitHub's SHA-256 digest. Updates skip drafts, prerelease releases, and versions that are not newer.
+
+These checks trust the release publisher; they do not provide independent cryptographic signing of updates.

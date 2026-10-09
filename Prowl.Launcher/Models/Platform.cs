@@ -1,0 +1,25 @@
+using Prowl.Rosetta;
+
+using System.Runtime.InteropServices;
+
+namespace Prowl.Launcher;
+
+public static class Platform
+{
+    public static string Identifier
+    {
+        get
+        {
+            string os = OperatingSystem.IsWindows() ? "win" : OperatingSystem.IsMacOS() ? "osx" : "linux";
+            string arch = RuntimeInformation.ProcessArchitecture switch
+            {
+                Architecture.X64 => "x64",
+                Architecture.Arm64 => "arm64",
+                _ => throw new PlatformNotSupportedException(Loc.Get("launcher.errors.unsupported_architecture"))
+            };
+            return $"{os}-{arch}";
+        }
+    }
+
+    public static string DefaultHome => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Prowl", "Launcher");
+}

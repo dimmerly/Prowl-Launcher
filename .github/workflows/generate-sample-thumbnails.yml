@@ -1,0 +1,66 @@
+name: Generate sample thumbnails
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-sample-thumbnails-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Read engine revision
+        id: engine
+        run: |
+          revision=$(tr -d '\r' < EngineRevision.txt)
+          if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then exit 1; fi
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ProwlEngine/Prowl
+          ref: ${{ steps.engine.outputs.revision }}
+          path: Engine
+          submodules: true
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install virtual display and software renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libglfw3 libasound2t64
+
+      - name: Generate sample thumbnails
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a dotnet run --file .github/scripts/generate-sample-thumbnails.cs
+
+      - name: Commit visibly changed thumbnails
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          git add Prowl.Launcher/Resources/Samples
+
+          if git diff --cached --quiet; then
+            echo "No thumbnails changed by at least 25%."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Update sample thumbnails"
+          git push origin HEAD:"$TARGET_BRANCH"
