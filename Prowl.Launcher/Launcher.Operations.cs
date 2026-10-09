@@ -20,6 +20,7 @@ public sealed partial class Launcher
 
     private bool Busy => _operation != null;
     private bool ShowProgress => Busy
+                                 && _launchingSampleId == null
                                  && !_filePickerOpen
                                  && !_confirmationOpen
                                  && (_immediateProgress || Stopwatch.GetElapsedTime(_operationStarted).TotalMilliseconds >= 650);
@@ -79,9 +80,17 @@ public sealed partial class Launcher
         _fraction = progress.Fraction;
     });
 
-    private Task RunSampleAsync(Sample sample, CancellationToken token)
+    private async Task RunSampleAsync(Sample sample, CancellationToken token)
     {
-        return SampleService.RunAsync(sample, store.WorkPath, token);
+        _launchingSampleId = sample.Id;
+        try
+        {
+            await SampleService.RunAsync(sample, store.WorkPath, token);
+        }
+        finally
+        {
+            _launchingSampleId = null;
+        }
     }
 
     private void LogError(Exception exception)

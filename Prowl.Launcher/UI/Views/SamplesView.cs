@@ -10,6 +10,7 @@ namespace Prowl.Launcher;
 public sealed partial class Launcher
 {
     private readonly SampleThumbnail _sampleThumbnails = new();
+    private string? _launchingSampleId;
 
     private void DrawSamples(Paper p)
     {
@@ -85,6 +86,18 @@ public sealed partial class Launcher
                     p.Box(id + "description").Height(UnitValue.Auto).IsNotInteractable()
                         .Text(description, _font)
                         .FontSize(17).TextColor(Color.FromArgb(235, 239, 246)).Wrap(TextWrapMode.Wrap);
+            }
+
+            if (_launchingSampleId == sample.Id)
+            {
+                using (p.Column(id + "loading").PositionType(PositionType.SelfDirected)
+                    .Left(0).Top(0).Size(width, width)
+                    .BackgroundColor(Color.FromArgb(160, 5, 8, 13))
+                    .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
+                    .IsNotInteractable().Enter())
+                {
+                    Origami.Spinner(p, id + "spinner").XL().Tint(Color.White).Show();
+                }
             }
         }
     }
