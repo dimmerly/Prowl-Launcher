@@ -1,12 +1,15 @@
 using Prowl.Rosetta;
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace Prowl.Launcher;
 
 public sealed class LauncherStore
 {
+    private JsonObject _savedSettings;
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -27,9 +30,76 @@ public sealed class LauncherStore
         Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable("PROWL_LAUNCHER_HOME") ?? Platform.DefaultHome);
         Directory.CreateDirectory(Home);
         Settings = ReadJson<Settings>(Path.Combine(Home, "settings.json")) ?? new Settings();
+        _savedSettings = Snapshot(Settings);
     }
 
-    public void Save() => WriteJson(Path.Combine(Home, "settings.json"), Settings);
+    public void Save()
+    {
+        // Merge only this instance's edits while holding a cross-process write lock.
+        using FileStream writeLock = AcquireSettingsLock();
+        string path = Path.Combine(Home, "settings.json");
+        JsonObject local = Snapshot(Settings);
+        JsonObject merged = Snapshot(ReadJson<Settings>(path) ?? new Settings());
+        MergeProperties(_savedSettings, local, merged, "Projects");
+        merged["Projects"] = MergeProjects((JsonArray)_savedSettings["Projects"]!,
+            (JsonArray)local["Projects"]!, (JsonArray)merged["Projects"]!);
+        Settings saved = merged.Deserialize<Settings>(JsonOptions)!;
+        WriteJson(path, saved);
+        // Keep project objects alive because UI callbacks may hold references to them.
+        Dictionary<string, Project> existing = Settings.Projects.ToDictionary(p => ProjectPath(p.Path));
+        foreach (Project project in saved.Projects)
+        {
+            if (!existing.TryGetValue(ProjectPath(project.Path), out Project? current)) continue;
+            foreach (var property in typeof(Project).GetProperties())
+                property.SetValue(current, property.GetValue(project));
+        }
+        saved.Projects = saved.Projects.Select(p => existing.GetValueOrDefault(ProjectPath(p.Path)) ?? p).ToList();
+        foreach (var property in typeof(Settings).GetProperties())
+            property.SetValue(Settings, property.GetValue(saved));
+        _savedSettings = Snapshot(saved);
+    }
+
+    private FileStream AcquireSettingsLock()
+    {
+        Stopwatch clock = Stopwatch.StartNew();
+        while (true)
+        {
+            try { return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+            catch (IOException) when (clock.Elapsed < TimeSpan.FromSeconds(5)) { Thread.Sleep(20); }
+        }
+    }
+
+    private static JsonObject Snapshot(Settings settings) => (JsonObject)JsonSerializer.SerializeToNode(settings, JsonOptions)!;
+    private static string ProjectPath(string path) => OperatingSystem.IsWindows()
+        ? Path.GetFullPath(path).ToUpperInvariant() : Path.GetFullPath(path);
+
+    private static void MergeProperties(JsonObject baseline, JsonObject local, JsonObject target, string? skip = null)
+    {
+        foreach ((string key, JsonNode? value) in local)
+            if (key != skip && !JsonNode.DeepEquals(baseline[key], value)) target[key] = value?.DeepClone();
+    }
+
+    private static JsonArray MergeProjects(JsonArray baseline, JsonArray local, JsonArray disk)
+    {
+        Dictionary<string, JsonObject> Index(JsonArray projects) => projects.Cast<JsonObject>()
+            .ToDictionary(p => ProjectPath(p["Path"]!.GetValue<string>()));
+        var before = Index(baseline);
+        var edits = Index(local);
+        var merged = Index(disk);
+        foreach (string removed in before.Keys.Except(edits.Keys)) merged.Remove(removed);
+        foreach ((string path, JsonObject project) in edits)
+        {
+            if (before.TryGetValue(path, out JsonObject? original))
+            {
+                if (JsonNode.DeepEquals(original, project)) continue;
+                if (!merged.TryGetValue(path, out JsonObject? target))
+                    merged[path] = (JsonObject)project.DeepClone();
+                else MergeProperties(original, project, target);
+            }
+            else merged[path] = (JsonObject)project.DeepClone();
+        }
+        return new JsonArray(merged.Values.Select(p => (JsonNode)p.DeepClone()).ToArray());
+    }
     public static T? ReadJson<T>(string path)
     {
         try
