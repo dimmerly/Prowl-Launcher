@@ -62,7 +62,7 @@ sealed class SampleService
                           ?? throw new InvalidOperationException(Loc.Get("launcher.samples.start_failed"));
         Task<int> completion = MonitorAsync(process, output);
         // Report startup crashes through the operation panel, retaining logs for later failures.
-        if (await Task.WhenAny(completion, Task.Delay(1500)) == completion && await completion != 0)
+        if (await Task.WhenAny(completion, Task.Delay(Constants.Startup.SampleStartupMilliseconds)) == completion && await completion != 0)
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.start_failed"));
         }
@@ -349,7 +349,7 @@ sealed class SampleService
             }
             catch (IOException)
             {
-                await Task.Delay(100, token);
+                await Task.Delay(Constants.Storage.SampleLockRetryMilliseconds, token);
             }
         }
     }

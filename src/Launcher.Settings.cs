@@ -164,8 +164,8 @@ public sealed partial class Launcher
 
     private Task ResetRepositoryDraftsAsync(CancellationToken token)
     {
-        _prowlRepositoryDraft = GitHubRepositoryHelper.DefaultProwl;
-        _launcherRepositoryDraft = GitHubRepositoryHelper.LauncherRepository;
+        _prowlRepositoryDraft = Constants.Defaults.ProwlRepository;
+        _launcherRepositoryDraft = Constants.Defaults.LauncherRepository;
         return Task.CompletedTask;
     }
 }

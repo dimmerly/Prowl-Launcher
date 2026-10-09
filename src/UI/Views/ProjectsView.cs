@@ -51,7 +51,7 @@ public sealed partial class Launcher
         foreach (Project project in projects)
         {
             string id = "project-" + project.Path;
-            bool wide = p.ScreenRect.Size.X - SidebarWidth - 56 >= 800;
+            bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
             using (VersionCard(p, id))
             {
                 Origami.RightClickMenu(

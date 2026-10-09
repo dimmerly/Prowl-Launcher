@@ -5,7 +5,6 @@ namespace Prowl.Launcher;
 
 static class LauncherStartupService
 {
-    private const string ReadyEnvironment = "PROWL_LAUNCHER_READY_PIPE";
     internal static string? ReadyPipe
     {
         get;
@@ -14,8 +13,8 @@ static class LauncherStartupService
 
     internal static void CaptureReadyPipe()
     {
-        ReadyPipe = Environment.GetEnvironmentVariable(ReadyEnvironment);
-        Environment.SetEnvironmentVariable(ReadyEnvironment, null);
+        ReadyPipe = Environment.GetEnvironmentVariable(Constants.Startup.ReadyEnvironment);
+        Environment.SetEnvironmentVariable(Constants.Startup.ReadyEnvironment, null);
     }
 
     internal static async Task ReportReadyAsync()
@@ -28,7 +27,7 @@ static class LauncherStartupService
         }
         try
         {
-            using CancellationTokenSource timeout = new( TimeSpan.FromSeconds(10) );
+            using CancellationTokenSource timeout = new( Constants.Startup.ReadyPipeTimeout );
             await using NamedPipeClientStream pipe = new( ".", name, PipeDirection.Out, PipeOptions.Asynchronous );
             await pipe.ConnectAsync(timeout.Token);
             await pipe.WriteAsync(new byte[]
@@ -59,8 +58,8 @@ static class LauncherStartupService
         {
             UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(executable)!
         };
-        info.Environment[ReadyEnvironment] = name;
-        info.Environment["PROWL_LAUNCHER_HOME"] = home;
+        info.Environment[Constants.Startup.ReadyEnvironment] = name;
+        info.Environment[Constants.Storage.HomeEnvironment] = home;
         foreach (string arg in args)
         {
             info.ArgumentList.Add(arg);
@@ -68,7 +67,7 @@ static class LauncherStartupService
         using Process process = (start ?? Process.Start)(info)
                                 ?? throw new IOException("The updated launcher could not be started.");
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(30));
+        deadline.CancelAfter(timeout ?? Constants.Startup.LauncherTimeout);
         try
         {
             Task ready = WaitForReadyAsync(pipe, deadline.Token);
@@ -79,7 +78,7 @@ static class LauncherStartupService
                 throw new IOException("The updated launcher exited before its window was ready.");
             }
             await ready;
-            await Task.Delay(TimeSpan.FromSeconds(1), deadline.Token);
+            await Task.Delay(Constants.Startup.StabilityDelay, deadline.Token);
             if (process.HasExited)
             {
                 throw new IOException("The updated launcher failed during startup.");

@@ -22,7 +22,7 @@ public sealed class Settings
     {
         get;
         set;
-    } = true;
+    } = Constants.Defaults.CloseOnEditorLaunch;
     public string? DefaultEditorKey
     {
         get;
@@ -32,17 +32,17 @@ public sealed class Settings
     {
         get;
         set;
-    } = GitHubRepositoryHelper.DefaultProwl;
+    } = Constants.Defaults.ProwlRepository;
     public string LauncherRepository
     {
         get;
         set;
-    } = GitHubRepositoryHelper.LauncherRepository;
+    } = Constants.Defaults.LauncherRepository;
     public bool LauncherPrereleases
     {
         get;
         set;
-    } = true;
+    } = Constants.Defaults.LauncherPrereleases;
     public Dictionary<string, bool> DismissedLauncherReleases
     {
         get;
@@ -53,7 +53,7 @@ public sealed class Settings
     {
         get;
         set;
-    }
+    } = Constants.Defaults.ShowFps;
     public string? Locale
     {
         get;
@@ -63,7 +63,7 @@ public sealed class Settings
     {
         get;
         set;
-    } = 1;
+    } = Constants.Defaults.UiScale;
     public string? LogoColor
     {
         get;

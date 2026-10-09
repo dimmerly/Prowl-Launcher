@@ -119,7 +119,7 @@ public sealed partial class Launcher
 
     private void CenterWindow() => _window.CenterWindow();
 
-    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, 0.5f, 1.5f) : 1;
+    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale) : Constants.Defaults.UiScale;
     private float DisplayScale => _windowScale.Rendering;
 
     private unsafe void UpdateWindowScale()

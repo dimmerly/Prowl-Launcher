@@ -34,7 +34,7 @@ public sealed partial class Launcher
                     .PositionType(PositionType.SelfDirected)
                     .Left(0)
                     .Top(0)
-                    .Size(SidebarWidth, height)
+                    .Size(Constants.Layout.SidebarWidth, height)
                     .BackgroundLinearGradient(0, 0, 1, 1,
                         OrigamiTheme.WithAlpha(_appearance.Accent, 14),
                         _appearance.Background)
@@ -60,9 +60,9 @@ public sealed partial class Launcher
                     }
 
                     // Reserve the operation panel and toolbar before sizing the list.
-                    float operationSpace = progressVisible ? OperationHeight + 14 : 0;
+                    float operationSpace = progressVisible ? Constants.Layout.OperationHeight + 14 : 0;
                     float toolbarSpace = showToolbar ? 0 : 58;
-                    float listWidth = Math.Max(1, width - SidebarWidth - 56);
+                    float listWidth = Math.Max(1, width - Constants.Layout.SidebarWidth - 56);
                     float listHeight = Math.Max(0, height - 202 - operationSpace + toolbarSpace);
 
                     Origami.ScrollView(p, "list-" + _tab, listWidth, listHeight)

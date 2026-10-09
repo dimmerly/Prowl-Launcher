@@ -9,13 +9,11 @@ namespace Prowl.Launcher;
 /// <summary>Install launcher updates side by side; the original entry point forwards to the chosen version.</summary>
 public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 {
-    private const string ManifestName = "launcher-installation.json";
     private sealed record Installation(string Digest, string Executable, Dictionary<string, string> Files);
-    private const string VersionPattern = @"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?";
 
     public static bool IsNewer(string version, string currentVersion)
     {
-        if (!Regex.IsMatch(version, $"^{VersionPattern}$") || !Regex.IsMatch(currentVersion, $"^{VersionPattern}$"))
+        if (!Regex.IsMatch(version, $"^{Constants.Startup.VersionPattern}$") || !Regex.IsMatch(currentVersion, $"^{Constants.Startup.VersionPattern}$"))
         {
             return false;
         }
@@ -55,7 +53,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
     public static string? VersionFor(ReleaseAsset asset, string platform)
     {
-        Match match = Regex.Match(asset.Name, $"^Prowl[- .]Launcher-({VersionPattern})-{Regex.Escape(platform)}\\.zip$");
+        Match match = Regex.Match(asset.Name, $"^Prowl[- .]Launcher-({Constants.Startup.VersionPattern})-{Regex.Escape(platform)}\\.zip$");
         return match.Success ? match.Groups[1].Value : null;
     }
 
@@ -90,7 +88,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     )
     {
         if (release.Draft || release.Preview && !store.Settings.LauncherPrereleases
-                          || release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
+                          || release.Id <= 0 || !Constants.Storage.SupportedPlatforms.Contains(platform))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }
@@ -177,14 +175,14 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         foreach (string path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
         {
             token.ThrowIfCancellationRequested();
-            if (Path.GetRelativePath(root, path) == ManifestName)
+            if (Path.GetRelativePath(root, path) == Constants.Storage.LauncherManifest)
             {
                 continue;
             }
             using FileStream input = File.OpenRead(path);
             files.Add(Path.GetRelativePath(root, path), Convert.ToHexString(SHA256.HashData(input)));
         }
-        LauncherStore.WriteJson(Path.Combine(root, ManifestName), new Installation(digest, Path.GetRelativePath(root, executable), files));
+        LauncherStore.WriteJson(Path.Combine(root, Constants.Storage.LauncherManifest), new Installation(digest, Path.GetRelativePath(root, executable), files));
     }
 
     private static string? ValidateInstallation(string root, string? digest, string name, CancellationToken token)
@@ -196,7 +194,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         try
         {
             DirectoryReplacementService.RejectLinks(root);
-            Installation? installed = LauncherStore.ReadJson<Installation>(Path.Combine(root, ManifestName));
+            Installation? installed = LauncherStore.ReadJson<Installation>(Path.Combine(root, Constants.Storage.LauncherManifest));
             if (installed?.Files == null || installed.Files.Count == 0
                                          || digest != null && !string.Equals(digest, installed.Digest, StringComparison.OrdinalIgnoreCase)
                                          || !installed.Files.ContainsKey(installed.Executable)

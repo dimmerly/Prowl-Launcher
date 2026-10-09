@@ -4,7 +4,7 @@ namespace Prowl.Launcher.Test;
 
 public sealed class EditorUpdateIndicatorTests
 {
-    private const string Repository = GitHubRepositoryHelper.DefaultProwl;
+    private const string Repository = Constants.Defaults.ProwlRepository;
     private const string Platform = "win-x64";
     private static InstalledEditor Installed(string tag, string repository = Repository, string platform = Platform) =>
         new( 1, tag, platform, "Prowl.Editor.exe", DateTimeOffset.UtcNow )

@@ -23,7 +23,7 @@ public sealed partial class Launcher
                                  && (_launchingSampleId == null || _immediateProgress)
                                  && !_filePickerOpen
                                  && !_confirmationOpen
-                                 && (_immediateProgress || Stopwatch.GetElapsedTime(_operationStarted).TotalMilliseconds >= 650);
+                                 && (_immediateProgress || Stopwatch.GetElapsedTime(_operationStarted).TotalMilliseconds >= Constants.Layout.ProgressDelayMilliseconds);
 
     private async void Start(Func<CancellationToken, Task> action, string title)
     {

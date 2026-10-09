@@ -36,14 +36,13 @@ public sealed partial class Launcher
             return;
         }
 
-        const float gap = 12;
         // Leave eight pixels on each edge for the hover scale to expand inside the scroll clip.
-        float available = (float)p.ScreenRect.Size.X - SidebarWidth - 72;
-        int columns = Math.Clamp((int)((available + gap) / 260), 1, samples.Count);
-        float cardWidth = Math.Clamp((available - gap * (columns - 1)) / columns, 1, 280);
+        float available = (float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 72;
+        int columns = Math.Clamp((int)((available + Constants.Layout.SampleGap) / 260), 1, samples.Count);
+        float cardWidth = Math.Clamp((available - Constants.Layout.SampleGap * (columns - 1)) / columns, 1, 280);
         for (int first = 0; first < samples.Count; first += columns)
         {
-            using (p.Row("sample-row-" + first).Height(cardWidth).Gap(gap).Enter())
+            using (p.Row("sample-row-" + first).Height(cardWidth).Gap(Constants.Layout.SampleGap).Enter())
             {
                 foreach (Sample sample in samples.Skip(first).Take(columns))
                 {

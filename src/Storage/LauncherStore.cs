@@ -28,7 +28,7 @@ public sealed class LauncherStore
 
     public LauncherStore(string? home = null)
     {
-        Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable("PROWL_LAUNCHER_HOME") ?? Platform.DefaultHome);
+        Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable(Constants.Storage.HomeEnvironment) ?? Platform.DefaultHome);
         Directory.CreateDirectory(Home);
         using FileStream writeLock = AcquireSettingsLock();
         Settings = LoadSettings();
@@ -81,9 +81,9 @@ public sealed class LauncherStore
             {
                 return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             }
-            catch (IOException) when (clock.Elapsed < TimeSpan.FromSeconds(5))
+            catch (IOException) when (clock.Elapsed < Constants.Storage.SettingsLockTimeout)
             {
-                Thread.Sleep(20);
+                Thread.Sleep(Constants.Storage.SettingsLockRetryMilliseconds);
             }
         }
     }
@@ -175,8 +175,8 @@ public sealed class LauncherStore
             }
         }
         settings.Projects = projects.Values.ToList();
-        settings.ProwlRepository = ValidRepository(settings.ProwlRepository, GitHubRepositoryHelper.DefaultProwl);
-        settings.LauncherRepository = ValidRepository(settings.LauncherRepository, GitHubRepositoryHelper.LauncherRepository);
+        settings.ProwlRepository = ValidRepository(settings.ProwlRepository, Constants.Defaults.ProwlRepository);
+        settings.LauncherRepository = ValidRepository(settings.LauncherRepository, Constants.Defaults.LauncherRepository);
 
         static string ValidRepository(string? value, string fallback)
         {
@@ -277,7 +277,7 @@ public sealed class LauncherStore
 
     public string InstallPath(InstalledEditor editor)
     {
-        if (editor.ReleaseId <= 0 || !SupportedPlatforms.Contains(editor.Platform)
+        if (editor.ReleaseId <= 0 || !Constants.Storage.SupportedPlatforms.Contains(editor.Platform)
                                   || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
@@ -286,7 +286,6 @@ public sealed class LauncherStore
         return SafeChildPath(VersionsPath, editor.Key);
     }
 
-    public static readonly string[] SupportedPlatforms = ["win-x64", "win-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"];
     public IReadOnlyList<InstalledEditor> InstalledEditors()
     {
         if (!Directory.Exists(VersionsPath))

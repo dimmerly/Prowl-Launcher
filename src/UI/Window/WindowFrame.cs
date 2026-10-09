@@ -5,12 +5,6 @@ namespace Prowl.Launcher;
 /// <summary>Keeps Windows dragging, resizing, and snapping while the launcher paints its title bar.</summary>
 sealed class WindowFrame : IDisposable
 {
-    private const uint NcCalcSize = 0x0083;
-    private const uint NcHitTest = 0x0084;
-    private const uint GetMinMaxInfo = 0x0024;
-    private const uint EnterSizeMove = 0x0231;
-    private const uint ExitSizeMove = 0x0232;
-    private const nuint SubclassId = 1;
     private readonly nint _handle;
     private readonly Func<float> _scale;
     private readonly Func<float> _controlsWidth;
@@ -24,7 +18,7 @@ sealed class WindowFrame : IDisposable
         _controlsWidth = controlsWidth;
         _resizeChanged = resizeChanged;
         _procedure = HandleMessage;
-        if (!SetWindowSubclass(handle, _procedure, SubclassId, 0))
+        if (!SetWindowSubclass(handle, _procedure, Constants.WindowsMessages.SubclassId, 0))
         {
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
         }
@@ -34,12 +28,12 @@ sealed class WindowFrame : IDisposable
 
     private nint HandleMessage(nint handle, uint message, nuint wParam, nint lParam, nuint id, nuint data)
     {
-        if (message is EnterSizeMove or ExitSizeMove)
+        if (message is Constants.WindowsMessages.EnterSizeMove or Constants.WindowsMessages.ExitSizeMove)
         {
-            _resizeChanged(message == EnterSizeMove);
+            _resizeChanged(message == Constants.WindowsMessages.EnterSizeMove);
         }
 
-        if (message == NcCalcSize)
+        if (message == Constants.WindowsMessages.NcCalcSize)
         {
             // Maximized windows include an invisible resize border outside the work area.
             // Keep the client inside it so the custom title bar isn't clipped at the screen edge.
@@ -64,7 +58,7 @@ sealed class WindowFrame : IDisposable
             return 0;
         }
 
-        if (message == NcHitTest && GetWindowRect(handle, out Rectangle bounds))
+        if (message == Constants.WindowsMessages.NcHitTest && GetWindowRect(handle, out Rectangle bounds))
         {
             int x = unchecked((short)(lParam.ToInt64() & 0xffff)) - bounds.Left;
             int y = unchecked((short)(lParam.ToInt64() >> 16 & 0xffff)) - bounds.Top;
@@ -94,12 +88,12 @@ sealed class WindowFrame : IDisposable
                 }
             }
             // Leave FPS, the language picker, and window controls in the client area.
-            return y < Launcher.TitleBarHeight * scale && x < width - _controlsWidth() * scale
+            return y < Constants.Layout.TitleBarHeight * scale && x < width - _controlsWidth() * scale
                 ? 2 // HTCAPTION: native move, double-click maximize, and snap.
                 : 1; // HTCLIENT
         }
 
-        if (message == GetMinMaxInfo)
+        if (message == Constants.WindowsMessages.GetMinMaxInfo)
         {
             MinMaxInfo info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
             MonitorInfo monitor = new()
@@ -119,7 +113,7 @@ sealed class WindowFrame : IDisposable
         return DefSubclassProc(handle, message, wParam, lParam);
     }
 
-    public void Dispose() => RemoveWindowSubclass(_handle, _procedure, SubclassId);
+    public void Dispose() => RemoveWindowSubclass(_handle, _procedure, Constants.WindowsMessages.SubclassId);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point(int x, int y)

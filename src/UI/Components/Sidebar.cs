@@ -8,14 +8,12 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private const float SidebarWidth = 72;
-    private const float SidebarPadding = 8;
 
     private void DrawSidebar(Paper p)
     {
         using (p.Column("sidebar")
-            .Width(SidebarWidth)
-            .Padding(SidebarPadding)
+            .Width(Constants.Layout.SidebarWidth)
+            .Padding(Constants.Layout.SidebarPadding)
             .BackgroundLinearGradient(0, 0, 0, 1,
                 OrigamiTheme.WithAlpha(_appearance.Panel, 230),
                 OrigamiTheme.WithAlpha(_appearance.Panel, 220))

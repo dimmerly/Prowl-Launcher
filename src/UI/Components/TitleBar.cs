@@ -12,10 +12,7 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    internal const float TitleBarHeight = 34;
-    private const float LanguagePickerWidth = 86;
-    private const float FpsWidth = 84;
-    private float WindowControlsWidth => (store.Settings.ShowFps ? FpsWidth : 0) + LanguagePickerWidth + 126;
+    private float WindowControlsWidth => (store.Settings.ShowFps ? Constants.Layout.FpsWidth : 0) + Constants.Layout.LanguagePickerWidth + 126;
     private Vector2i _windowDragOffset;
     private double _fpsSeconds;
     private int _fpsFrames;
@@ -32,10 +29,10 @@ public sealed partial class Launcher
             .Left(0)
             .Top(0)
             .Width((float)p.ScreenRect.Size.X)
-            .Height(TitleBarHeight)
+            .Height(Constants.Layout.TitleBarHeight)
             .Enter())
         {
-            ElementBuilder dragArea = p.Box("window-drag-area").Height(TitleBarHeight);
+            ElementBuilder dragArea = p.Box("window-drag-area").Height(Constants.Layout.TitleBarHeight);
             if (_windowFrame == null)
             {
                 dragArea.OnDoubleClick(_ => ToggleMaximized())
@@ -49,13 +46,13 @@ public sealed partial class Launcher
                     });
             }
 
-            using (p.Row("window-controls").Width(WindowControlsWidth).Height(TitleBarHeight).Enter())
+            using (p.Row("window-controls").Width(WindowControlsWidth).Height(Constants.Layout.TitleBarHeight).Enter())
             {
                 if (store.Settings.ShowFps)
                 {
                     p.Box("fps")
-                        .Width(FpsWidth)
-                        .Height(TitleBarHeight)
+                        .Width(Constants.Layout.FpsWidth)
+                        .Height(Constants.Layout.TitleBarHeight)
                         .Text(_fpsText, _font)
                         .FontSize(16)
                         .TextColor(Muted)
@@ -90,8 +87,8 @@ public sealed partial class Launcher
                 store.Save();
             }, LocaleHelper.Codes)
             .Subtle()
-            .Width(LanguagePickerWidth)
-            .Height(TitleBarHeight)
+            .Width(Constants.Layout.LanguagePickerWidth)
+            .Height(Constants.Layout.TitleBarHeight)
             .PopoverWidth(210)
             .ItemHeight(30)
             .Display(code => LocaleHelper.Names[Array.IndexOf(LocaleHelper.Codes, code)])
@@ -113,7 +110,7 @@ public sealed partial class Launcher
     private void WindowControl(Paper p, string id, string label, IOrigamiIcon icon, Action action, bool close = false)
     {
         ElementBuilder button = p.Box(id)
-            .Size(42, TitleBarHeight)
+            .Size(42, Constants.Layout.TitleBarHeight)
             .Cursor(PaperCursor.Pointer)
             .Tooltip(Loc.Get(label))
             .OnClick(_ => action())

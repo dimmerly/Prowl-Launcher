@@ -15,8 +15,8 @@ public sealed record InstalledEditor(
     {
         get;
         init;
-    } = GitHubRepositoryHelper.DefaultProwl;
-    public string Key => Repository.Equals(GitHubRepositoryHelper.DefaultProwl, StringComparison.OrdinalIgnoreCase)
+    } = Constants.Defaults.ProwlRepository;
+    public string Key => Repository.Equals(Constants.Defaults.ProwlRepository, StringComparison.OrdinalIgnoreCase)
         ? $"{Tag}-{Platform}"
         : $"{Tag}-{Platform}-{GitHubRepositoryHelper.CacheKey(Repository)}";
 

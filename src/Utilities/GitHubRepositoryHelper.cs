@@ -8,15 +8,12 @@ namespace Prowl.Launcher;
 
 public static class GitHubRepositoryHelper
 {
-    public const string LauncherRepository = "dimmerly/Prowl-Launcher";
-
-    public const string DefaultProwl = "ProwlEngine/Prowl";
     public static string Normalize(string value)
     {
         value = value.Trim().TrimEnd('/');
-        if (value.StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase))
+        if (value.StartsWith(Constants.Network.GitHubUrl, StringComparison.OrdinalIgnoreCase))
         {
-            value = value[19..];
+            value = value[Constants.Network.GitHubUrl.Length..];
         }
 
         if (value.EndsWith(".git", StringComparison.OrdinalIgnoreCase))

@@ -9,13 +9,12 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private const float OperationHeight = 148;
 
     private void DrawOperation(Paper p)
     {
         bool cancelling = _operation?.IsCancellationRequested == true;
         using (p.Column("operation-panel")
-            .Height(OperationHeight)
+            .Height(Constants.Layout.OperationHeight)
             .Padding(16)
             .Gap(8)
             .BackgroundColor(_appearance.Panel)

@@ -14,7 +14,7 @@ public sealed partial class Launcher
             Button(p, "new", "launcher.projects.new", ToggleProjectPageAsync, width: 138);
             p.Box("toolbar-spacer");
 
-            float searchWidth = Math.Clamp(width - SidebarWidth - 56 - 380, 140, 240);
+            float searchWidth = Math.Clamp(width - Constants.Layout.SidebarWidth - 56 - 380, 140, 240);
             Origami.TextField(p, "search", _search, value => _search = value)
                 .Width(searchWidth)
                 .Placeholder(Loc.Get("launcher.projects.search"))

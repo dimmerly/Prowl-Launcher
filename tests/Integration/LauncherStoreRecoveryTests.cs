@@ -54,8 +54,8 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
         store.Save();
         Assert.Empty(store.Settings.Projects);
         Assert.Empty(store.Settings.DismissedLauncherReleases);
-        Assert.Equal(GitHubRepositoryHelper.DefaultProwl, store.Settings.ProwlRepository);
-        Assert.Equal(GitHubRepositoryHelper.LauncherRepository, store.Settings.LauncherRepository);
+        Assert.Equal(Constants.Defaults.ProwlRepository, store.Settings.ProwlRepository);
+        Assert.Equal(Constants.Defaults.LauncherRepository, store.Settings.LauncherRepository);
         Assert.Single(Directory.GetFiles(_home, "settings.json.corrupt-*"));
     }
 

@@ -63,10 +63,8 @@ class PaperRenderer : ICanvasRenderer
     // composites straight from level 0, so this also decides the resolution the backdrop is sampled
     // at. Quarter is four times cheaper across every pass and is imperceptible above roughly an
     // eight pixel radius, since detail finer than the blur is destroyed anyway.
-    private const int BlurBaseShift = 2;
-    private const int MaxBlurLevels = 6;
-    private int[] _blurTex = new int[MaxBlurLevels]; // mip pyramid, level 0 is half the viewport
-    private Vector2i[] _blurSize = new Vector2i[MaxBlurLevels];
+    private int[] _blurTex = new int[Constants.Rendering.MaxBlurLevels]; // mip pyramid, level 0 is half the viewport
+    private Vector2i[] _blurSize = new Vector2i[Constants.Rendering.MaxBlurLevels];
     private int _vertexBufferCapacity;
     private int _indexBufferCapacity;
     private bool _backdropDirty = true;
@@ -156,7 +154,7 @@ class PaperRenderer : ICanvasRenderer
         {
             GL.DeleteFramebuffer(_blurFbo);
         }
-        for (int i = 0; i < MaxBlurLevels; i++)
+        for (int i = 0; i < Constants.Rendering.MaxBlurLevels; i++)
         {
             if (_blurTex[i] != 0)
             {
@@ -377,7 +375,7 @@ class PaperRenderer : ICanvasRenderer
         {
             return;
         }
-        for (int i = 0; i < MaxBlurLevels; i++)
+        for (int i = 0; i < Constants.Rendering.MaxBlurLevels; i++)
         {
             if (_blurTex[i] != 0)
             {
@@ -386,10 +384,10 @@ class PaperRenderer : ICanvasRenderer
         }
 
         // Level 0 is half the viewport; each subsequent level halves again.
-        for (int i = 0; i < MaxBlurLevels; i++)
+        for (int i = 0; i < Constants.Rendering.MaxBlurLevels; i++)
         {
-            int w = Math.Max(1, baseW >> i + BlurBaseShift);
-            int h = Math.Max(1, baseH >> i + BlurBaseShift);
+            int w = Math.Max(1, baseW >> i + Constants.Rendering.BlurBaseShift);
+            int h = Math.Max(1, baseH >> i + Constants.Rendering.BlurBaseShift);
             _blurSize[i] = new Vector2i(w, h);
             _blurTex[i] = CreateBlurTexture(w, h);
         }
@@ -409,12 +407,12 @@ class PaperRenderer : ICanvasRenderer
         // the requested radius: that keeps the effective blur continuous even as n steps.
         // radius is in screen pixels, but the pyramid maths below works in level-0 texels, and one of
 
-        // those spans 1 << BlurBaseShift pixels. Converting here is what makes SetBackdropBlur(22)
+        // those spans 1 << Constants.Rendering.BlurBaseShift pixels. Converting here is what makes SetBackdropBlur(22)
 
         // actually mean 22 pixels regardless of what resolution the pyramid starts at.
 
-        float r = MathF.Max(radius / (1 << BlurBaseShift), 2f);
-        iterations = Math.Clamp((int)MathF.Floor(MathF.Log2(r)) - 1, 1, MaxBlurLevels - 1);
+        float r = MathF.Max(radius / (1 << Constants.Rendering.BlurBaseShift), 2f);
+        iterations = Math.Clamp((int)MathF.Floor(MathF.Log2(r)) - 1, 1, Constants.Rendering.MaxBlurLevels - 1);
         offset = Math.Clamp(r / (1 << iterations + 1), 0.5f, 6f);
     }
 

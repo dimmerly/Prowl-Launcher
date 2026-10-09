@@ -34,8 +34,8 @@ public static class PackageDownloadService
             response.EnsureSuccessStatusCode();
             long size = response.Content.Headers.ContentLength ?? asset.Size;
             await using Stream input = await response.Content.ReadAsStreamAsync(token);
-            await using FileStream output = new( archive, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true );
-            byte[] buffer = new byte[81920];
+            await using FileStream output = new( archive, FileMode.CreateNew, FileAccess.Write, FileShare.None, Constants.Network.TransferBufferSize, true );
+            byte[] buffer = new byte[Constants.Network.TransferBufferSize];
             long received = 0;
             Stopwatch clock = Stopwatch.StartNew();
             long lastReport = 0;
@@ -44,7 +44,7 @@ public static class PackageDownloadService
             {
                 await output.WriteAsync(buffer.AsMemory(0, count), token);
                 received += count;
-                if (clock.ElapsedMilliseconds - lastReport > 100)
+                if (clock.ElapsedMilliseconds - lastReport > Constants.Network.ProgressIntervalMilliseconds)
                 {
                     string transferred = size > 0 ? Loc.Get("launcher.download.transferred", new
                         {

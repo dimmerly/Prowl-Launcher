@@ -20,7 +20,7 @@ public sealed partial class Launcher(
 {
     private readonly HttpClient _http = new()
     {
-        Timeout = TimeSpan.FromMinutes(30)
+        Timeout = Constants.Network.DownloadTimeout
     };
     private readonly CancellationTokenSource _backgroundCancellation = new();
     private readonly CancellationTokenSource _launcherUpdateCancellation = new();
@@ -70,15 +70,15 @@ public sealed partial class Launcher(
 
     private void InitializeLocalization()
     {
-        string locale = store.Settings.Locale ?? EditorSettings.Locale() ?? "en";
+        string locale = store.Settings.Locale ?? EditorSettings.Locale() ?? Constants.Defaults.Locale;
         if (!LocaleHelper.Codes.Contains(locale))
         {
-            locale = "en";
+            locale = Constants.Defaults.Locale;
         }
 
         store.Settings.Locale = locale;
         Loc.Configure(config => config
-            .SetFallbackLocale("en")
+            .SetFallbackLocale(Constants.Defaults.Locale)
             .SetLocale(locale)
             .AddProvider(new EmbeddedResourceProvider(Assembly.GetExecutingAssembly(), "Prowl.Launcher.Locale")));
         _newProjectName = Loc.Get("launcher.projects.untitled");

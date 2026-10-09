@@ -51,7 +51,7 @@ public sealed partial class Launcher
             {
                 p.Box(id + "-update")
                     .PositionType(PositionType.SelfDirected)
-                    .Left(SidebarWidth - 2 * SidebarPadding - 15).Top(5).Size(10, 10).Rounded(5)
+                    .Left(Constants.Layout.SidebarWidth - 2 * Constants.Layout.SidebarPadding - 15).Top(5).Size(10, 10).Rounded(5)
                     .BackgroundColor(_appearance.Accent)
                     .BorderColor(_appearance.Panel).BorderWidth(2)
                     .IsNotInteractable();

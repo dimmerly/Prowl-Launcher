@@ -19,7 +19,7 @@ public sealed partial class Launcher
     {
         _newProjectDirectory ??= EditorSettings.ProjectsDirectory();
         _newProjectEditorKey ??= store.Settings.DefaultEditorKey ?? _installed.FirstOrDefault()?.Key;
-        bool wide = p.ScreenRect.Size.X - SidebarWidth - 56 >= 800;
+        bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
         using ((wide ? p.Row("new-project-form") : p.Column("new-project-form"))
             .Height(UnitValue.Auto)
             .Gap(18)

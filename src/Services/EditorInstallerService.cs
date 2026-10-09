@@ -20,7 +20,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         {
             platform
         }));
-        if (release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
+        if (release.Id <= 0 || !Constants.Storage.SupportedPlatforms.Contains(platform))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_release"));
         }
@@ -221,7 +221,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
             }
 
             expanded = checked(expanded + entry.Length);
-            if (expanded > 8L * 1024 * 1024 * 1024)
+            if (expanded > Constants.Storage.MaxExpandedArchiveBytes)
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.archive_too_large"));
             }
@@ -383,7 +383,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
             info.ArgumentList.Add("--list-sdks");
             using Process process = Process.Start(info)!;
             using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            timeout.CancelAfter(Constants.Startup.SdkCheckTimeout);
             Task<string> stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
             Task<string> stderr = process.StandardError.ReadToEndAsync(timeout.Token);
             try

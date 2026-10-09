@@ -28,7 +28,7 @@ public sealed partial class Launcher
         foreach (InstalledEditor editor in _installed)
         {
             string id = "installed-" + editor.Key;
-            bool wide = p.ScreenRect.Size.X - SidebarWidth - 56 >= 800;
+            bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
             using (VersionCard(p, id))
             {
                 bool showMaintenance = p.IsParentHovered;
@@ -92,7 +92,7 @@ public sealed partial class Launcher
 
                     using (p.Row(id + "actions")
                         .Width(wide ? UnitValue.Auto : UnitValue.Stretch())
-                        .MaxWidth(wide ? UnitValue.Pixels((float)p.ScreenRect.Size.X - SidebarWidth - 56 - 250) : UnitValue.Percentage(100))
+                        .MaxWidth(wide ? UnitValue.Pixels((float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 - 250) : UnitValue.Percentage(100))
                         .Height(UnitValue.Auto)
                         .WrapContent()
                         .Gap(8)
@@ -144,7 +144,7 @@ public sealed partial class Launcher
             string id = "release-" + release.Id;
             using (VersionCard(p, id))
             {
-                using ((p.ScreenRect.Size.X - SidebarWidth - 56 < 800 ? p.Column(id + "row") : p.Row(id + "row")).Height(UnitValue.Auto)
+                using ((p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 < 800 ? p.Column(id + "row") : p.Row(id + "row")).Height(UnitValue.Auto)
                     .AlignItems(LayoutAlignment.Center)
                     .Gap(12)
                     .Enter())

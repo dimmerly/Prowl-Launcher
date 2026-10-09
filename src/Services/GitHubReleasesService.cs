@@ -10,7 +10,7 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
 {
     public static string CachePath(LauncherStore store, string repository) => Path.Combine(
         store.Home,
-        repository.Equals(GitHubRepositoryHelper.DefaultProwl, StringComparison.OrdinalIgnoreCase) ? "releases.json" : "releases-" + GitHubRepositoryHelper.CacheKey(repository) + ".json"
+        repository.Equals(Constants.Defaults.ProwlRepository, StringComparison.OrdinalIgnoreCase) ? "releases.json" : "releases-" + GitHubRepositoryHelper.CacheKey(repository) + ".json"
     );
     public bool UsedCache
     {
@@ -24,15 +24,15 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
         string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
         string cachePath = CachePath(store, repository);
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(15));
+        deadline.CancelAfter(timeout ?? Constants.Network.ReleaseCheckTimeout);
         try
         {
             List<EditorRelease> releases = [];
             // Pagination includes older versions and prereleases; /latest would hide previews.
             for (int page = 1;; page++)
             {
-                using HttpRequestMessage request = new( HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}" );
-                request.Headers.UserAgent.ParseAdd("Prowl-Launcher/1.0");
+                using HttpRequestMessage request = new( HttpMethod.Get, $"{Constants.Network.GitHubApiUrl}repos/{repository}/releases?per_page={Constants.Network.ReleasesPerPage}&page={page}" );
+                request.Headers.UserAgent.ParseAdd(Constants.Network.UserAgent);
                 request.Headers.Accept.ParseAdd("application/vnd.github+json");
                 using HttpResponseMessage response = await http.SendAsync(request, deadline.Token);
                 if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
@@ -43,7 +43,7 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
                 response.EnsureSuccessStatusCode();
                 List<EditorRelease> batch = await response.Content.ReadFromJsonAsync<List<EditorRelease>>(deadline.Token) ?? [];
                 releases.AddRange(batch.Where(r => !r.Draft));
-                if (batch.Count < 100)
+                if (batch.Count < Constants.Network.ReleasesPerPage)
                 {
                     break;
                 }

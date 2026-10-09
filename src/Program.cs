@@ -48,7 +48,7 @@ static class Program
                 args.Contains("--new-project"),
                 args.Contains("--uninstall-preview"),
                 args.Contains("--installation-preview") );
-            launcher.Run("Prowl Launcher", 1200, 840);
+            launcher.Run(Constants.Layout.WindowTitle, Constants.Layout.WindowWidth, Constants.Layout.WindowHeight);
         }
         catch (Exception exception)
         {
