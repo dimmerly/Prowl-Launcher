@@ -3,6 +3,7 @@ name: Build and release
 on:
   push:
     branches: [main]
+    paths: [VERSION.txt]
   pull_request:
   workflow_dispatch:
 
@@ -19,6 +20,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       engine: ${{ steps.version.outputs.engine }}
+      publish: ${{ steps.release.outputs.publish }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -40,8 +42,26 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "engine=$engine" >> "$GITHUB_OUTPUT"
 
+      - name: Check for an existing release
+        id: release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          existing=$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"v$VERSION\") | .tag_name")
+          if [ -n "$existing" ]; then
+            echo "v$VERSION is already published; skipping builds and release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     needs: prepare
+    if: github.event_name == 'pull_request' || needs.prepare.outputs.publish == 'true'
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -131,7 +151,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.prepare.outputs.publish == 'true'
     needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:

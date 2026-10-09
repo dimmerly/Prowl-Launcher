@@ -30,7 +30,7 @@ Release ZIPs are kept for automatic updates. They are not needed for the initial
 
 ## Versions and releases
 
-`VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Commits with an already released version produce build artifacts without another release. Prerelease versions create prereleases.
+`VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. Only pushes changing `VERSION.txt` trigger the release workflow; pull requests still build, and manual runs remain available. The workflow checks for an existing release before building and skips published versions. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Prerelease versions create prereleases.
 
 Launcher tests remain available locally; they are not run by CI/CD.
 
