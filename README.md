@@ -32,7 +32,7 @@ Release ZIPs are kept for automatic updates. They are not needed for the initial
 
 `VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. Only pushes changing `VERSION.txt` trigger the release workflow; pull requests still build, and manual runs remain available. The workflow checks for an existing release before building and skips published versions. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Prerelease versions create prereleases.
 
-Launcher tests remain available locally; they are not run by CI/CD.
+The **Build and test** workflow builds the launcher and runs its tests on pushes to `main` and pull requests. It can also be run manually and does not build sample bundles or publish releases. Tests remain available locally:
 
 In Preferences, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
 
