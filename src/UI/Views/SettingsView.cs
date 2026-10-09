@@ -187,7 +187,14 @@ public sealed partial class Launcher
                     .Width(190)
                     .Height(40)
                     .LeadingIcon(LauncherIcons.Refresh)
-                    .OnClick(() => _appearance.UsePreset(ThemePresets.Default.Name))
+                    .OnClick(() =>
+                    {
+                        var defaults = new Settings();
+                        store.Settings.UiScale = defaults.UiScale;
+                        store.Settings.LogoColor = defaults.LogoColor;
+                        store.Save();
+                        _appearance.ResetToDefault();
+                    })
                     .Show();
             }
         }

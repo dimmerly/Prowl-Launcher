@@ -51,6 +51,12 @@ sealed class LauncherAppearance
         Save();
     }
 
+    public void ResetToDefault()
+    {
+        Data = EditorThemeData.CreateDefault();
+        Save();
+    }
+
     public void Save()
     {
         Apply();
