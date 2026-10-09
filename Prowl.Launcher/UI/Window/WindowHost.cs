@@ -92,6 +92,8 @@ public sealed partial class Launcher
         _paper.BeginFrame(delta, -1);
         OnGui(_paper);
         _paper.EndFrame();
+        if (LauncherStartupService.ReadyPipe != null)
+            _ = LauncherStartupService.ReportReadyAsync();
         CaptureScreenshot();
     }
 

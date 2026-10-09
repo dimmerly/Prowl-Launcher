@@ -9,6 +9,7 @@ static class Program
     {
         try
         {
+            LauncherStartupService.CaptureReadyPipe();
             LauncherStore store = new();
             if (ForwardToUpdatedLauncher(store, args))
             {
@@ -59,27 +60,29 @@ static class Program
         }
     }
 
-    private static bool ForwardToUpdatedLauncher(LauncherStore store, string[] args)
+    internal static bool ForwardToUpdatedLauncher(LauncherStore store, string[] args)
     {
         string? updated = store.Settings.LauncherExecutable;
-        if (args.Contains("--screenshot") || updated == null || !File.Exists(updated)
+        if (LauncherStartupService.ReadyPipe != null || args.Contains("--screenshot") || updated == null
             || LauncherStore.PathsEqual(updated, Environment.ProcessPath!))
         {
             return false;
         }
 
-        string versions = Path.Combine(store.Home, "LauncherVersions");
-        LauncherStore.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
-        ProcessStartInfo info = new(updated)
+        try
         {
-            UseShellExecute = false
-        };
-        foreach (string argument in args)
-        {
-            info.ArgumentList.Add(argument);
+            string versions = Path.Combine(store.Home, "LauncherVersions");
+            LauncherStore.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
+            LauncherStartupService.StartAsync(updated, store.Home, args).GetAwaiter().GetResult();
+            return true;
         }
-
-        Process.Start(info);
-        return true;
+        catch (Exception exception) when (exception is IOException or System.ComponentModel.Win32Exception
+            or OperationCanceledException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            store.Settings.LauncherExecutable = null;
+            store.Save();
+            File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Update fallback: {exception}\n");
+            return false;
+        }
     }
 }

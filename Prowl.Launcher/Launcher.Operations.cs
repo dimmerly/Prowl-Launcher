@@ -33,6 +33,7 @@ public sealed partial class Launcher
         }
 
         _operation = new CancellationTokenSource();
+        _restart = null;
         _operationStarted = Stopwatch.GetTimestamp();
         _immediateProgress = false;
         _fraction = null;
@@ -41,6 +42,11 @@ public sealed partial class Launcher
         try
         {
             await action(_operation.Token);
+            if (_restart != null)
+            {
+                Process.Start(new ProcessStartInfo(_restart) { UseShellExecute = false });
+                _closeAfterCancel = true;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -59,15 +65,7 @@ public sealed partial class Launcher
             _operation.Dispose();
             _operation = null;
             ReloadInstalled();
-            if (_restart != null)
-            {
-                Process.Start(new ProcessStartInfo(_restart)
-                {
-                    UseShellExecute = false
-                });
-                ForceClose();
-            }
-            else if (_closeAfterCancel)
+            if (_closeAfterCancel)
             {
                 ForceClose();
             }

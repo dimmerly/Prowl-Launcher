@@ -146,8 +146,6 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             }
         }
 
-        store.Settings.LauncherExecutable = executable;
-        store.Save();
         return executable;
     }
 }

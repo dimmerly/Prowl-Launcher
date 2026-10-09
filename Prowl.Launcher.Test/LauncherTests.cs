@@ -382,7 +382,7 @@ public sealed class LauncherTests : IDisposable
         => Assert.Equal(expected, LauncherUpdaterService.VersionFor(new ReleaseAsset(name, "", 0, null), platform));
 
     [Fact]
-    public async Task LauncherUpdate_IsInstalledSideBySide_AndPersistsForwardingPath()
+    public async Task LauncherUpdate_IsInstalledSideBySide_WithoutActivatingUnverifiedStartup()
     {
         byte[] bytes = Archive(("Prowl Launcher/Prowl.Launcher.exe", "launcher"));
         EditorRelease release = Release(bytes) with
@@ -400,7 +400,7 @@ public sealed class LauncherTests : IDisposable
         LauncherUpdaterService updater = new( http, store );
         string executable = await updater.InstallAsync(release, "win-x64");
         Assert.Equal("launcher", File.ReadAllText(executable));
-        Assert.Equal(executable, new LauncherStore(_home).Settings.LauncherExecutable);
+        Assert.Null(new LauncherStore(_home).Settings.LauncherExecutable);
         Assert.Equal(executable, await updater.InstallAsync(release, "win-x64"));
         Assert.Equal(executable, await updater.InstallAsync(release with { Id = 99, Tag = "v10.0.0" }, "win-x64"));
     }

@@ -85,7 +85,11 @@ public sealed partial class Launcher
             version
         });
         _immediateProgress = true;
-        _restart = await new LauncherUpdaterService(_http, store).InstallAsync(release, Platform.Identifier, Transfer(), token);
+        string executable = await new LauncherUpdaterService(_http, store).InstallAsync(release, Platform.Identifier, Transfer(), token);
+        await LauncherStartupService.StartAsync(executable, store.Home, [], token);
+        store.Settings.LauncherExecutable = executable;
+        store.Save();
+        _closeAfterCancel = true;
     }
 
     private async Task SaveRepositoriesAsync(CancellationToken token)
