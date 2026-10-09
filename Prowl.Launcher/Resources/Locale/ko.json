@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "이 에디터 설치만 제거됩니다. 프로젝트 파일은 유지됩니다.",
     "launcher.versions.uninstall_title": "{{version}}을 제거할까요?",
     "launcher.versions.uninstalled": "에디터 제거됨",
-    "launcher.versions.uninstalled_description": "{{version}}이 제거되었습니다. 프로젝트 파일은 변경되지 않았습니다.",
+    "launcher.versions.uninstalled_description": "{{version}}이 제거되었습니다.",
     "launcher.window.maximize": "최대화",
     "launcher.window.minimize": "최소화",
     "launcher.window.restore": "복원"

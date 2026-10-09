@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "Будет удалена только эта установка редактора. Файлы проектов останутся на месте.",
     "launcher.versions.uninstall_title": "Удалить {{version}}?",
     "launcher.versions.uninstalled": "Редактор удалён",
-    "launcher.versions.uninstalled_description": "{{version}} удалён. Файлы проектов не изменены.",
+    "launcher.versions.uninstalled_description": "{{version}} удалён.",
     "launcher.window.maximize": "Развернуть",
     "launcher.window.minimize": "Свернуть",
     "launcher.window.restore": "Восстановить"

@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "Usunięta zostanie tylko ta instalacja edytora. Pliki projektów zostaną zachowane.",
     "launcher.versions.uninstall_title": "Odinstalować {{version}}?",
     "launcher.versions.uninstalled": "Edytor odinstalowany",
-    "launcher.versions.uninstalled_description": "Usunięto {{version}}. Pliki projektów pozostają bez zmian.",
+    "launcher.versions.uninstalled_description": "Usunięto {{version}}.",
     "launcher.window.maximize": "Maksymalizuj",
     "launcher.window.minimize": "Minimalizuj",
     "launcher.window.restore": "Przywróć"

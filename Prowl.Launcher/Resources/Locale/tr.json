@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "Yalnızca bu editör kurulumu kaldırılacak. Proje dosyalarınız korunacak.",
     "launcher.versions.uninstall_title": "{{version}} kaldırılsın mı?",
     "launcher.versions.uninstalled": "Editör kaldırıldı",
-    "launcher.versions.uninstalled_description": "{{version}} kaldırıldı. Proje dosyaları değiştirilmedi.",
+    "launcher.versions.uninstalled_description": "{{version}} kaldırıldı.",
     "launcher.window.maximize": "Ekranı kapla",
     "launcher.window.minimize": "Simge durumuna küçült",
     "launcher.window.restore": "Geri yükle"

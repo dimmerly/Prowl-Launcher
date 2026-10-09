@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "Nur diese Editor-Installation wird entfernt. Deine Projektdateien bleiben erhalten.",
     "launcher.versions.uninstall_title": "{{version}} deinstallieren?",
     "launcher.versions.uninstalled": "Editor deinstalliert",
-    "launcher.versions.uninstalled_description": "{{version}} wurde entfernt. Projektdateien bleiben unverändert.",
+    "launcher.versions.uninstalled_description": "{{version}} wurde entfernt.",
     "launcher.window.maximize": "Maximieren",
     "launcher.window.minimize": "Minimieren",
     "launcher.window.restore": "Wiederherstellen"

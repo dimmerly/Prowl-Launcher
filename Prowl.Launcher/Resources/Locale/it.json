@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "Verrà rimossa solo questa installazione dell’editor. I file dei progetti saranno conservati.",
     "launcher.versions.uninstall_title": "Disinstallare {{version}}?",
     "launcher.versions.uninstalled": "Editor disinstallato",
-    "launcher.versions.uninstalled_description": "{{version}} è stato rimosso. I file dei progetti non sono stati modificati.",
+    "launcher.versions.uninstalled_description": "{{version}} è stato rimosso.",
     "launcher.window.maximize": "Ingrandisci",
     "launcher.window.minimize": "Riduci a icona",
     "launcher.window.restore": "Ripristina"

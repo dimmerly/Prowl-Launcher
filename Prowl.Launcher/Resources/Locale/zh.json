@@ -196,7 +196,7 @@
     "launcher.versions.uninstall_description": "仅移除此编辑器安装。项目文件将保留。",
     "launcher.versions.uninstall_title": "卸载 {{version}}？",
     "launcher.versions.uninstalled": "编辑器已卸载",
-    "launcher.versions.uninstalled_description": "{{version}} 已移除。项目文件未更改。",
+    "launcher.versions.uninstalled_description": "{{version}} 已移除。",
     "launcher.window.maximize": "最大化",
     "launcher.window.minimize": "最小化",
     "launcher.window.restore": "还原"
