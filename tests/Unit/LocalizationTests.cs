@@ -12,6 +12,7 @@ namespace Prowl.Launcher.Test;
 public sealed class LocalizationCollection;
 
 [Collection("Localization")]
+[Trait("Category", "Unit")]
 public sealed class LocalizationTests
 {
     private static Dictionary<string, string> Catalog(string locale)

@@ -10,7 +10,7 @@ using Prowl.Aperture;
 const double MinimumDifference = 0.25;
 
 string repository = RepositoryDirectory();
-string outputArgument = Path.Combine(repository, "Prowl.Launcher", "Resources", "Samples");
+string outputArgument = Path.Combine(repository, "src", "Resources", "Samples");
 string engine = Path.Combine(repository, "Engine");
 string platform = OperatingSystem.IsWindows() ? "win" : OperatingSystem.IsMacOS() ? "osx" : "linux";
 string architecture = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();

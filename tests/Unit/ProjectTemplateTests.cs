@@ -6,6 +6,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Unit")]
 public sealed class ProjectTemplateTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlLauncherTemplates", Guid.NewGuid().ToString("N"));

@@ -4,6 +4,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Unit")]
 public sealed class GitHubRepositoryTests
 {
     [Theory]

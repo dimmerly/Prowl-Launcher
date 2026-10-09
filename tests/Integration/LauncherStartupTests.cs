@@ -4,6 +4,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Integration")]
 public sealed class LauncherStartupTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlStartupTests", Guid.NewGuid().ToString("N"));

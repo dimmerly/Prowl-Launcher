@@ -7,7 +7,7 @@ The standalone Prowl project, editor-version, and sample launcher. The UI uses P
 Install the .NET 10 SDK, then run:
 
 ```sh
-dotnet run --project Prowl.Launcher/Prowl.Launcher.csproj
+dotnet run --project src/Prowl.Launcher.csproj
 ```
 
 Windows, Linux, and macOS release packages include .NET. End users do not need an SDK.
@@ -39,8 +39,18 @@ The **Build and test** workflow builds the launcher and runs its tests on Window
 In Settings, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
 
 ```sh
-dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release
+dotnet test tests/Prowl.Launcher.Test.csproj -c Release
 ```
+
+One test project contains `tests/Unit`, `tests/Integration`, and `tests/E2E`. Filter a layer with `--filter Category=Unit` or `--filter Category=Integration`.
+
+GUI workflows are filtered out by default and excluded from CI. They drive the actual launcher UI with isolated settings and fixture downloads. Run them explicitly on a desktop with OpenGL available:
+
+```powershell
+dotnet test tests/Prowl.Launcher.Test.csproj -c Release --filter Category=E2E
+```
+
+Linux can prefix the command with `xvfb-run -a`. Failures retain a log, UI tree, and screenshot in the temporary `ProwlLauncherE2E` folder; `PROWL_E2E_ARTIFACTS` overrides that location.
 
 ## Samples
 
@@ -50,7 +60,7 @@ For local sample builds, check out `ProwlEngine/Prowl` into `Engine` at that rev
 
 ```sh
 dotnet msbuild Samples/Samples.proj -t:Build -p:Configuration=Release -p:SampleOutputRoot=./artifacts/samples/
-dotnet run --project Prowl.Launcher/Prowl.Launcher.csproj -p:SampleBundleDirectory=./artifacts/samples/Bundles
+dotnet run --project src/Prowl.Launcher.csproj -p:SampleBundleDirectory=./artifacts/samples/Bundles
 ```
 
 Use an absolute `SampleBundleDirectory` if invoking MSBuild from a different working directory. An ordinary build can run without an engine checkout; sample cards appear when sample bundles are embedded.
@@ -58,7 +68,7 @@ Use an absolute `SampleBundleDirectory` if invoking MSBuild from a different wor
 To include sample extraction in the local tests after building bundles:
 
 ```sh
-dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release -p:SampleBundleDirectory=./artifacts/samples/Bundles
+dotnet test tests/Prowl.Launcher.Test.csproj -c Release -p:SampleBundleDirectory=./artifacts/samples/Bundles
 ```
 
 The **Generate sample thumbnails** workflow is manual. It updates checked-in images only when at least 25% of their pixels visibly change, ignoring minor color noise. New samples receive an image on their first run. It can also run locally:

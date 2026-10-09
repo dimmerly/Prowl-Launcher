@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Integration")]
 public sealed class PackagedLauncherTests
 {
     [PackagedFact]

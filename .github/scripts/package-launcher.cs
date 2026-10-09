@@ -86,7 +86,7 @@ string CreateMacBundle(string directory)
     foreach (int size in new[] { 16, 32, 128, 256, 512 })
         foreach (int scale in new[] { 1, 2 })
             Run("sips", "-z", (size * scale).ToString(), (size * scale).ToString(),
-                Path.Combine(repository, "Prowl.Launcher", "Resources", "prowl.png"), "--out",
+                Path.Combine(repository, "src", "Resources", "prowl.png"), "--out",
                 Path.Combine(iconSet, $"icon_{size}x{size}{(scale == 2 ? "@2x" : "")}.png"));
     Run("iconutil", "-c", "icns", iconSet, "-o", Path.Combine(resources, "prowl.icns"));
     Directory.Delete(iconSet, true);
@@ -128,7 +128,7 @@ void PackageLinux()
     string appDir = Path.Combine(Path.GetDirectoryName(publish)!, "Prowl Launcher.AppDir");
     Directory.CreateDirectory(Path.Combine(appDir, "usr"));
     Directory.Move(publish, Path.Combine(appDir, "usr", "bin"));
-    File.Copy(Path.Combine(repository, "Prowl.Launcher", "Resources", "prowl.png"), Path.Combine(appDir, "prowl.png"));
+    File.Copy(Path.Combine(repository, "src", "Resources", "prowl.png"), Path.Combine(appDir, "prowl.png"));
     File.WriteAllText(Path.Combine(appDir, "prowl.desktop"),
         """
         [Desktop Entry]

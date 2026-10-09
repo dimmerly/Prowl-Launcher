@@ -5,9 +5,12 @@
     <Nullable>enable</Nullable>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <StartupObject>Prowl.Launcher.Test.E2E.E2EProgram</StartupObject>
+    <VSTestTestCaseFilter Condition="'$(VSTestTestCaseFilter)' == ''">Category!=E2E</VSTestTestCaseFilter>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Prowl.Launcher/Prowl.Launcher.csproj"/>
+    <ProjectReference Include="../src/Prowl.Launcher.csproj"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0"/>
     <PackageReference Include="xunit" Version="2.9.0"/>
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2"/>

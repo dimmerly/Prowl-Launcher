@@ -107,13 +107,14 @@ jobs:
 
       - name: Test with embedded sample bundles
         run: >
-          dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj
+          dotnet test tests/Prowl.Launcher.Test.csproj
           -c Release -r ${{ matrix.platform }}
+          --filter Category!=E2E
           "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
 
       - name: Publish launcher
         run: >
-          dotnet publish Prowl.Launcher/Prowl.Launcher.csproj
+          dotnet publish src/Prowl.Launcher.csproj
           -c Release -r ${{ matrix.platform }} --self-contained true
           -p:SelfInstall=true -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
@@ -123,7 +124,7 @@ jobs:
 
       - name: Publish update files
         run: >
-          dotnet publish Prowl.Launcher/Prowl.Launcher.csproj
+          dotnet publish src/Prowl.Launcher.csproj
           -c Release -r ${{ matrix.platform }} --self-contained true
           -p:SelfInstall=false -p:PublishSingleFile=false
           -p:DebugType=None -p:DebugSymbols=false
@@ -203,7 +204,7 @@ jobs:
               export PROWL_LAUNCHER_PACKAGE="$mount/Prowl Launcher.app"
               ;;
           esac
-          test_command=(dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release -r "$PLATFORM" --no-build --filter Category=Packaged)
+          test_command=(dotnet test tests/Prowl.Launcher.Test.csproj -c Release -r "$PLATFORM" --no-build --filter Category=Packaged)
           if [[ "$PLATFORM" == linux-* ]]; then
             xvfb-run -a "${test_command[@]}"
           else

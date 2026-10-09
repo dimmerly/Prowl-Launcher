@@ -2,6 +2,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Integration")]
 public sealed class LauncherStoreConcurrencyTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsTests", Guid.NewGuid().ToString("N"));
@@ -13,7 +14,7 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     }
 
     [Fact]
-    public void StalePreferenceSavePreservesOtherInstancesProjects()
+    public void StaleSettingsSavePreservesOtherInstancesProjects()
     {
         LauncherStore first = new(_home), second = new(_home);
         first.AddProject(ProjectFolder("Game"));

@@ -2,6 +2,7 @@ using Xunit;
 
 namespace Prowl.Launcher.Test;
 
+[Trait("Category", "Integration")]
 public sealed class EditorRecoveryTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlRecoveryTests", Guid.NewGuid().ToString("N"));

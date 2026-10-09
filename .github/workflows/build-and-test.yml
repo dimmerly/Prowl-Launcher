@@ -31,10 +31,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore Prowl.Launcher.Test/Prowl.Launcher.Test.csproj
+        run: dotnet restore tests/Prowl.Launcher.Test.csproj
 
       - name: Build
-        run: dotnet build Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release --no-restore
+        run: dotnet build tests/Prowl.Launcher.Test.csproj -c Release --no-restore
 
       - name: Test
-        run: dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release --no-build
+        run: dotnet test tests/Prowl.Launcher.Test.csproj -c Release --no-build --filter Category!=E2E
