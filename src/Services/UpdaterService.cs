@@ -1,4 +1,6 @@
 using Prowl.Rosetta;
+using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace Prowl.Launcher;
@@ -6,6 +8,8 @@ namespace Prowl.Launcher;
 /// <summary>Install launcher updates side by side; the original entry point forwards to the chosen version.</summary>
 public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 {
+    private const string ManifestName = "launcher-installation.json";
+    private sealed record Installation(string Digest, string Executable, Dictionary<string, string> Files);
     private const string VersionPattern = @"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?";
 
     public static bool IsNewer(string version, string currentVersion)
@@ -103,17 +107,26 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         string target = LauncherStore.SafeChildPath(versions, $"{version}-{platform}");
         string name = platform.StartsWith("win-", StringComparison.Ordinal) ? "Prowl.Launcher.exe" : "Prowl.Launcher";
         Directory.CreateDirectory(versions);
+        DirectoryReplacementService.RejectLink(store.Home);
+        DirectoryReplacementService.RejectLink(Path.Combine(store.Home, "LauncherVersions"));
+        DirectoryReplacementService.RejectLink(versions);
         using FileStream operation = new(
             Path.Combine(store.Home, "operations.lock"),
             FileMode.OpenOrCreate,
             FileAccess.ReadWrite,
             FileShare.None
         );
-        string? executable = Directory.Exists(target) ? Directory.EnumerateFiles(target, name, SearchOption.AllDirectories).FirstOrDefault() : null;
+        string? executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
+        if (executable == null && IsRunning(target))
+            throw new IOException("Close the launcher using this version before repairing its update.");
+        await Task.Run(() => DirectoryReplacementService.Recover(target,
+            path => ValidateInstallation(path, null, name, token) != null), token);
+        executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
         if (executable == null)
         {
             string work = Path.Combine(store.Home, "Work", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(work);
+            DirectoryReplacementService.RejectLink(store.WorkPath);
             try
             {
                 string archive = Path.Combine(work, "launcher.zip");
@@ -131,13 +144,10 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
                     File.SetUnixFileMode(entry, File.GetUnixFileMode(entry) | UnixFileMode.UserExecute);
                 }
 
+                await Task.Run(() => WriteInstallation(extracted, entry, asset.Digest!, token), token);
                 token.ThrowIfCancellationRequested();
-                if (Directory.Exists(target))
-                {
-                    throw new IOException(Loc.Get("launcher.errors.incomplete_update"));
-                }
-
-                Directory.Move(extracted, target);
+                if (IsRunning(target)) throw new IOException("Close the launcher using this version before repairing its update.");
+                DirectoryReplacementService.Replace(extracted, target);
                 executable = LauncherStore.SafeChildPath(target, Path.GetRelativePath(extracted, entry));
             }
             finally
@@ -147,5 +157,62 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         }
 
         return executable;
+    }
+
+    private static void WriteInstallation(string root, string executable, string digest, CancellationToken token)
+    {
+        Dictionary<string, string> files = [];
+        foreach (string path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        {
+            token.ThrowIfCancellationRequested();
+            if (Path.GetRelativePath(root, path) == ManifestName) continue;
+            using FileStream input = File.OpenRead(path);
+            files.Add(Path.GetRelativePath(root, path), Convert.ToHexString(SHA256.HashData(input)));
+        }
+        LauncherStore.WriteJson(Path.Combine(root, ManifestName), new Installation(digest, Path.GetRelativePath(root, executable), files));
+    }
+
+    private static string? ValidateInstallation(string root, string? digest, string name, CancellationToken token)
+    {
+        if (!Directory.Exists(root)) return null;
+        try
+        {
+            DirectoryReplacementService.RejectLinks(root);
+            Installation? installed = LauncherStore.ReadJson<Installation>(Path.Combine(root, ManifestName));
+            if (installed?.Files == null || installed.Files.Count == 0
+                || (digest != null && !string.Equals(digest, installed.Digest, StringComparison.OrdinalIgnoreCase))
+                || !installed.Files.ContainsKey(installed.Executable)
+                || Path.GetFileName(installed.Executable) != name) return null;
+            foreach ((string relative, string hash) in installed.Files)
+            {
+                token.ThrowIfCancellationRequested();
+                using FileStream input = File.OpenRead(LauncherStore.SafeChildPath(root, relative));
+                if (!Convert.ToHexString(SHA256.HashData(input)).Equals(hash, StringComparison.OrdinalIgnoreCase)) return null;
+            }
+            return LauncherStore.SafeChildPath(root, installed.Executable);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsRunning(string target)
+    {
+        string root = Path.GetFullPath(target) + Path.DirectorySeparatorChar;
+        foreach (Process process in Process.GetProcessesByName("Prowl.Launcher"))
+        {
+            using (process)
+            {
+                try
+                {
+                    if (process.MainModule?.FileName is { } file && file.StartsWith(root,
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) return true;
+                }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { return true; }
+            }
+        }
+        return false;
     }
 }
