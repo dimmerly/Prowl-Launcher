@@ -104,7 +104,13 @@ void PackageMac()
     string download = DownloadPath(platform == "osx-arm64"
         ? "Prowl Launcher (Apple Silicon).dmg"
         : "Prowl Launcher (Intel).dmg");
-    Run("hdiutil", "create", "-volname", "Prowl Launcher", "-srcfolder", staging, "-format", "UDZO", download);
+    // Size the app itself, excluding the Applications link, and leave room for filesystem overhead.
+    long bundleBytes = new DirectoryInfo(Path.Combine(staging, "Prowl Launcher.app"))
+        .EnumerateFiles("*", SearchOption.AllDirectories).Sum(file => file.Length);
+    long imageSizeMb = 64 + (long)Math.Ceiling(bundleBytes / 1048576d * 1.25);
+    Console.WriteLine($"Creating a {imageSizeMb} MiB disk image for {bundleBytes / 1048576d:F1} MiB of app files.");
+    Run("hdiutil", "create", "-volname", "Prowl Launcher", "-srcfolder", staging,
+        "-fs", "HFS+", "-size", $"{imageSizeMb}m", "-format", "UDZO", download);
     Console.WriteLine(download);
 }
 
