@@ -1,8 +1,26 @@
 # Prowl Launcher
 
-The standalone Prowl project, editor-version, and sample launcher. The UI uses Paper and Origami with OpenTK; it does not reference the engine.
+Install and manage Prowl editor versions, create and open projects, and try sample scenes.
 
-## Build
+## Install
+
+Download the launcher from [GitHub Releases](https://github.com/dimmerly/Prowl-Launcher/releases):
+
+- **Windows:** open the `.exe`.
+- **Linux:** make the `.AppImage` executable, then open it.
+- **macOS:** open the `.dmg`, then open **Prowl Launcher**.
+
+On first launch, choose **Install** or **Keep portable**. The launcher includes .NET; no SDK is needed to run it.
+
+Downloads are unsigned on Windows and not notarized on macOS, so your OS may ask you to allow the app.
+
+## Updates
+
+The launcher checks for updates at startup and shows the changelog before installing. Dismissed releases stay dismissed across restarts; **Check for updates** in Settings lets you revisit them.
+
+Enable prereleases in Settings to check for preview updates immediately. Disable them to switch back to the latest stable release. Editor and launcher release repositories can also be changed in Settings.
+
+## Development
 
 Install the .NET 10 SDK, then run:
 
@@ -10,81 +28,31 @@ Install the .NET 10 SDK, then run:
 dotnet run --project src/Prowl.Launcher.csproj
 ```
 
-Windows, Linux, and macOS release packages include .NET. End users do not need an SDK.
-
-## Install
-
-Download the file for your operating system:
-
-- Windows: `.exe` — open the downloaded launcher.
-- Linux: `.AppImage` (x64 or ARM64) — allow the file to run as a program, then open it.
-- macOS: `.dmg` (Intel or Apple Silicon) — open the disk image, then open **Prowl Launcher**.
-
-Release filenames use `Prowl-Launcher-<version>-<platform>`, such as `Prowl-Launcher-1.0.0-preview-3-win-x64.exe`. GitHub displays friendly labels such as **Prowl Launcher for Windows (x64) .exe** for one-click downloads. Update ZIPs retain their filenames as display text.
-
-On first launch, choose **Install** to copy the app into your user applications folder and optionally create a desktop shortcut. No administrator access is required. The launcher restarts from its installed copy; the original download stays intact. Windows also gets a Start menu entry, and Linux gets an application menu entry. **Keep portable** skips installation and remembers your choice. Source builds and screenshot captures skip this prompt.
-
-Windows uses `%LOCALAPPDATA%/Programs/Prowl Launcher`, Linux uses the launcher's data folder under `Application`, and macOS uses `~/Applications/Prowl Launcher.app`. The DMG also provides the usual Applications shortcut for manual installation.
-
-Windows downloads are unsigned. macOS apps use local ad-hoc signatures, without a Developer ID certificate or notarization. These do not establish publisher trust: Windows may show SmartScreen, and macOS may require allowing the app in Privacy & Security. AppImage support depends on the Linux desktop and its FUSE support.
-
-Release ZIPs are kept for automatic updates. They contain separate application files with .NET bundled, rather than the single-file download. They are not needed for the initial install.
-
-## Versions and releases
-
-`VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. Only pushes changing `VERSION.txt` trigger the release workflow; pull requests still build, and manual runs remain available. The workflow checks for an existing release before building and skips published versions. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Prerelease versions create prereleases.
-
-The **Build and test** workflow builds the launcher and runs its tests on Windows, Linux, and macOS on pushes to `main` and pull requests. The release workflow requires this same test matrix to pass, tests embedded sample extraction on each release platform, and checks that the packaged download can be copied into an installation, render a window, and start a verified update before uploading its artifacts. Linux checks use Xvfb; Windows checks use a pinned software OpenGL fixture that is never included in downloads. The test workflow can also be run manually and does not build sample bundles or publish releases. Tests remain available locally:
-
-In Settings, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
+Source lives in `src`. One test project contains `tests/Unit`, `tests/Integration`, and `tests/E2E`.
 
 ```sh
 dotnet test tests/Prowl.Launcher.Test.csproj -c Release
 ```
 
-One test project contains `tests/Unit`, `tests/Integration`, and `tests/E2E`. Filter a layer with `--filter Category=Unit` or `--filter Category=Integration`.
+E2E tests are excluded by default and from CI. To run them with a graphical display and OpenGL available:
 
-GUI workflows are filtered out by default and excluded from CI. They drive the actual launcher UI with isolated settings and fixture downloads. Run them explicitly on a desktop with OpenGL available:
-
-```powershell
+```sh
 dotnet test tests/Prowl.Launcher.Test.csproj -c Release --filter Category=E2E
 ```
 
-Linux can prefix the command with `xvfb-run -a`. Failures retain a log, UI tree, and screenshot in the temporary `ProwlLauncherE2E` folder; `PROWL_E2E_ARTIFACTS` overrides that location.
+On Linux, prefix this command with `xvfb-run -a`. Failed E2E tests save logs, a UI tree, and a screenshot in the temporary `ProwlLauncherE2E` folder.
 
-## Samples
+### Samples
 
-Samples run in a separate self-contained host. The launcher UI remains independent of the engine; only sample packaging uses Prowl source. `EngineRevision.txt` pins the engine commit used by release and thumbnail workflows.
-
-For local sample builds, check out `ProwlEngine/Prowl` into `Engine` at that revision, then run:
+To build sample bundles, check out [ProwlEngine/Prowl](https://github.com/ProwlEngine/Prowl) into `Engine` at the commit in `EngineRevision.txt`, then run:
 
 ```sh
 dotnet msbuild Samples/Samples.proj -t:Build -p:Configuration=Release -p:SampleOutputRoot=./artifacts/samples/
 dotnet run --project src/Prowl.Launcher.csproj -p:SampleBundleDirectory=./artifacts/samples/Bundles
 ```
 
-Use an absolute `SampleBundleDirectory` if invoking MSBuild from a different working directory. An ordinary build can run without an engine checkout; sample cards appear when sample bundles are embedded.
+An ordinary launcher build does not require an engine checkout.
 
-To include sample extraction in the local tests after building bundles:
+### Releases
 
-```sh
-dotnet test tests/Prowl.Launcher.Test.csproj -c Release -p:SampleBundleDirectory=./artifacts/samples/Bundles
-```
-
-The **Generate sample thumbnails** workflow is manual. It updates checked-in images only when at least 25% of their pixels visibly change, ignoring minor color noise. New samples receive an image on their first run. It can also run locally:
-
-```sh
-dotnet run --file .github/scripts/generate-sample-thumbnails.cs -- --engine ./Engine
-```
-
-## Updates
-
-Launcher updates default to `dimmerly/Prowl-Launcher`, independently of the configurable editor repository. Downloads require HTTPS, the configured launcher repository, matching sizes, and GitHub's SHA-256 digest. Updates skip drafts and select newer versions; prereleases require opt-in, and opting out from a preview offers the latest stable version with confirmation.
-
-Downloaded updates remain inactive until the new launcher renders its first frame and acknowledges startup. Failed or timed-out startup keeps the current launcher available. If a previously selected update fails on a later launch, the original entry point clears the target and opens its own window.
-
-The launcher checks for updates in the background at startup and when you enable prereleases. Available updates are offered once the launcher is idle, with their changelog in the confirmation dialog. Cancelling or dismissing the dialog remembers that release ID for its repository across restarts and channel changes. New releases are offered normally, and **Check for updates** always lets you revisit a dismissed release. Offline mode and screenshot captures skip automatic startup checks.
-
-Settings saves merge each instance's changes under a shared file lock. Editor installations record their source repository, keeping custom repositories separate even when tags match. Existing installations without repository metadata retain their historical keys and are treated as coming from `ProwlEngine/Prowl`. Interrupted editor repairs retain a journal and backup; startup restores the previous installation when the replacement was not committed, and keeps backups if recovery cannot finish.
-
-These checks trust the release publisher; they do not provide independent cryptographic signing of updates.
+Bump `VERSION.txt` on `main` to publish a release. CI runs tests on Windows, Linux, and macOS, builds the packages and sample bundles, and checks packaged startup and updates before publishing. Versions already published are skipped.
