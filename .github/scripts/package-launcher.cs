@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
+using System.Text.Json;
 
 if (args.Length != 5)
 {
@@ -93,8 +94,31 @@ string CreateMacBundle(string directory)
     XDocument plist = XDocument.Load(Path.Combine(bundle, "Contents", "Info.plist"));
     plist.Root!.Element("dict")!.Add(Pair("CFBundleIconFile", "prowl.icns"));
     plist.Save(Path.Combine(bundle, "Contents", "Info.plist"));
-    // Local ad-hoc signatures only: no Developer ID, certificate, or notarization.
-    Run("codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements", bundle);
+    string? identity = Environment.GetEnvironmentVariable("PROWL_MAC_SIGNING_IDENTITY");
+    if (identity == null)
+    {
+        if (Environment.GetEnvironmentVariable("PROWL_REQUIRE_SIGNING") == "true")
+            throw new InvalidOperationException("A Developer ID signing identity is required for this release.");
+        Run("codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements", bundle);
+    }
+    else
+    {
+        string keychain = Environment.GetEnvironmentVariable("PROWL_MAC_KEYCHAIN")
+            ?? throw new InvalidOperationException("Set PROWL_MAC_KEYCHAIN for signed releases.");
+        string entitlements = Path.Combine(repository, ".github", "macos-entitlements.plist");
+        // Sign native code before its containing bundle; managed PE assemblies are covered by the bundle signature.
+        foreach (string file in Directory.EnumerateFiles(Path.Combine(contents, "MacOS"), "*", SearchOption.AllDirectories))
+        {
+            if (!IsMachO(file)) continue;
+            List<string> arguments = ["--force", "--timestamp", "--options", "runtime", "--sign", identity, "--keychain", keychain];
+            if (Path.GetFileName(file) == executable) arguments.AddRange(["--entitlements", entitlements]);
+            arguments.Add(file);
+            Run("codesign", arguments.ToArray());
+        }
+        Run("codesign", "--force", "--timestamp", "--options", "runtime", "--entitlements", entitlements,
+            "--sign", identity, "--keychain", keychain, bundle);
+        NotarizeBundle(bundle, keychain);
+    }
     Run("codesign", "--verify", "--deep", "--strict", bundle);
     return bundle;
 }
@@ -116,6 +140,14 @@ void PackageMac()
     Console.WriteLine($"Creating a {imageSizeMb} MiB disk image for {bundleBytes / 1048576d:F1} MiB of app files.");
     Run("hdiutil", "create", "-volname", "Prowl Launcher", "-srcfolder", staging,
         "-fs", "HFS+", "-size", $"{imageSizeMb}m", "-format", "UDZO", download);
+    if (Environment.GetEnvironmentVariable("PROWL_MAC_SIGNING_IDENTITY") is { } identity)
+    {
+        string keychain = Environment.GetEnvironmentVariable("PROWL_MAC_KEYCHAIN")!;
+        Run("codesign", "--force", "--timestamp", "--sign", identity, "--keychain", keychain, download);
+        Notarize(download, keychain);
+        Run("xcrun", "stapler", "staple", download);
+        Run("xcrun", "stapler", "validate", download);
+    }
     Console.WriteLine(download);
 }
 
@@ -190,6 +222,39 @@ static void WriteUpdateArchive(string publish, string archive)
 }
 
 static XElement[] Pair(string key, string value) => [new("key", key), new("string", value)];
+
+static bool IsMachO(string path)
+{
+    using FileStream file = File.OpenRead(path);
+    Span<byte> header = stackalloc byte[4];
+    if (file.Read(header) != 4) return false;
+    string magic = Convert.ToHexString(header);
+    return magic is "FEEDFACE" or "CEFAEDFE" or "FEEDFACF" or "CFFAEDFE" or "CAFEBABE" or "BEBAFECA" or "CAFEBABF" or "BFBAFECA";
+}
+
+static void NotarizeBundle(string bundle, string keychain)
+{
+    string submission = bundle + ".notary.zip";
+    try
+    {
+        Run("ditto", "-c", "-k", "--keepParent", bundle, submission);
+        Notarize(submission, keychain);
+        Run("xcrun", "stapler", "staple", bundle);
+        Run("xcrun", "stapler", "validate", bundle);
+        Run("spctl", "--assess", "--type", "execute", bundle);
+    }
+    finally { if (File.Exists(submission)) File.Delete(submission); }
+}
+
+static void Notarize(string submission, string keychain)
+{
+    string profile = Environment.GetEnvironmentVariable("PROWL_MAC_NOTARY_PROFILE")
+        ?? throw new InvalidOperationException("Set PROWL_MAC_NOTARY_PROFILE for notarized releases.");
+    using JsonDocument result = JsonDocument.Parse(Run("xcrun", "notarytool", "submit", submission,
+        "--keychain-profile", profile, "--keychain", keychain, "--wait", "--timeout", "30m", "--output-format", "json"));
+    if (result.RootElement.GetProperty("status").GetString() != "Accepted")
+        throw new InvalidOperationException("Apple did not accept the notarization submission: " + result.RootElement.GetProperty("id").GetString());
+}
 
 static string RepositoryDirectory([CallerFilePath] string file = "") => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "../.."));
 

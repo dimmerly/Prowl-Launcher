@@ -1,5 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+*.sh text eol=lf
 
 # Raw binary assets (e.g. precomputed SMAA lookup tables) must never be line-ending normalized
 *.bin binary

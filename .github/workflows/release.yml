@@ -23,6 +23,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       engine: ${{ steps.version.outputs.engine }}
       publish: ${{ steps.release.outputs.publish }}
+      signing: ${{ steps.version.outputs.signing }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +31,8 @@ jobs:
 
       - name: Read versions
         id: version
+        env:
+          SIGN_PRERELEASES: ${{ vars.SIGN_PRERELEASES }}
         run: |
           version=$(tr -d '\r' < VERSION.txt)
           engine=$(tr -d '\r' < EngineRevision.txt)
@@ -43,6 +46,12 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "engine=$engine" >> "$GITHUB_OUTPUT"
+          release_version=${version%%+*}
+          if [[ "$release_version" != *-* ]] || [[ "$SIGN_PRERELEASES" == true ]]; then
+            echo 'signing=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'signing=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Check for an existing release
         id: release
@@ -98,6 +107,29 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Check release signing credentials
+        if: needs.prepare.outputs.signing == 'true' && !startsWith(matrix.platform, 'linux-')
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          WINDOWS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE }}
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+          MACOS_SIGNING_CERTIFICATE: ${{ secrets.MACOS_SIGNING_CERTIFICATE }}
+          MACOS_SIGNING_PASSWORD: ${{ secrets.MACOS_SIGNING_PASSWORD }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          if [[ "$PLATFORM" == win-* ]]; then
+            : "${WINDOWS_SIGNING_CERTIFICATE:?Configure Windows release signing credentials; see docs/release-signing.md}"
+            : "${WINDOWS_SIGNING_PASSWORD:?Configure the Windows signing certificate password}"
+          else
+            : "${MACOS_SIGNING_CERTIFICATE:?Configure Developer ID signing credentials; see docs/release-signing.md}"
+            : "${MACOS_SIGNING_PASSWORD:?Configure the Developer ID certificate password}"
+            : "${APPLE_NOTARY_KEY:?Configure the App Store Connect API private key}"
+            : "${APPLE_NOTARY_KEY_ID:?Configure the App Store Connect API key ID}"
+            : "${APPLE_NOTARY_ISSUER_ID:?Configure the App Store Connect API issuer ID}"
+          fi
 
       - name: Include Linux ARM64 GLFW library in samples
         if: matrix.platform == 'linux-arm64'
@@ -166,10 +198,33 @@ jobs:
           chmod +x "$tool"
           echo "APPIMAGETOOL=$tool" >> "$GITHUB_ENV"
 
+      - name: Sign Windows launcher and update files
+        if: matrix.platform == 'win-x64' && needs.prepare.outputs.signing == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE }}
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: >
+          ./.github/scripts/sign-windows.ps1 -Files @(
+          'publish/Prowl Launcher/Prowl.Launcher.exe',
+          'publish-updates/Prowl Launcher/Prowl.Launcher.exe',
+          'publish-updates/Prowl Launcher/Prowl.Launcher.dll')
+
+      - name: Prepare Developer ID signing and notarization
+        if: startsWith(matrix.platform, 'osx-') && needs.prepare.outputs.signing == 'true'
+        env:
+          MACOS_SIGNING_CERTIFICATE: ${{ secrets.MACOS_SIGNING_CERTIFICATE }}
+          MACOS_SIGNING_PASSWORD: ${{ secrets.MACOS_SIGNING_PASSWORD }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: bash .github/scripts/setup-macos-signing.sh
+
       - name: Package launcher
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           PLATFORM: ${{ matrix.platform }}
+          PROWL_REQUIRE_SIGNING: ${{ needs.prepare.outputs.signing }}
         run: >
           dotnet run --file .github/scripts/package-launcher.cs --
           "publish/Prowl Launcher" "publish-updates/Prowl Launcher" "$PLATFORM" "$VERSION"
@@ -219,6 +274,15 @@ jobs:
             artifacts/Prowl-Samples-*.zip
           if-no-files-found: error
 
+      - name: Remove the temporary signing keychain
+        if: always() && runner.os == 'macOS' && env.PROWL_SIGNING_WORK != ''
+        run: |
+          security delete-keychain "$PROWL_MAC_KEYCHAIN" || true
+          case "$PROWL_SIGNING_WORK" in
+            "$RUNNER_TEMP"/prowl-signing.*) rm -rf -- "$PROWL_SIGNING_WORK" ;;
+            *) echo 'Refusing to remove an unexpected signing directory.' >&2; exit 1 ;;
+          esac
+
   release:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.prepare.outputs.publish == 'true'
     needs: [prepare, test, build]
@@ -254,7 +318,8 @@ jobs:
           fi
 
           flags=()
-          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+          release_version=${VERSION%%+*}
+          if [[ "$release_version" == *-* ]]; then flags+=(--prerelease); fi
 
           assets=()
           for file in artifacts/*; do
