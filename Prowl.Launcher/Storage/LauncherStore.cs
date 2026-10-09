@@ -225,7 +225,8 @@ public sealed class LauncherStore
 
         // Match both historical preview-4 tags and the editor's newer preview.4 version format.
         InstalledEditor? matching = InstalledEditors()
-            .FirstOrDefault(e => NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
+            .FirstOrDefault(e => e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
+                && NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
         Project project = new()
         {
             Name = name,

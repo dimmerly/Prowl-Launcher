@@ -10,7 +10,11 @@ public sealed record InstalledEditor(
     DateTimeOffset InstalledAt
 )
 {
-    public string Key => $"{Tag}-{Platform}";
+    // Metadata without provenance belongs to the historical default repository.
+    public string Repository { get; init; } = GitHubRepositoryHelper.DefaultProwl;
+    public string Key => Repository.Equals(GitHubRepositoryHelper.DefaultProwl, StringComparison.OrdinalIgnoreCase)
+        ? $"{Tag}-{Platform}"
+        : $"{Tag}-{Platform}-{GitHubRepositoryHelper.CacheKey(Repository)}";
 
     public override string ToString() => Tag;
 }

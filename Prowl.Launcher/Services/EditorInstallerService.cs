@@ -12,7 +12,8 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         EditorRelease release,
         string platform,
         IProgress<TransferProgress>? progress = null,
-        CancellationToken token = default
+        CancellationToken token = default,
+        string? sourceRepository = null
     )
     {
         ReleaseAsset asset = release.AssetFor(platform) ?? throw new InvalidOperationException(Loc.Get("launcher.errors.no_platform_build", new
@@ -30,7 +31,12 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         RejectLinks(store.WorkPath);
         RejectLinks(store.VersionsPath);
         using FileStream operation = AcquireOperationLock();
-        InstalledEditor editor = new( release.Id, release.Tag, platform, "", DateTimeOffset.UtcNow );
+        string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
+        if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
+            || source.Scheme != "https" || source.Host != "github.com"
+            || !source.AbsolutePath.StartsWith($"/{repository}/releases/download/", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
+        InstalledEditor editor = new( release.Id, release.Tag, platform, "", DateTimeOffset.UtcNow ) { Repository = repository };
         string destination = store.InstallPath(editor);
         if (Directory.Exists(destination))
         {

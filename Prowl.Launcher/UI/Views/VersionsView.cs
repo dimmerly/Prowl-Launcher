@@ -70,7 +70,8 @@ public sealed partial class Launcher
                                 .OnClick(() => SetDefaultEditor(editor, !isDefault))
                                 .Show();
 
-                            if (_releases.FirstOrDefault(release => release.Id == editor.ReleaseId) is {} installedRelease)
+                            if (editor.Repository.Equals(store.Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
+                                && _releases.FirstOrDefault(release => release.Id == editor.ReleaseId) is {} installedRelease)
                             {
                                 DrawChangelogButton(p, id + "notes", installedRelease, true);
                             }
@@ -128,7 +129,9 @@ public sealed partial class Launcher
             Button(p, "refresh", "launcher.versions.refresh", token => RefreshAsync(token), width: 96);
         }
 
-        HashSet<long> installedReleaseIds = _installed.Select(e => e.ReleaseId).ToHashSet();
+        HashSet<long> installedReleaseIds = _installed
+            .Where(e => e.Repository.Equals(store.Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.ReleaseId).ToHashSet();
         EditorRelease[] available = _releases.Where(r => !installedReleaseIds.Contains(r.Id) && r.AssetFor(Platform.Identifier) != null && (_channel == 0 || !r.Preview))
             .ToArray();
         if (available.Length == 0)
@@ -171,14 +174,14 @@ public sealed partial class Launcher
     }
 
     private InstalledEditor DefaultEditor() => _installed.FirstOrDefault(e => e.Key == store.Settings.DefaultEditorKey) ?? _installed.FirstOrDefault() ?? throw new InvalidOperationException(Loc.Get("launcher.errors.install_editor_first"));
-    private async Task InstallAsync(EditorRelease release, CancellationToken token, bool repair = false)
+    private async Task InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
     {
         _operationTitle = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing", new
         {
             version = release.Tag
         });
         _immediateProgress = true;
-        await _installer.InstallAsync(release, Platform.Identifier, Transfer(), token);
+        await _installer.InstallAsync(release, Platform.Identifier, Transfer(), token, repository);
         Notify(repair ? "launcher.versions.repaired" : "launcher.versions.installed", Loc.Get("launcher.versions.ready", new
         {
             version = release.Tag
@@ -251,14 +254,10 @@ public sealed partial class Launcher
 
     private async Task RepairEditorAsync(InstalledEditor editor, CancellationToken token)
     {
-        if (!_releases.Any(release => release.Id == editor.ReleaseId))
-        {
-            await RefreshAsync(token, false);
-        }
-
-        EditorRelease release = _releases.FirstOrDefault(release => release.Id == editor.ReleaseId)
+        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(_http, store, editor.Repository).GetAsync(token);
+        EditorRelease release = releases.FirstOrDefault(release => release.Id == editor.ReleaseId && release.Tag == editor.Tag)
                                 ?? throw new InvalidOperationException(Loc.Get("launcher.errors.release_unavailable"));
-        await InstallAsync(release, token, true);
+        await InstallAsync(release, token, true, editor.Repository);
     }
 
     private Task OpenInstallFolderAsync(CancellationToken token)

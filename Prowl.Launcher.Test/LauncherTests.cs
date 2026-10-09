@@ -117,6 +117,39 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public async Task EditorRepositoriesKeepSameTagInstallationsAndProjectPinsSeparate()
+    {
+        LauncherStore store = Store();
+        byte[] bytes = EditorArchive();
+        using HttpClient http = Client(bytes);
+        EditorInstallerService installer = new(http, store);
+        EditorRelease release = Release(bytes);
+        InstalledEditor official = await installer.InstallAsync(release, "win-x64");
+        string projectPath = Path.Combine(_home, "PinnedGame");
+        Directory.CreateDirectory(Path.Combine(projectPath, "Assets"));
+        Project project = store.AddProject(projectPath);
+        project.EditorKey = official.Key;
+        store.Settings.ProwlRepository = "someone/custom-editor";
+        store.Save();
+        await Assert.ThrowsAsync<InvalidDataException>(() => installer.InstallAsync(release, "win-x64"));
+        EditorRelease customRelease = release with
+        {
+            Id = 2,
+            Assets = [release.Assets[0] with { DownloadUrl = "https://github.com/someone/custom-editor/releases/download/test/editor.zip" }]
+        };
+        InstalledEditor custom = await installer.InstallAsync(customRelease, "win-x64");
+        Assert.NotEqual(official.Key, custom.Key);
+        Assert.Equal(2, store.InstalledEditors().Count);
+        Assert.Equal(official.Key, new LauncherStore(_home).Settings.Projects.Single().EditorKey);
+        Assert.Equal("someone/custom-editor", store.InstalledEditors().Single(e => e.Key == custom.Key).Repository);
+        // Repair uses recorded provenance even after changing the configured source.
+        await installer.InstallAsync(release, "win-x64", sourceRepository: official.Repository);
+        installer.Uninstall(custom);
+        Assert.True(File.Exists(store.ExecutablePath(official)));
+        Assert.Equal(official.Key, store.Settings.Projects.Single().EditorKey);
+    }
+
+    [Fact]
     public async Task BadDigest_DoesNotReplaceExistingEditor()
     {
         LauncherStore store = Store();
