@@ -117,11 +117,20 @@ public sealed partial class Launcher
         {
             Label(p, "available-title", "launcher.versions.available_title", 18, Ink, 35, true);
 
-            using (p.Box("include-editor-prereleases-control").Width(UnitValue.Auto).Height(40)
-                .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center).Enter())
+            using (p.Row("include-editor-prereleases-control").Width(UnitValue.Auto).Height(40)
+                .Gap(8).AlignItems(LayoutAlignment.Center).Enter())
             {
+                p.Box("include-editor-prereleases-label").Width(UnitValue.Auto).Height(24)
+                    .Text(Loc.Get("launcher.versions.include_prereleases"), _font)
+                    .FontSize(_appearance.Theme.Metrics.FontSize).TextColor(Ink)
+                    .Alignment(TextAlignment.MiddleLeft)
+                    .Cursor(Busy ? PaperCursor.Default : PaperCursor.Pointer)
+                    .OnClick(_ =>
+                    {
+                        if (!Busy) _includeEditorPrereleases = !_includeEditorPrereleases;
+                    });
                 Origami.Toggle(p, "include-editor-prereleases", _includeEditorPrereleases, value => _includeEditorPrereleases = value)
-                    .LabelLeft(Loc.Get("launcher.versions.include_prereleases"))
+                    .NoLabel()
                     .Disabled(Busy).Show();
             }
             Button(p, "refresh", "launcher.versions.refresh", token => RefreshAsync(token), width: 96);
