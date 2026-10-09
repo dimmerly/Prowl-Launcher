@@ -270,7 +270,7 @@ jobs:
               osx-arm64) label="Prowl Launcher for macOS (Apple Silicon)" ;;
               *) echo "Unexpected release asset: $name"; exit 1 ;;
             esac
-            assets+=("$file#$label .${name##*.}")
+            assets+=("$file#$label.${name##*.}")
           done
 
           gh release create "$tag" "${assets[@]}" --verify-tag \
