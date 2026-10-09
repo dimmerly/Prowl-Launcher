@@ -9,7 +9,7 @@ public sealed partial class Launcher
     private IReadOnlyList<InstalledEditor> _installed = [];
 
     private EditorRelease? NewerEditorRelease() => FindEditorUpdate(_releases, _installed,
-        store.Settings.ProwlRepository, Platform.Identifier, _channel == 0);
+        store.Settings.ProwlRepository, Platform.Identifier, _includeEditorPrereleases);
 
     internal static EditorRelease? FindEditorUpdate(IEnumerable<EditorRelease> releases,
         IEnumerable<InstalledEditor> installed, string repository, string platform, bool includePrereleases)

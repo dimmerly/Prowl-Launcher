@@ -10,7 +10,7 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private int _channel;
+    private bool _includeEditorPrereleases = Constants.Defaults.EditorPrereleases;
 
     private void DrawVersions(Paper p)
     {
@@ -117,22 +117,20 @@ public sealed partial class Launcher
         {
             Label(p, "available-title", "launcher.versions.available_title", 18, Ink, 35, true);
 
-            Origami.Dropdown(p, "channel", _channel, value => _channel = value, new[]
-                {
-                    "launcher.versions.stable_and_preview",
-                    "launcher.versions.stable_only"
-                })
-                .Display(value => Loc.Get(value == 0 ? "launcher.versions.stable_and_preview" : "launcher.versions.stable_only"))
-                .Width(210)
-                .IsItemEnabled(_ => !Busy)
-                .Show();
+            using (p.Box("include-editor-prereleases-control").Width(210).Height(40)
+                .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center).Enter())
+            {
+                Origami.Toggle(p, "include-editor-prereleases", _includeEditorPrereleases, value => _includeEditorPrereleases = value)
+                    .LabelLeft(Loc.Get("launcher.versions.include_prereleases"))
+                    .Stretch().Disabled(Busy).Show();
+            }
             Button(p, "refresh", "launcher.versions.refresh", token => RefreshAsync(token), width: 96);
         }
 
         HashSet<long> installedReleaseIds = _installed
             .Where(e => e.Repository.Equals(store.Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase))
             .Select(e => e.ReleaseId).ToHashSet();
-        EditorRelease[] available = _releases.Where(r => !installedReleaseIds.Contains(r.Id) && r.AssetFor(Platform.Identifier) != null && (_channel == 0 || !r.Preview))
+        EditorRelease[] available = _releases.Where(r => !installedReleaseIds.Contains(r.Id) && r.AssetFor(Platform.Identifier) != null && (_includeEditorPrereleases || !r.Preview))
             .ToArray();
         if (available.Length == 0)
         {

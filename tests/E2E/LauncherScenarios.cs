@@ -139,11 +139,9 @@ static class LauncherScenarios
                 Check(indicator.Data.X > nav.Data.X + nav.Data.LayoutWidth / 2 && indicator.Data.Y < nav.Data.Y + nav.Data.LayoutHeight / 2,
                     "The update dot should sit in the top-right corner of the Versions tab.");
                 Check(indicator.Data.OnClick == null, "The update dot must leave navigation clicks to its parent tab.");
-                await ui.ClickText("Stable + Preview");
-                await ui.ClickText("Stable only");
+                await ui.ClickText("Include prereleases");
                 await ui.Wait(() => !HasVersionIndicator(), "Stable-only selection must hide a preview-only update.");
-                await ui.ClickText("Stable only");
-                await ui.ClickText("Stable + Preview");
+                await ui.ClickText("Include prereleases");
                 await ui.Wait(HasVersionIndicator, "Including previews should restore the indicator.");
                 await ui.ClickText("Install");
                 await ui.Wait(() => f.Store.InstalledEditors().Count == 2, "The preview should install through the normal Versions flow.");
