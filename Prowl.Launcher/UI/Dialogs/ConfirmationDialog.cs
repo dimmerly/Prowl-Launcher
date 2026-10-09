@@ -15,21 +15,39 @@ public sealed partial class Launcher
         string message,
         string accept,
         CancellationToken token,
-        string? sdkUrl = null)
+        string? sdkUrl = null,
+        EditorRelease? changelog = null)
     {
         TaskCompletionSource<bool> completion = new();
         float scale = Math.Max(0.01f, (DisplayScale / UiScale)) * UiScale;
         float screenWidth = _window.FramebufferSize.X / scale;
+        float width = Math.Min(changelog == null ? 560 : 840, screenWidth - 48);
+        float notesHeight = Math.Max(100, Math.Min(360, _window.FramebufferSize.Y / scale * 0.72f - 200));
+        var markdown = changelog == null ? null : ReleaseNotesMarkdown(changelog);
         ModalBuilder dialog = Origami.Modal(Loc.Get(title))
-            .Width(Math.Min(560, screenWidth - 48))
-            .Content(p => p.Box("confirmation-message")
-                .Width(UnitValue.Stretch())
-                .Height(UnitValue.Auto)
-                .Text(Loc.Get(message), _font)
-                .FontSize(18)
-                .TextColor(Ink)
-                .Wrap(TextWrapMode.Wrap)
-                .IsNotInteractable())
+            .Width(width)
+            .Content(p =>
+            {
+                using (p.Column("confirmation-content").Height(UnitValue.Auto).Gap(16).Enter())
+                {
+                    p.Box("confirmation-message")
+                        .Width(UnitValue.Stretch())
+                        .Height(UnitValue.Auto)
+                        .Text(Loc.Get(message), _font)
+                        .FontSize(18)
+                        .TextColor(Ink)
+                        .Wrap(TextWrapMode.Wrap)
+                        .IsNotInteractable();
+                    if (markdown != null)
+                    {
+                        Label(p, "update-changelog-title", "launcher.versions.changelog", 18, Ink, 28, true);
+                        Origami.ScrollView(p, "update-changelog-scroll", width - 24, notesHeight)
+                            .SmoothScroll(true)
+                            .WheelStep(72)
+                            .Body(() => DrawReleaseNotes(markdown, p));
+                    }
+                }
+            })
             .Button(Loc.Get("launcher.common.cancel"), () => Complete(false));
 
         if (sdkUrl != null)

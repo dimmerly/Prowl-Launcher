@@ -7,6 +7,8 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
+    private LauncherUpdateCheck? _pendingLauncherUpdate;
+    private int _launcherUpdateCheckGeneration;
     private static string LauncherVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
 
     private async Task RefreshStorageSizeAsync()
@@ -49,19 +51,53 @@ public sealed partial class Launcher
 
     private async Task UpdateLauncherAsync(CancellationToken token)
     {
-        GitHubReleasesService github = new(_http, store, store.Settings.LauncherRepository);
-        IReadOnlyList<EditorRelease> releases = await github.GetAsync(token);
+        ++_launcherUpdateCheckGeneration;
+        _pendingLauncherUpdate = null;
+        LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
+            .CheckAsync(Platform.Identifier, LauncherVersion, automatic: false, token);
+        await OfferLauncherUpdateAsync(check, token);
+    }
+
+    private async Task CheckLauncherInBackgroundAsync()
+    {
+        int generation = ++_launcherUpdateCheckGeneration;
+        _pendingLauncherUpdate = null;
+        CancellationToken token = _launcherUpdateCancellation.Token;
+        try
+        {
+            LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
+                .CheckAsync(Platform.Identifier, LauncherVersion, automatic: true, token);
+            if (!token.IsCancellationRequested && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
+                _pendingLauncherUpdate = check.Release == null ? null : check;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { LogError(error); }
+    }
+
+    private void OfferPendingLauncherUpdate()
+    {
+        if (_pendingLauncherUpdate is not { Release: { } release } check
+            || Busy || Modal.IsOpen || _showInstallationPrompt) return;
+        _pendingLauncherUpdate = null;
+        if (!check.Matches(store.Settings)
+            || LauncherUpdateCheckService.IsDismissed(store.Settings, check.Repository, release.Id)) return;
+        Start(token => OfferLauncherUpdateAsync(check, token), "launcher.updates.checking");
+    }
+
+    private async Task OfferLauncherUpdateAsync(LauncherUpdateCheck check, CancellationToken token)
+    {
+        if (!check.Matches(store.Settings)) return;
         string current = LauncherVersion;
         bool switchToStable = !store.Settings.LauncherPrereleases && current.Split('+')[0].Contains('-');
-        EditorRelease? release = LauncherUpdaterService.FindUpdate(releases, Platform.Identifier, current, store.Settings.LauncherPrereleases);
+        EditorRelease? release = check.Release;
         if (release == null)
         {
             Notify(
-                github.UsedCache ? "launcher.updates.check_failed"
+                check.UsedCache ? "launcher.updates.check_failed"
                     : switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
-                github.UsedCache ? "launcher.updates.cached_releases"
+                check.UsedCache ? "launcher.updates.cached_releases"
                     : switchToStable ? "" : "launcher.updates.no_updates",
-                github.UsedCache ? ToastType.Warning : ToastType.Success
+                check.UsedCache ? ToastType.Warning : ToastType.Success
             );
             return;
         }
@@ -74,9 +110,12 @@ public sealed partial class Launcher
                     version
                 }),
                 "launcher.updates.restart",
-                token
+                token,
+                changelog: release
             ))
         {
+            token.ThrowIfCancellationRequested();
+            LauncherUpdateCheckService.Dismiss(store, check.Repository, release.Id);
             return;
         }
 

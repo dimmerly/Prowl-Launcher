@@ -23,6 +23,7 @@ public sealed partial class Launcher(
         Timeout = TimeSpan.FromMinutes(30)
     };
     private readonly CancellationTokenSource _backgroundCancellation = new();
+    private readonly CancellationTokenSource _launcherUpdateCancellation = new();
 
     private GitHubReleasesService _github = null!;
     private EditorInstallerService _installer = null!;
@@ -48,6 +49,7 @@ public sealed partial class Launcher(
         if (!offline)
         {
             _ = RefreshInBackgroundAsync();
+            if (screenshot == null) _ = CheckLauncherInBackgroundAsync();
         }
         else if (screenshot == null)
         {
@@ -98,8 +100,10 @@ public sealed partial class Launcher(
     {
         _sampleThumbnails.Dispose();
         _backgroundCancellation.Cancel();
+        _launcherUpdateCancellation.Cancel();
         _operation?.Dispose();
         _http.Dispose();
         _backgroundCancellation.Dispose();
+        _launcherUpdateCancellation.Dispose();
     }
 }

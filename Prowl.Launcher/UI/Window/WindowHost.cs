@@ -68,6 +68,7 @@ public sealed partial class Launcher
     {
         _deltaTime = delta;
         _context.Pump();
+        OfferPendingLauncherUpdate();
         UpdateFrameRate();
     }
 

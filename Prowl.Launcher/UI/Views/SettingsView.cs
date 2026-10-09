@@ -221,7 +221,9 @@ public sealed partial class Launcher
                 {
                     store.Settings.LauncherPrereleases = value;
                     store.Save();
-                    if (!value && LauncherVersion.Split('+')[0].Contains('-'))
+                    if (value)
+                        _ = CheckLauncherInBackgroundAsync();
+                    else if (LauncherVersion.Split('+')[0].Contains('-'))
                         Start(UpdateLauncherAsync, "launcher.updates.checking");
                 })
                 .LabelLeft(Loc.Get("launcher.preferences.launcher_prereleases"))
