@@ -34,7 +34,7 @@ Source lives in `src`. One test project contains `tests/Unit`, `tests/Integratio
 dotnet test tests/Prowl.Launcher.Test.csproj -c Release
 ```
 
-E2E tests are excluded by default and from CI. To run them with a graphical display and OpenGL available:
+E2E tests run in CI on Windows, Linux, and macOS and gate releases. They are excluded from the default local test command. To run them with a graphical display and OpenGL available:
 
 ```sh
 dotnet test tests/Prowl.Launcher.Test.csproj -c Release --filter Category=E2E
