@@ -14,6 +14,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    uses: ./.github/workflows/build-and-test.yml
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -59,15 +62,18 @@ jobs:
           fi
 
   build:
-    needs: prepare
+    needs: [prepare, test]
     if: github.event_name == 'pull_request' || needs.prepare.outputs.publish == 'true'
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: win-x64
-            runner: ubuntu-latest
+            runner: windows-latest
           - platform: linux-x64
             runner: ubuntu-latest
           - platform: linux-arm64
@@ -97,7 +103,13 @@ jobs:
         run: >
           dotnet msbuild Samples/Samples.proj -t:Build
           -p:Configuration=Release -p:RuntimeIdentifier=${{ matrix.platform }}
-          -p:SampleOutputRoot=${{ github.workspace }}/artifacts/samples/
+          "-p:SampleOutputRoot=${{ github.workspace }}/artifacts/samples/"
+
+      - name: Test with embedded sample bundles
+        run: >
+          dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj
+          -c Release -r ${{ matrix.platform }}
+          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
 
       - name: Publish launcher
         run: >
@@ -106,7 +118,7 @@ jobs:
           -p:SelfInstall=true -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false
-          -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
+          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
           -o "publish/Prowl Launcher"
 
       - name: Publish update files
@@ -115,7 +127,7 @@ jobs:
           -c Release -r ${{ matrix.platform }} --self-contained true
           -p:SelfInstall=false -p:PublishSingleFile=false
           -p:DebugType=None -p:DebugSymbols=false
-          -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
+          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
           -o "publish-updates/Prowl Launcher"
 
       - name: Include Linux ARM64 GLFW library
@@ -154,6 +166,50 @@ jobs:
           "publish/Prowl Launcher" "publish-updates/Prowl Launcher" "$PLATFORM" "$VERSION"
           "artifacts/Prowl-Launcher-$VERSION-$PLATFORM.zip"
 
+      - name: Prepare Linux graphics for package checks
+        if: startsWith(matrix.platform, 'linux-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglfw3 libxrandr2 libxinerama1 libxcursor1 libxi6
+
+      - name: Prepare Windows software OpenGL for package checks
+        if: matrix.platform == 'win-x64'
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
+          Invoke-WebRequest 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.4/mesa3d-26.2.4-release-msvc.7z' -OutFile $archive
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne '351fc8c8b695878ffb3eaa044b3ead08672a48b1a045e3c3e3975811df0f6695') { throw 'Mesa digest mismatch.' }
+          $mesa = Join-Path $env:RUNNER_TEMP 'mesa'
+          & 'C:/Program Files/7-Zip/7z.exe' x $archive "-o$mesa" -y
+          if ($LASTEXITCODE -ne 0) { throw 'Mesa extraction failed.' }
+          "PROWL_SMOKE_OPENGL_DIRECTORY=$mesa/x64" >> $env:GITHUB_ENV
+          'GALLIUM_DRIVER=llvmpipe' >> $env:GITHUB_ENV
+
+      - name: Check packaged installation, window startup, and update
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          export PROWL_LAUNCHER_UPDATE_ARCHIVE="$(pwd)/artifacts/Prowl-Launcher-$VERSION-$PLATFORM.zip"
+          case "$PLATFORM" in
+            win-*) export PROWL_LAUNCHER_PACKAGE="$(pwd)/artifacts/Prowl-Launcher-$VERSION-$PLATFORM.exe" ;;
+            linux-*) export PROWL_LAUNCHER_PACKAGE="$(pwd)/artifacts/Prowl-Launcher-$VERSION-$PLATFORM.AppImage" ;;
+            osx-*)
+              mount="$RUNNER_TEMP/prowl-smoke-dmg"
+              mkdir -p "$mount"
+              hdiutil attach -nobrowse -readonly -mountpoint "$mount" "artifacts/Prowl-Launcher-$VERSION-$PLATFORM.dmg"
+              trap 'hdiutil detach "$mount"' EXIT
+              export PROWL_LAUNCHER_PACKAGE="$mount/Prowl Launcher.app"
+              ;;
+          esac
+          test_command=(dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release -r "$PLATFORM" --no-build --filter Category=Packaged)
+          if [[ "$PLATFORM" == linux-* ]]; then
+            xvfb-run -a "${test_command[@]}"
+          else
+            "${test_command[@]}"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: launcher-${{ matrix.platform }}
@@ -162,7 +218,7 @@ jobs:
 
   release:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.prepare.outputs.publish == 'true'
-    needs: [prepare, build]
+    needs: [prepare, test, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
