@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "실행 후 닫기",
     "launcher.settings.interface_size": "인터페이스 크기",
     "launcher.settings.language": "언어",
+    "launcher.settings.launcher_auto_update": "런처 업데이트 자동 확인",
     "launcher.settings.launcher_prereleases": "런처 사전 출시 버전 받기",
     "launcher.settings.launcher_releases": "Prowl Launcher 릴리스",
     "launcher.settings.logo_color": "로고 색상",

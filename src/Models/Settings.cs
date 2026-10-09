@@ -43,6 +43,11 @@ public sealed class Settings
         get;
         set;
     } = Constants.Defaults.LauncherPrereleases;
+    public bool LauncherAutoUpdate
+    {
+        get;
+        set;
+    } = Constants.Defaults.LauncherAutoUpdate;
     public Dictionary<string, bool> DismissedLauncherReleases
     {
         get;

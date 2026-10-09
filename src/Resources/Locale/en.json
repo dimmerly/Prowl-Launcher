@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "Close on launch",
     "launcher.settings.interface_size": "Interface size",
     "launcher.settings.language": "Language",
+    "launcher.settings.launcher_auto_update": "Automatically check for launcher updates",
     "launcher.settings.launcher_prereleases": "Opt in to launcher prereleases",
     "launcher.settings.launcher_releases": "Prowl Launcher releases",
     "launcher.settings.logo_color": "Logo color",

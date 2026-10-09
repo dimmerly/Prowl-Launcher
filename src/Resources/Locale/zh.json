@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "启动后关闭",
     "launcher.settings.interface_size": "界面大小",
     "launcher.settings.language": "语言",
+    "launcher.settings.launcher_auto_update": "自动检查启动器更新",
     "launcher.settings.launcher_prereleases": "接收启动器预发布版本",
     "launcher.settings.launcher_releases": "Prowl Launcher 版本",
     "launcher.settings.logo_color": "徽标颜色",

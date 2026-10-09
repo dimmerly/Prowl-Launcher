@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "Закрыть при запуске",
     "launcher.settings.interface_size": "Размер интерфейса",
     "launcher.settings.language": "Язык",
+    "launcher.settings.launcher_auto_update": "Автоматически проверять обновления лаунчера",
     "launcher.settings.launcher_prereleases": "Получать предварительные версии лаунчера",
     "launcher.settings.launcher_releases": "Выпуски Prowl Launcher",
     "launcher.settings.logo_color": "Цвет логотипа",

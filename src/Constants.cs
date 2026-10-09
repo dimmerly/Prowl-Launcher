@@ -6,6 +6,7 @@ public static class Constants
     {
         public const bool CloseOnEditorLaunch = true;
         public const bool LauncherPrereleases = true;
+        public const bool LauncherAutoUpdate = true;
         public const bool ShowFps = false;
         public const float UiScale = 1;
         public const float MinUiScale = 0.5f;

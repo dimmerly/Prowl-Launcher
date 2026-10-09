@@ -16,7 +16,7 @@ Preview downloads are unsigned on Windows and not notarized on macOS unless prev
 
 ## Updates
 
-The launcher checks for updates at startup and shows the changelog before installing. Dismissed releases stay dismissed across restarts; **Check for updates** in Settings lets you revisit them.
+The launcher checks for updates at startup and shows the changelog before installing. **Automatically check for launcher updates** in Settings controls these checks and is enabled by default. Manual **Check for updates** remains available when automatic checks are disabled. Dismissed releases stay dismissed across restarts; **Check for updates** in Settings lets you revisit them.
 
 Enable prereleases in Settings to check for preview updates immediately. Disable them to switch back to the latest stable release. Editor and launcher release repositories can also be changed in Settings.
 

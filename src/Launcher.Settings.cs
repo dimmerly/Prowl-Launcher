@@ -61,11 +61,14 @@ public sealed partial class Launcher
         int generation = ++_launcherUpdateCheckGeneration;
         _pendingLauncherUpdate = null;
         CancellationToken token = _launcherUpdateCancellation.Token;
+        if (!store.Settings.LauncherAutoUpdate || offline || screenshot != null)
+            return;
         try
         {
             LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
                 .CheckAsync(Platform.Identifier, LauncherVersion, true, token);
-            if (!token.IsCancellationRequested && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
+            if (!token.IsCancellationRequested && store.Settings.LauncherAutoUpdate
+                && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
             {
                 _pendingLauncherUpdate = check.Release == null ? null : check;
             }
@@ -81,6 +84,11 @@ public sealed partial class Launcher
 
     private void OfferPendingLauncherUpdate()
     {
+        if (!store.Settings.LauncherAutoUpdate)
+        {
+            _pendingLauncherUpdate = null;
+            return;
+        }
         if (_pendingLauncherUpdate is not { Release: {} release } check
             || Busy || Modal.IsOpen || _showInstallationPrompt)
         {
@@ -93,6 +101,16 @@ public sealed partial class Launcher
             return;
         }
         Start(token => OfferLauncherUpdateAsync(check, token), "launcher.updates.checking");
+    }
+
+    private void SetLauncherAutoUpdate(bool enabled)
+    {
+        store.Settings.LauncherAutoUpdate = enabled;
+        store.Save();
+        ++_launcherUpdateCheckGeneration;
+        _pendingLauncherUpdate = null;
+        if (enabled)
+            _ = CheckLauncherInBackgroundAsync();
     }
 
     private async Task OfferLauncherUpdateAsync(LauncherUpdateCheck check, CancellationToken token)

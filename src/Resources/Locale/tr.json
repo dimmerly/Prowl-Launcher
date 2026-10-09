@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "Başlatınca kapat",
     "launcher.settings.interface_size": "Arayüz boyutu",
     "launcher.settings.language": "Dil",
+    "launcher.settings.launcher_auto_update": "Başlatıcı güncellemelerini otomatik olarak denetle",
     "launcher.settings.launcher_prereleases": "Başlatıcının ön sürümlerini al",
     "launcher.settings.launcher_releases": "Prowl Launcher sürümleri",
     "launcher.settings.logo_color": "Logo rengi",

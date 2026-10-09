@@ -238,6 +238,10 @@ public sealed partial class Launcher
                 version = LauncherVersion, platform = Platform.Identifier
             }), 13, Muted, 24);
 
+            Origami.Toggle(p, "launcher-auto-update", store.Settings.LauncherAutoUpdate, SetLauncherAutoUpdate)
+                .LabelLeft(Loc.Get("launcher.settings.launcher_auto_update"))
+                .Stretch().Disabled(Busy).Show();
+
             Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, value =>
                 {
                     store.Settings.LauncherPrereleases = value;

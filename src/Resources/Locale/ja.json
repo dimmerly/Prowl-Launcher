@@ -65,6 +65,7 @@
     "launcher.settings.close_on_launch": "起動時に閉じる",
     "launcher.settings.interface_size": "表示サイズ",
     "launcher.settings.language": "言語",
+    "launcher.settings.launcher_auto_update": "ランチャーの更新を自動的に確認する",
     "launcher.settings.launcher_prereleases": "ランチャーのプレリリースを受け取る",
     "launcher.settings.launcher_releases": "Prowl Launcherのリリース",
     "launcher.settings.logo_color": "ロゴの色",
