@@ -29,7 +29,8 @@ public sealed class LauncherStore
     {
         Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable("PROWL_LAUNCHER_HOME") ?? Platform.DefaultHome);
         Directory.CreateDirectory(Home);
-        Settings = ReadJson<Settings>(Path.Combine(Home, "settings.json")) ?? new Settings();
+        using FileStream writeLock = AcquireSettingsLock();
+        Settings = LoadSettings();
         _savedSettings = Snapshot(Settings);
     }
 
@@ -38,8 +39,9 @@ public sealed class LauncherStore
         // Merge only this instance's edits while holding a cross-process write lock.
         using FileStream writeLock = AcquireSettingsLock();
         string path = Path.Combine(Home, "settings.json");
+        NormalizeSettings(Settings);
         JsonObject local = Snapshot(Settings);
-        JsonObject merged = Snapshot(ReadJson<Settings>(path) ?? new Settings());
+        JsonObject merged = Snapshot(LoadSettings());
         MergeProperties(_savedSettings, local, merged, "Projects", "DismissedLauncherReleases");
         MergeProperties((JsonObject)_savedSettings["DismissedLauncherReleases"]!,
             (JsonObject)local["DismissedLauncherReleases"]!, (JsonObject)merged["DismissedLauncherReleases"]!);
@@ -47,6 +49,7 @@ public sealed class LauncherStore
             (JsonArray)local["Projects"]!, (JsonArray)merged["Projects"]!);
         Settings saved = merged.Deserialize<Settings>(JsonOptions)!;
         WriteJson(path, saved);
+        WriteJson(path + ".bak", saved);
         // Keep project objects alive because UI callbacks may hold references to them.
         Dictionary<string, Project> existing = Settings.Projects.ToDictionary(p => ProjectPath(p.Path));
         foreach (Project project in saved.Projects)
@@ -68,6 +71,77 @@ public sealed class LauncherStore
         {
             try { return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
             catch (IOException) when (clock.Elapsed < TimeSpan.FromSeconds(5)) { Thread.Sleep(20); }
+        }
+    }
+
+    // Called under the settings lock so another launcher cannot save during recovery.
+    private Settings LoadSettings()
+    {
+        string path = Path.Combine(Home, "settings.json");
+        Settings? settings = ReadSettings(path);
+        if (settings != null)
+        {
+            JsonObject original = Snapshot(settings);
+            NormalizeSettings(settings);
+            if (!JsonNode.DeepEquals(original, Snapshot(settings)))
+            {
+                PreserveDamagedSettings(path);
+                WriteJson(path, settings);
+            }
+            return settings;
+        }
+
+        if (File.Exists(path)) PreserveDamagedSettings(path);
+        string backup = path + ".bak";
+        settings = ReadSettings(backup);
+        bool restored = settings != null;
+        if (settings == null && File.Exists(backup)) PreserveDamagedSettings(backup);
+        settings ??= new Settings();
+        NormalizeSettings(settings);
+        if (restored) WriteJson(path, settings);
+        return settings;
+    }
+
+    private static Settings? ReadSettings(string path)
+    {
+        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), JsonOptions); }
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static void PreserveDamagedSettings(string path) =>
+        File.Move(path, path + ".corrupt-" + Guid.NewGuid().ToString("N"));
+
+    private static void NormalizeSettings(Settings settings)
+    {
+        settings.DismissedLauncherReleases ??= [];
+        Dictionary<string, Project> projects = [];
+        foreach (Project? project in settings.Projects ?? [])
+        {
+            if (project == null || string.IsNullOrWhiteSpace(project.Path)) continue;
+            string key;
+            try { key = ProjectPath(project.Path); }
+            catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException) { continue; }
+            project.Name ??= System.IO.Path.GetFileName(project.Path);
+            if (projects.TryGetValue(key, out Project? existing))
+            {
+                existing.Favorite |= project.Favorite;
+                existing.EditorKey ??= project.EditorKey;
+                if (project.LastOpened > existing.LastOpened) existing.LastOpened = project.LastOpened;
+            }
+            else projects.Add(key, project);
+        }
+        settings.Projects = projects.Values.ToList();
+        settings.ProwlRepository = ValidRepository(settings.ProwlRepository, GitHubRepositoryHelper.DefaultProwl);
+        settings.LauncherRepository = ValidRepository(settings.LauncherRepository, GitHubRepositoryHelper.LauncherRepository);
+
+        static string ValidRepository(string? value, string fallback)
+        {
+            if (value == null) return fallback;
+            try { return GitHubRepositoryHelper.Normalize(value); }
+            catch (InvalidDataException) { return fallback; }
         }
     }
 
