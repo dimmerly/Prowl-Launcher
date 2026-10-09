@@ -20,7 +20,7 @@ Download the file for your operating system:
 - Linux: `.AppImage` (x64 or ARM64) — allow the file to run as a program, then open it.
 - macOS: `.dmg` (Intel or Apple Silicon) — open the disk image, then open **Prowl Launcher**.
 
-Release filenames use `Prowl-Launcher-<version>-<platform>`, such as `Prowl-Launcher-1.0.0-preview-3-win-x64.exe`. GitHub displays friendly labels such as **Prowl Launcher for Windows (x64)**.
+Release filenames use `Prowl-Launcher-<version>-<platform>`, such as `Prowl-Launcher-1.0.0-preview-3-win-x64.exe`. GitHub displays friendly labels such as **Prowl Launcher for Windows (x64) .exe** for one-click downloads. Update ZIPs retain their filenames as display text.
 
 On first launch, choose **Install** to copy the app into your user applications folder and optionally create a desktop shortcut. No administrator access is required. The launcher restarts from its installed copy; the original download stays intact. Windows also gets a Start menu entry, and Linux gets an application menu entry. **Keep portable** skips installation and remembers your choice. Source builds and screenshot captures skip this prompt.
 
@@ -28,7 +28,7 @@ Windows uses `%LOCALAPPDATA%/Programs/Prowl Launcher`, Linux uses the launcher's
 
 Windows downloads are unsigned. macOS apps use local ad-hoc signatures, without a Developer ID certificate or notarization. These do not establish publisher trust: Windows may show SmartScreen, and macOS may require allowing the app in Privacy & Security. AppImage support depends on the Linux desktop and its FUSE support.
 
-Release ZIPs are kept for automatic updates. They are not needed for the initial install.
+Release ZIPs are kept for automatic updates. They contain separate application files with .NET bundled, rather than the single-file download. They are not needed for the initial install.
 
 ## Versions and releases
 

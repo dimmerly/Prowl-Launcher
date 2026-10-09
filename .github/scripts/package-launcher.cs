@@ -3,20 +3,23 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 
-if (args.Length != 4)
+if (args.Length != 5)
 {
-    Console.Error.WriteLine("Usage: package-launcher.cs <publish-directory> <platform> <version> <archive>");
+    Console.Error.WriteLine("Usage: package-launcher.cs <publish-directory> <update-directory> <platform> <version> <archive>");
     return 1;
 }
 
 string publish = Path.GetFullPath(args[0]);
-string platform = args[1];
-string version = args[2];
-string archive = Path.GetFullPath(args[3]);
+string updatePublish = Path.GetFullPath(args[1]);
+string platform = args[2];
+string version = args[3];
+string archive = Path.GetFullPath(args[4]);
 string repository = RepositoryDirectory();
 string executable = platform.StartsWith("win-") ? "Prowl.Launcher.exe" : "Prowl.Launcher";
 if (!File.Exists(Path.Combine(publish, executable)))
     throw new FileNotFoundException("The published launcher is missing.");
+if (!File.Exists(Path.Combine(updatePublish, executable)) || !File.Exists(Path.Combine(updatePublish, "Prowl.Launcher.dll")))
+    throw new InvalidOperationException("Update archives require a separate PublishSingleFile=false publish.");
 if (platform.StartsWith("win-") && File.Exists(Path.Combine(publish, "Prowl.Launcher.dll")))
     throw new InvalidOperationException("Windows downloads require PublishSingleFile=true and IncludeNativeLibrariesForSelfExtract=true.");
 
@@ -27,7 +30,7 @@ Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
 
 if (platform.StartsWith("win-"))
 {
-    WriteUpdateArchive(publish, archive);
+    WriteUpdateArchive(updatePublish, archive);
     PackageWindows();
 }
 else if (platform.StartsWith("osx-"))
@@ -36,12 +39,12 @@ else if (platform.StartsWith("osx-"))
 }
 else if (platform.StartsWith("linux-"))
 {
-    WriteUpdateArchive(publish, archive);
+    WriteUpdateArchive(updatePublish, archive);
     PackageLinux();
 }
 else
 {
-    WriteUpdateArchive(publish, archive);
+    WriteUpdateArchive(updatePublish, archive);
 }
 
 return 0;
@@ -53,12 +56,12 @@ void PackageWindows()
     Console.WriteLine(download);
 }
 
-void PackageMac()
+string CreateMacBundle(string directory)
 {
-    string bundle = Path.Combine(Path.GetDirectoryName(publish)!, "Prowl Launcher.app");
+    string bundle = Path.Combine(Path.GetDirectoryName(directory)!, "Prowl Launcher.app");
     string contents = Path.Combine(bundle, "Contents");
     Directory.CreateDirectory(contents);
-    Directory.Move(publish, Path.Combine(contents, "MacOS"));
+    Directory.Move(directory, Path.Combine(contents, "MacOS"));
     string numericVersion = version.Split('+')[0].Split('-')[0];
     XDocument bundleManifest = new(new XDeclaration("1.0", "UTF-8", null),
         new XDocumentType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd", null),
@@ -73,13 +76,12 @@ void PackageMac()
             new XElement("key", "NSHighResolutionCapable"),
             new XElement("true"))));
     bundleManifest.Save(Path.Combine(contents, "Info.plist"));
-    publish = bundle;
 
     if (!OperatingSystem.IsMacOS())
         throw new PlatformNotSupportedException("Creating a DMG requires a macOS runner.");
-    string resources = Path.Combine(publish, "Contents", "Resources");
+    string resources = Path.Combine(bundle, "Contents", "Resources");
     Directory.CreateDirectory(resources);
-    string iconSet = Path.Combine(Path.GetDirectoryName(publish)!, "prowl.iconset");
+    string iconSet = Path.Combine(Path.GetDirectoryName(bundle)!, "prowl.iconset");
     Directory.CreateDirectory(iconSet);
     foreach (int size in new[] { 16, 32, 128, 256, 512 })
         foreach (int scale in new[] { 1, 2 })
@@ -88,14 +90,19 @@ void PackageMac()
                 Path.Combine(iconSet, $"icon_{size}x{size}{(scale == 2 ? "@2x" : "")}.png"));
     Run("iconutil", "-c", "icns", iconSet, "-o", Path.Combine(resources, "prowl.icns"));
     Directory.Delete(iconSet, true);
-    XDocument plist = XDocument.Load(Path.Combine(publish, "Contents", "Info.plist"));
+    XDocument plist = XDocument.Load(Path.Combine(bundle, "Contents", "Info.plist"));
     plist.Root!.Element("dict")!.Add(Pair("CFBundleIconFile", "prowl.icns"));
-    plist.Save(Path.Combine(publish, "Contents", "Info.plist"));
+    plist.Save(Path.Combine(bundle, "Contents", "Info.plist"));
     // Local ad-hoc signatures only: no Developer ID, certificate, or notarization.
-    Run("codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements", publish);
-    Run("codesign", "--verify", "--deep", "--strict", publish);
-    // The updater needs the same bundle, including its icon.
-    WriteUpdateArchive(publish, archive);
+    Run("codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements", bundle);
+    Run("codesign", "--verify", "--deep", "--strict", bundle);
+    return bundle;
+}
+
+void PackageMac()
+{
+    publish = CreateMacBundle(publish);
+    WriteUpdateArchive(CreateMacBundle(updatePublish), archive);
 
     string staging = Path.Combine(Path.GetDirectoryName(publish)!, "dmg");
     Directory.CreateDirectory(staging);

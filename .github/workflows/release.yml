@@ -109,12 +109,22 @@ jobs:
           -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
           -o "publish/Prowl Launcher"
 
+      - name: Publish update files
+        run: >
+          dotnet publish Prowl.Launcher/Prowl.Launcher.csproj
+          -c Release -r ${{ matrix.platform }} --self-contained true
+          -p:SelfInstall=false -p:PublishSingleFile=false
+          -p:DebugType=None -p:DebugSymbols=false
+          -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
+          -o "publish-updates/Prowl Launcher"
+
       - name: Include Linux ARM64 GLFW library
         if: matrix.platform == 'linux-arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -y libglfw3
           cp -L /usr/lib/aarch64-linux-gnu/libglfw.so.3 "publish/Prowl Launcher/libglfw.so.3"
+          cp -L /usr/lib/aarch64-linux-gnu/libglfw.so.3 "publish-updates/Prowl Launcher/libglfw.so.3"
 
       - name: Prepare AppImage tool
         if: startsWith(matrix.platform, 'linux-')
@@ -141,7 +151,7 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: >
           dotnet run --file .github/scripts/package-launcher.cs --
-          "publish/Prowl Launcher" "$PLATFORM" "$VERSION"
+          "publish/Prowl Launcher" "publish-updates/Prowl Launcher" "$PLATFORM" "$VERSION"
           "artifacts/Prowl-Launcher-$VERSION-$PLATFORM.zip"
 
       - uses: actions/upload-artifact@v4
@@ -190,6 +200,10 @@ jobs:
           assets=()
           for file in artifacts/*; do
             name=$(basename "$file")
+            if [[ "$name" == *.zip ]]; then
+              assets+=("$file")
+              continue
+            fi
             platform=${name#Prowl-Launcher-$VERSION-}
             platform=${platform%.*}
             case "$platform" in
@@ -200,8 +214,7 @@ jobs:
               osx-arm64) label="Prowl Launcher for macOS (Apple Silicon)" ;;
               *) echo "Unexpected release asset: $name"; exit 1 ;;
             esac
-            if [[ "$name" == *.zip ]]; then label="$label - update archive"; fi
-            assets+=("$file#$label")
+            assets+=("$file#$label .${name##*.}")
           done
 
           gh release create "$tag" "${assets[@]}" --verify-tag \
