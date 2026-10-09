@@ -24,6 +24,7 @@ public sealed partial class Launcher
     private bool _windowResizing;
     private bool _mouseOverWindow;
     private long _lastScroll;
+    private WindowScale _windowScale = new(1, 1);
 
     public void Run(string title, int width, int height)
     {
@@ -36,6 +37,7 @@ public sealed partial class Launcher
 
     private unsafe void LoadWindow()
     {
+        UpdateWindowScale();
         _window.VSync = VSyncMode.On;
         if (OperatingSystem.IsWindows())
         {
@@ -68,6 +70,7 @@ public sealed partial class Launcher
     private void UpdateWindow(float delta)
     {
         _deltaTime = delta;
+        UpdateWindowScale();
         _context.Pump();
         OfferPendingLauncherUpdate();
         UpdateFrameRate();
@@ -115,15 +118,23 @@ public sealed partial class Launcher
     private void CenterWindow() => _window.CenterWindow();
 
     private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, 0.5f, 1.5f) : 1;
-    private float DisplayScale => Math.Max(0.01f, (float)_window.FramebufferSize.X / Math.Max(1, _window.ClientSize.X)) * UiScale;
+    private float DisplayScale => _windowScale.Rendering;
+
+    private unsafe void UpdateWindowScale()
+    {
+        GLFW.GetWindowContentScale(_window.WindowPtr, out float contentScale, out _);
+        float framebufferRatio = (float)_window.FramebufferSize.X / Math.Max(1, _window.ClientSize.X);
+        _windowScale = WindowScale.Calculate(UiScale, contentScale, framebufferRatio);
+    }
 
     private void PreparePaperFrame()
     {
+        UpdateWindowScale();
         _paper.SetResolution(_window.FramebufferSize.X / DisplayScale, _window.FramebufferSize.Y / DisplayScale);
         _paper.DisplayFramebufferScale = new Float2(DisplayScale, DisplayScale);
     }
 
-    private Float2 Pointer(float x, float y) => new(x / UiScale, y / UiScale);
+    private Float2 Pointer(float x, float y) => new(x / _windowScale.Input, y / _windowScale.Input);
 
     private bool HandleCloseRequested()
     {

@@ -23,8 +23,7 @@ public sealed partial class Launcher
     private OrigamiTheme? _languageThemeSource;
     private OrigamiTheme? _languageTheme;
 
-    private float WindowUiScale => (DisplayScale / UiScale) * UiScale * _window.ClientSize.X
-                                   / Math.Max(1, _window.FramebufferSize.X);
+    private float WindowUiScale => _windowScale.Input;
 
     private void DrawTitleBar(Paper p)
     {
