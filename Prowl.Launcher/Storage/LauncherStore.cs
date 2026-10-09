@@ -1,6 +1,7 @@
 using Prowl.Rosetta;
 
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Prowl.Launcher;
 
@@ -61,12 +62,13 @@ public sealed class LauncherStore
 
     public string InstallPath(InstalledEditor editor)
     {
-        if (editor.ReleaseId <= 0 || !SupportedPlatforms.Contains(editor.Platform))
+        if (editor.ReleaseId <= 0 || !SupportedPlatforms.Contains(editor.Platform)
+            || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
         }
 
-        return Path.Combine(VersionsPath, editor.Key);
+        return SafeChildPath(VersionsPath, editor.Key);
     }
 
     public static readonly string[] SupportedPlatforms = ["win-x64", "win-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"];

@@ -16,10 +16,10 @@ public sealed class LauncherTests : IDisposable
     private LauncherStore Store() => new( _home );
 
     [Fact]
-    public void ExistingInstallationMetadata_PreservesPlatformAndEditorKey()
+    public void InstallationMetadata_UsesVersionAndPlatformDirectory()
     {
         LauncherStore store = Store();
-        string directory = Path.Combine(store.VersionsPath, "1-win-x64");
+        string directory = Path.Combine(store.VersionsPath, "v1.0-preview-4-win-x64");
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, "installation.json");
         File.WriteAllText(path, """
@@ -28,9 +28,23 @@ public sealed class LauncherTests : IDisposable
 
         InstalledEditor editor = Assert.Single(store.InstalledEditors());
         Assert.Equal("win-x64", editor.Platform);
-        Assert.Equal("1-win-x64", editor.Key);
+        Assert.Equal("v1.0-preview-4-win-x64", editor.Key);
+        Assert.Equal(directory, store.InstallPath(editor));
         LauncherStore.WriteJson(path, editor);
         Assert.Equal(editor, Assert.Single(new LauncherStore(_home).InstalledEditors()));
+    }
+
+    [Theory]
+    [InlineData("../outside")]
+    [InlineData("..\\outside")]
+    [InlineData("/outside")]
+    [InlineData("v1.0:stream")]
+    [InlineData(".")]
+    [InlineData("")]
+    public void InstallationTagCannotEscapeVersionDirectory(string tag)
+    {
+        InstalledEditor editor = new(1, tag, "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow);
+        Assert.Throws<InvalidDataException>(() => Store().InstallPath(editor));
     }
 
     private static byte[] Archive(params (string path, string text)[] files)
@@ -47,10 +61,10 @@ public sealed class LauncherTests : IDisposable
         return stream.ToArray();
     }
 
-    private static EditorRelease Release(byte[] archive, long id = 1, string? digest = null) => new( id, "v1.0-preview-4", true, false,
-        DateTimeOffset.UtcNow, "https://github.com/ProwlEngine/Prowl/releases/tag/v1.0-preview-4", "Notes",
+    private static EditorRelease Release(byte[] archive, long id = 1, string? digest = null, string tag = "v1.0-preview-4") => new( id, tag, true, false,
+        DateTimeOffset.UtcNow, $"https://github.com/ProwlEngine/Prowl/releases/tag/{tag}", "Notes",
         [
-            new ReleaseAsset("Prowl-v1.0-preview-4-win-x64.zip", "https://github.com/ProwlEngine/Prowl/releases/download/test/editor.zip", archive.Length,
+            new ReleaseAsset($"Prowl-{tag}-win-x64.zip", "https://github.com/ProwlEngine/Prowl/releases/download/test/editor.zip", archive.Length,
                 digest ?? "sha256:" + Convert.ToHexString(SHA256.HashData(archive)))
         ] );
 
@@ -79,7 +93,7 @@ public sealed class LauncherTests : IDisposable
         Assert.Equal(editor.Key, store.Settings.DefaultEditorKey);
         Assert.Equal("editor", File.ReadAllText(store.ExecutablePath(editor)));
         Assert.Equal(10, installer.RequiredSdkMajor(editor));
-        InstalledEditor other = await installer.InstallAsync(Release(bytes, 2), "win-x64");
+        InstalledEditor other = await installer.InstallAsync(Release(bytes, 2, tag: "v1.0-preview-5"), "win-x64");
         Assert.Equal(2, store.InstalledEditors().Count);
         File.WriteAllText(store.ExecutablePath(editor), "corrupted");
         await installer.InstallAsync(Release(bytes), "win-x64");

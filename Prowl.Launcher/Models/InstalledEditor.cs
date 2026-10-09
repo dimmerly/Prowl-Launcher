@@ -10,7 +10,7 @@ public sealed record InstalledEditor(
     DateTimeOffset InstalledAt
 )
 {
-    public string Key => $"{ReleaseId}-{Platform}";
+    public string Key => $"{Tag}-{Platform}";
 
     public override string ToString() => Tag;
 }
