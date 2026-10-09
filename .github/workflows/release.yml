@@ -99,18 +99,26 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build sample bundles
-        run: >
-          dotnet msbuild Samples/Samples.proj -t:Build
-          -p:Configuration=Release -p:RuntimeIdentifier=${{ matrix.platform }}
-          "-p:SampleOutputRoot=${{ github.workspace }}/artifacts/samples/"
+      - name: Include Linux ARM64 GLFW library in samples
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglfw3
 
-      - name: Test with embedded sample bundles
+      - name: Package downloadable samples
+        run: >
+          dotnet run --file .github/scripts/package-samples.cs --
+          Engine artifacts/samples ${{ matrix.platform }}
+          artifacts/Prowl-Samples-${{ matrix.platform }}.zip
+
+      - name: Test downloadable sample bundle
+        env:
+          PROWL_SAMPLE_BUNDLE: ${{ github.workspace }}/artifacts/Prowl-Samples-${{ matrix.platform }}.zip
         run: >
           dotnet test tests/Prowl.Launcher.Test.csproj
           -c Release -r ${{ matrix.platform }}
           --filter Category!=E2E
-          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
+          "-p:SampleCatalogFile=${{ github.workspace }}/artifacts/samples/samples.json"
 
       - name: Publish launcher
         run: >
@@ -119,7 +127,7 @@ jobs:
           -p:SelfInstall=true -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false
-          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
+          "-p:SampleCatalogFile=${{ github.workspace }}/artifacts/samples/samples.json"
           -o "publish/Prowl Launcher"
 
       - name: Publish update files
@@ -128,7 +136,7 @@ jobs:
           -c Release -r ${{ matrix.platform }} --self-contained true
           -p:SelfInstall=false -p:PublishSingleFile=false
           -p:DebugType=None -p:DebugSymbols=false
-          "-p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles"
+          "-p:SampleCatalogFile=${{ github.workspace }}/artifacts/samples/samples.json"
           -o "publish-updates/Prowl Launcher"
 
       - name: Include Linux ARM64 GLFW library
@@ -214,7 +222,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: launcher-${{ matrix.platform }}
-          path: artifacts/Prowl-Launcher-*
+          path: |
+            artifacts/Prowl-Launcher-*
+            artifacts/Prowl-Samples-*.zip
           if-no-files-found: error
 
   release:

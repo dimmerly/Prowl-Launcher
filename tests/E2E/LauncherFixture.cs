@@ -19,6 +19,10 @@ internal sealed class LauncherFixture : IDisposable
     internal int Downloads;
     internal bool SlowDownload;
     internal bool CorruptDownload;
+    internal bool DelaySampleDownload;
+    private byte[]? _sampleZip;
+    private EditorRelease? _sampleRelease;
+    internal int SampleDownloads;
     private readonly byte[] _editorZip;
     private readonly byte[] _launcherZip;
 
@@ -65,6 +69,35 @@ internal sealed class LauncherFixture : IDisposable
     internal Settings Saved() => new LauncherStore(Home).Settings;
     internal string LaunchRecord => Path.Combine(Home, "editor-launch.json");
 
+    internal void PublishSamples(bool newer = false)
+    {
+        using MemoryStream output = new();
+        using (ZipArchive zip = new(output, ZipArchiveMode.Create, true))
+        {
+            using MemoryStream hostBytes = new(ProbeArchive("Prowl.SampleHost"));
+            using ZipArchive host = new(hostBytes, ZipArchiveMode.Read);
+            foreach (ZipArchiveEntry entry in host.Entries)
+            {
+                using Stream source = entry.Open();
+                using Stream target = zip.CreateEntry(entry.FullName.Replace("Probe/", "Host/")).Open();
+                source.CopyTo(target);
+            }
+            void Add(string path, string text)
+            {
+                using StreamWriter writer = new(zip.CreateEntry(path).Open());
+                writer.Write(text);
+            }
+            Add("Host/Prowl.SampleHost.dll", "probe");
+            Add("Host/Prowl.SampleHost.runtimeconfig.json", "{}");
+            Add("samples.json", "[\"HelloProwl\",\"PhysicsShowcase\"]");
+            Add("Samples/HelloProwl/HelloProwl.dll", newer ? "new sample" : "sample");
+            Add("Samples/PhysicsShowcase/PhysicsShowcase.dll", "sample");
+        }
+        _sampleZip = output.ToArray();
+        _sampleRelease = Release(newer ? 302 : 301, "v2.0.0", false, Store.Settings.LauncherRepository,
+            $"Prowl-Samples-{Platform.Identifier}.zip", _sampleZip);
+    }
+
     private Task<HttpResponseMessage> Respond(HttpRequestMessage request, CancellationToken token)
     {
         string path = request.RequestUri!.AbsolutePath;
@@ -72,13 +105,25 @@ internal sealed class LauncherFixture : IDisposable
         {
             if (path.EndsWith("/Prowl/releases", StringComparison.Ordinal)) return Json(new[] { EditorRelease });
             Interlocked.Increment(ref LauncherChecks);
-            return Json(new[] { PreviewUpdate, StableUpdate });
+            return Json(_sampleRelease == null ? new[] { PreviewUpdate, StableUpdate } : new[] { _sampleRelease, PreviewUpdate, StableUpdate });
         }
         Interlocked.Increment(ref Downloads);
         byte[] archive = path.Contains("/ProwlEngine/Prowl/", StringComparison.Ordinal) ? _editorZip : _launcherZip;
+        if (path.Contains("Prowl-Samples-", StringComparison.Ordinal))
+        {
+            Interlocked.Increment(ref SampleDownloads);
+            archive = _sampleZip!;
+            if (DelaySampleDownload) return DelayedSampleResponse(archive, token);
+        }
         if (SlowDownload) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new WaitingStream()) });
         if (CorruptDownload) archive = archive.Select((b, i) => i == 20 ? (byte)(b ^ 255) : b).ToArray();
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) });
+    }
+
+    private static async Task<HttpResponseMessage> DelayedSampleResponse(byte[] archive, CancellationToken token)
+    {
+        await Task.Delay(1500, token);
+        return new(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) };
     }
 
     private static Task<HttpResponseMessage> Json<T>(T value) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

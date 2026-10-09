@@ -20,7 +20,7 @@ public sealed partial class Launcher
 
     private bool Busy => _operation != null;
     private bool ShowProgress => Busy
-                                 && _launchingSampleId == null
+                                 && (_launchingSampleId == null || _immediateProgress)
                                  && !_filePickerOpen
                                  && !_confirmationOpen
                                  && (_immediateProgress || Stopwatch.GetElapsedTime(_operationStarted).TotalMilliseconds >= 650);
@@ -83,7 +83,12 @@ public sealed partial class Launcher
         _launchingSampleId = sample.Id;
         try
         {
-            await SampleService.RunAsync(sample, store.WorkPath, token);
+            _immediateProgress = !_samples.IsCached;
+            if (_immediateProgress) _operationTitle = "launcher.samples.downloading";
+            await _samples.EnsureDownloadedAsync(Transfer(), token, allowNetwork: !offline);
+            _immediateProgress = false;
+            _operationTitle = "launcher.samples.run";
+            await _samples.RunAsync(sample, Transfer(), token, allowNetwork: !offline);
         }
         finally
         {

@@ -27,6 +27,7 @@ public sealed partial class Launcher(
 
     private GitHubReleasesService _github = null!;
     private EditorInstallerService _installer = null!;
+    private SampleService _samples = null!;
     private LauncherAppearance _appearance = null!;
 
     private void Initialize()
@@ -85,6 +86,7 @@ public sealed partial class Launcher(
     {
         _github = new GitHubReleasesService(_http, store);
         _installer = new EditorInstallerService(_http, store);
+        _samples = new SampleService(_http, store);
 
         try { _installer.RecoverInterruptedOperations(); }
         catch (IOException error) { LogError(error); }

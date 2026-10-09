@@ -17,7 +17,8 @@ public sealed class UserWorkflowTests
         "ChooseProjectEditor", "MissingProject", "CancelFolderPicker", "AddExistingProject", "DuplicateProjectImport", "InstallEditor", "RepairEditor",
         "CancelUninstall", "ConfirmUninstall", "CorruptDownload", "CancelDownload", "CloseDuringDownload",
         "ManualUpdateChangelog", "ManualReoffersDismissedUpdate", "EnablePrereleases",
-        "AcceptHealthyUpdate", "FailedUpdateStartup", "CloseOnEditorLaunch"
+        "AcceptHealthyUpdate", "FailedUpdateStartup", "CloseOnEditorLaunch",
+        "SampleDownloadOnce", "SampleUpdateAvailable", "SampleAlreadyLatest"
     }.Select(scenario => new object[] { scenario });
 
     [Theory]

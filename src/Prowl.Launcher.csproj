@@ -11,8 +11,7 @@
     <Title>Prowl Launcher</Title>
     <Description>The Prowl launcher.</Description>
     <ApplicationIcon>Resources/prowl.ico</ApplicationIcon>
-    <SampleBundleDirectory Condition="'$(SampleBundleDirectory)' == ''">$(MSBuildProjectDirectory)/Resources/Samples</SampleBundleDirectory>
-    <SampleBundleDirectory>$([System.IO.Path]::GetFullPath('$(SampleBundleDirectory)', '$(MSBuildProjectDirectory)/../'))</SampleBundleDirectory>
+    <SampleCatalogFile Condition="'$(SampleCatalogFile)' == ''">$(MSBuildProjectDirectory)/Resources/Samples/catalog.json</SampleCatalogFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,7 +30,6 @@
     <EmbeddedResource Include="Resources/Locale/*.json" LogicalName="Prowl.Launcher.Locale.%(Filename).json" />
     <EmbeddedResource Include="Resources/Icons/*.svg" LogicalName="Prowl.Launcher.Icons.%(Filename).svg" />
     <EmbeddedResource Include="Resources/Samples/*.png" LogicalName="Prowl.Launcher.Samples.%(Filename).png" />
-    <EmbeddedResource Include="$(SampleBundleDirectory)/*.zip" Exclude="$(SampleBundleDirectory)/SampleHost.zip" LogicalName="Prowl.Launcher.Samples.%(Filename).zip" />
-    <EmbeddedResource Include="$(SampleBundleDirectory)/SampleHost.zip" LogicalName="Prowl.Launcher.SampleHost.zip" Condition="Exists('$(SampleBundleDirectory)/SampleHost.zip')" />
+    <EmbeddedResource Include="$(SampleCatalogFile)" LogicalName="Prowl.Launcher.Samples.catalog.json" />
   </ItemGroup>
 </Project>

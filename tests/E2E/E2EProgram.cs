@@ -11,6 +11,11 @@ internal static class E2EProgram
     {
         string? home = Environment.GetEnvironmentVariable("PROWL_LAUNCHER_HOME");
         string? executable = Path.GetFileNameWithoutExtension(Environment.ProcessPath);
+        if (executable == "Prowl.SampleHost")
+        {
+            File.AppendAllText(Path.Combine(home!, "sample-launch.log"), JsonSerializer.Serialize(args) + "\n");
+            return 0;
+        }
         if (executable == "Prowl.Editor")
         {
             File.WriteAllText(Path.Combine(home!, "editor-launch.json"),
@@ -28,7 +33,8 @@ internal static class E2EProgram
             LauncherFixture.InstallSoftwareGraphics();
             using LauncherFixture fixture = new(args[2]);
             LauncherScenarios.Prepare(args[1], fixture).GetAwaiter().GetResult();
-            Launcher launcher = new(fixture.Store, offline: !args[1].StartsWith("Startup", StringComparison.Ordinal));
+            Launcher launcher = new(fixture.Store, offline: !args[1].StartsWith("Startup", StringComparison.Ordinal)
+                && !args[1].StartsWith("Sample", StringComparison.Ordinal));
             UiDriver.GetField<HttpClient>(launcher, "_http").Dispose();
             UiDriver.SetField(launcher, "_http", fixture.Http);
             UiDriver driver = new(launcher, Path.Combine(fixture.Root, "diagnostics"));

@@ -11,31 +11,70 @@ public sealed partial class Launcher
 {
     private readonly SampleThumbnail _sampleThumbnails = new();
     private string? _launchingSampleId;
+    private string? _sampleUpdatesCheckedRepository;
+    private bool _sampleUpdateAvailable;
+    private bool _sampleUpdateChecking;
 
     private void DrawSamples(Paper p)
     {
-        if (SampleService.Samples.Count == 0)
+        if (!offline && screenshot == null && !Busy && _samples.IsCached && !_sampleUpdateChecking
+            && _sampleUpdatesCheckedRepository != store.Settings.LauncherRepository)
+            _ = CheckSamplesInBackgroundAsync();
+
+        if (_sampleUpdateAvailable && _samples.IsCached && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
+            Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
+
+        IReadOnlyList<Sample> samples = _samples.Catalog;
+        if (samples.Count == 0)
             return;
 
         const float gap = 12;
         // Leave eight pixels on each edge for the hover scale to expand inside the scroll clip.
         float available = (float)p.ScreenRect.Size.X - SidebarWidth - 72;
-        int columns = Math.Clamp((int)((available + gap) / 260), 1, SampleService.Samples.Count);
+        int columns = Math.Clamp((int)((available + gap) / 260), 1, samples.Count);
         float cardWidth = Math.Clamp((available - gap * (columns - 1)) / columns, 1, 280);
-        for (int first = 0; first < SampleService.Samples.Count; first += columns)
+        for (int first = 0; first < samples.Count; first += columns)
         {
             using (p.Row("sample-row-" + first).Height(cardWidth).Gap(gap).Enter())
             {
-                foreach (Sample sample in SampleService.Samples.Skip(first).Take(columns))
+                foreach (Sample sample in samples.Skip(first).Take(columns))
                     DrawSampleCard(p, sample, cardWidth);
             }
         }
     }
 
+    private async Task CheckSamplesInBackgroundAsync()
+    {
+        string repository = store.Settings.LauncherRepository;
+        _sampleUpdateChecking = true;
+        try
+        {
+            bool available = await _samples.HasUpdateAsync(_backgroundCancellation.Token);
+            if (!_backgroundCancellation.IsCancellationRequested && store.Settings.LauncherRepository == repository)
+                _sampleUpdateAvailable = available;
+        }
+        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested) { }
+        catch (Exception error) { LogError(error); }
+        finally
+        {
+            _sampleUpdateChecking = false;
+            _sampleUpdatesCheckedRepository = repository;
+        }
+    }
+
+    private async Task UpdateSamplesAsync(CancellationToken token)
+    {
+        _immediateProgress = true;
+        _operationTitle = "launcher.samples.downloading";
+        await _samples.EnsureDownloadedAsync(Transfer(), token, checkForUpdates: true);
+        _sampleUpdateAvailable = false;
+        Notify("launcher.samples.updated", "launcher.samples.subtitle");
+    }
+
     private void DrawSampleCard(Paper p, Sample sample, float width)
     {
         string id = "sample-" + sample.Id;
-        bool runnable = SampleService.IsAvailable(sample);
+        bool runnable = _samples.IsAvailable(sample);
         ElementBuilder card = p.Column(id).Width(width).Height(width)
             .Gap(0).Rounded(10).Clip()
             .JustifyContent(LayoutJustification.End)

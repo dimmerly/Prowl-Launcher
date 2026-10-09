@@ -19,6 +19,7 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     internal bool ExpectsClose { get; private set; }
     internal void ExpectClose() => ExpectsClose = true;
     internal Paper Paper => _paper;
+    internal Launcher Launcher => launcher;
 
     internal void Attach(Func<UiDriver, Task> scenario)
     {
@@ -87,7 +88,19 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     }
 
     internal bool HasText(string text) => Nodes().Any(n => Labels(n).Any(label => label.Contains(text, StringComparison.Ordinal)));
-    internal ElementHandle Text(string text) => Nodes().LastOrDefault(n => Labels(n).Contains(text));
+    internal ElementHandle Text(string text)
+    {
+        ElementHandle[] matches = Nodes().Where(n => Labels(n).Contains(text)).ToArray();
+        ElementHandle interactive = matches.LastOrDefault(n => InteractiveAncestor(n).IsValid);
+        return interactive.IsValid ? interactive : matches.LastOrDefault();
+    }
+
+    private static ElementHandle InteractiveAncestor(ElementHandle node)
+    {
+        while (node.IsValid && node.Data.OnClick == null && node.Data.OnPress == null && node.Data.OnTextInput == null)
+            node = node.GetParentHandle();
+        return node;
+    }
 
     // Origami buttons paint their labels through render snapshots rather than Paragraph.
     // Read those snapshots for selection; all actions still travel through Paper input.

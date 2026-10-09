@@ -44,14 +44,15 @@ On Linux, prefix this command with `xvfb-run -a`. Failed E2E tests save logs, a 
 
 ### Samples
 
-To build sample bundles, check out [ProwlEngine/Prowl](https://github.com/ProwlEngine/Prowl) into `Engine` at the commit in `EngineRevision.txt`, then run:
+The first sample you open downloads all samples and their runtime in one bundle, with progress at the top. Later runs use the cached copy, including offline. **Update samples** appears when a newer bundle is available; updates download only when you click it.
+
+Releases publish `Prowl-Samples-<platform>.zip` separately from the launcher. To build one locally, check out [ProwlEngine/Prowl](https://github.com/ProwlEngine/Prowl) into `Engine` at the commit in `EngineRevision.txt`, then run:
 
 ```sh
-dotnet msbuild Samples/Samples.proj -t:Build -p:Configuration=Release -p:SampleOutputRoot=./artifacts/samples/
-dotnet run --project src/Prowl.Launcher.csproj -p:SampleBundleDirectory=./artifacts/samples/Bundles
+dotnet run --file .github/scripts/package-samples.cs -- Engine artifacts/samples win-x64 artifacts/Prowl-Samples-win-x64.zip
 ```
 
-An ordinary launcher build does not require an engine checkout.
+Replace `win-x64` with your target platform. The script generates and builds the sample host; an ordinary launcher build needs no engine checkout.
 
 ### Releases
 

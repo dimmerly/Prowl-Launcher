@@ -63,8 +63,8 @@ try
     string captures = Path.Combine(work.FullName, "captures");
     Directory.CreateDirectory(captures);
 
-    await RunAsync(600, "msbuild", "Samples/Samples.proj", "-t:Build",
-        "-p:Configuration=Release", $"-p:RuntimeIdentifier={runtime}", $"-p:SampleOutputRoot={samples}/", $"-p:EngineDirectory={engine}");
+    await RunAsync(600, "run", "--file", ".github/scripts/package-samples.cs", "--",
+        engine, samples, runtime, Path.Combine(work.FullName, "samples.zip"));
 
     string source = Path.Combine(engine, "Samples", "Runtime");
     foreach (string project in Directory.EnumerateDirectories(source)

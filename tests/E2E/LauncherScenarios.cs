@@ -13,6 +13,14 @@ internal static class LauncherScenarios
 
     internal static async Task Prepare(string scenario, LauncherFixture fixture)
     {
+        if (scenario.StartsWith("Sample", StringComparison.Ordinal))
+        {
+            fixture.PublishSamples();
+            LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+            if (scenario is "SampleUpdateAvailable" or "SampleAlreadyLatest")
+                await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
+            if (scenario == "SampleUpdateAvailable") fixture.PublishSamples(newer: true);
+        }
         string[] installedScenarios = ["CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
             "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
             "CorruptDownload", "CloseOnEditorLaunch"];
@@ -62,6 +70,35 @@ internal static class LauncherScenarios
         await ui.Frame(3);
         switch (scenario)
         {
+            case "SampleDownloadOnce":
+                await ui.Navigate("Samples");
+                f.DelaySampleDownload = true;
+                await ui.ClickText("Hello Prowl");
+                await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"), "Sample download should show progress at the top.");
+                Check(ui.Text("Downloading samples").Data.Y < ui.Text("Hello Prowl").Data.Y, "Download progress must appear above sample cards.");
+                await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")), "The selected sample should launch after the shared download.");
+                await ui.Wait(() => UiDriver.GetField<object?>(ui.Launcher, "_operation") == null, "Sample startup should finish.");
+                await ui.ClickText("Physics Showcase");
+                await ui.Wait(() => File.ReadAllLines(Path.Combine(f.Home, "sample-launch.log")).Length == 2, "A second sample should use the shared local runtime.");
+                Check(f.SampleDownloads == 1, "All sample cards must share one download.");
+                Check(!ui.HasText("Update samples"), "The update button should stay hidden when the local bundle is latest.");
+                break;
+            case "SampleUpdateAvailable":
+                await ui.Navigate("Samples");
+                await ui.Wait(() => ui.HasText("Update samples"), "A newer remote bundle should expose the update button.");
+                f.DelaySampleDownload = true;
+                await ui.ClickText("Update samples");
+                await ui.Wait(() => ui.HasText("Downloading samples"), "Updating samples should expose download progress.");
+                await ui.Wait(() => ui.HasText("Samples updated") && !ui.HasText("Update samples"), "The update button should disappear after a successful refresh.");
+                Check(f.SampleDownloads == 2, "Updating should download one replacement bundle.");
+                break;
+            case "SampleAlreadyLatest":
+                await ui.Navigate("Samples");
+                await ui.Wait(() => !UiDriver.GetField<bool>(ui.Launcher, "_sampleUpdateChecking"), "The background sample check should finish.");
+                await ui.Frame(10);
+                Check(!ui.HasText("Update samples"), "The update button must be hidden without a newer bundle.");
+                Check(f.SampleDownloads == 1, "Checking for updates must not download anything.");
+                break;
             case "EmptyProjects":
                 Check(ui.HasText("Start something new"), "An empty launcher must explain how to start.");
                 Check(ui.HasText("Add project") && ui.HasText("New project"), "Project actions must be available.");
