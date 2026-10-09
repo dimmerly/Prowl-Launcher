@@ -12,14 +12,14 @@ public sealed partial class Launcher
             0 => _newProjectPage ? Loc.Get("launcher.projects.new_title") : "launcher.projects.title",
             1 => "launcher.versions.title",
             3 => "launcher.samples.title",
-            _ => "launcher.preferences.title"
+            _ => "launcher.settings.title"
         };
         string subtitle = _tab switch
         {
             0 => _newProjectPage ? Loc.Get("launcher.projects.choose_template") : "launcher.projects.subtitle",
             1 => "launcher.versions.subtitle",
             3 => "launcher.samples.subtitle",
-            _ => "launcher.preferences.subtitle"
+            _ => "launcher.settings.subtitle"
         };
 
         using (p.Column("heading").Height(76).Gap(6).Enter())

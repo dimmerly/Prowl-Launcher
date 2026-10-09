@@ -20,21 +20,21 @@ public sealed partial class Launcher
     {
         using (Card(p, "repository-settings"))
         {
-            Label(p, "repositories-title", "launcher.preferences.repositories", 19, Ink, 28, true);
+            Label(p, "repositories-title", "launcher.settings.repositories", 19, Ink, 28, true);
             Label(
                 p,
                 "repositories-info",
-                "launcher.preferences.repository_description",
+                "launcher.settings.repository_description",
                 13,
                 Muted,
                 26
             );
             _prowlRepositoryDraft ??= store.Settings.ProwlRepository;
-            Label(p, "prowl-repository-label", "launcher.preferences.prowl_releases", 14, Ink, 26);
+            Label(p, "prowl-repository-label", "launcher.settings.prowl_releases", 14, Ink, 26);
             Origami.TextField(p, "prowl-repository", _prowlRepositoryDraft, value => _prowlRepositoryDraft = value).Show();
 
             _launcherRepositoryDraft ??= store.Settings.LauncherRepository;
-            Label(p, "launcher-repository-label", "launcher.preferences.launcher_releases", 14, Ink, 26);
+            Label(p, "launcher-repository-label", "launcher.settings.launcher_releases", 14, Ink, 26);
             Origami.TextField(p, "launcher-repository", _launcherRepositoryDraft, value => _launcherRepositoryDraft = value).Show();
             using (p.Row("repository-actions")
                 .Height(UnitValue.Auto)
@@ -42,8 +42,8 @@ public sealed partial class Launcher
                 .Gap(8)
                 .Enter())
             {
-                Button(p, "save-repositories", "launcher.preferences.save_repositories", SaveRepositoriesAsync, true, 170);
-                Button(p, "reset-repositories", "launcher.preferences.official_repository", ResetRepositoryDraftsAsync, width: 165);
+                Button(p, "save-repositories", "launcher.settings.save_repositories", SaveRepositoriesAsync, true, 170);
+                Button(p, "reset-repositories", "launcher.settings.official_repository", ResetRepositoryDraftsAsync, width: 165);
             }
         }
     }
@@ -58,11 +58,11 @@ public sealed partial class Launcher
         }
         using (Card(p, "appearance-settings"))
         {
-            Label(p, "appearance-title", "launcher.preferences.appearance", 19, Ink, 28, true);
+            Label(p, "appearance-title", "launcher.settings.appearance", 19, Ink, 28, true);
             Label(
                 p,
                 "appearance-info",
-                "launcher.preferences.appearance_description",
+                "launcher.settings.appearance_description",
                 13,
                 Muted,
                 26
@@ -72,7 +72,7 @@ public sealed partial class Launcher
                 .Gap(12)
                 .Enter())
             {
-                Label(p, "interface-size-label", "launcher.preferences.interface_size", 14, Ink, 44);
+                Label(p, "interface-size-label", "launcher.settings.interface_size", 14, Ink, 44);
                 Origami.Dropdown(
                         p,
                         "interface-size",
@@ -104,7 +104,7 @@ public sealed partial class Launcher
                 .Gap(12)
                 .Enter())
             {
-                Label(p, "preset-label", "launcher.preferences.theme", 14, Ink, 34);
+                Label(p, "preset-label", "launcher.settings.theme", 14, Ink, 34);
                 string[] names = ThemePresets.All.Select(preset => preset.Name).ToArray();
                 Origami.Dropdown(p, "theme-preset", _appearance.Data.Name, name => _appearance.UsePreset(name), names)
                     .Width(260)
@@ -114,14 +114,14 @@ public sealed partial class Launcher
             ColorSetting(
                 p,
                 "accent-color",
-                "launcher.preferences.accent",
+                "launcher.settings.accent",
                 _appearance.Data.Purple.Primary,
                 value => CustomizeRamp(_appearance.Data.Purple, value)
             );
             ColorSetting(
                 p,
                 "logo-color",
-                "launcher.preferences.logo_color",
+                "launcher.settings.logo_color",
                 store.Settings.LogoColor ?? ColorRamp.ColorToHex(Ink),
                 value =>
                 {
@@ -132,21 +132,21 @@ public sealed partial class Launcher
             ColorSetting(
                 p,
                 "panel-color",
-                "launcher.preferences.panels",
+                "launcher.settings.panels",
                 _appearance.Data.Neutral.Primary,
                 value => CustomizeRamp(_appearance.Data.Neutral, value)
             );
             ColorSetting(
                 p,
                 "text-color",
-                "launcher.preferences.text",
+                "launcher.settings.text",
                 _appearance.Data.Ink.Primary,
                 value => CustomizeRamp(_appearance.Data.Ink, value)
             );
             ColorSetting(
                 p,
                 "background-color",
-                "launcher.preferences.background",
+                "launcher.settings.background",
                 ColorRamp.ColorToHex(_appearance.Background),
                 value =>
                 {
@@ -161,13 +161,13 @@ public sealed partial class Launcher
                 .Gap(8)
                 .Enter())
             {
-                Origami.Button(p, "use-editor-theme", Loc.Get("launcher.preferences.use_editor_theme"))
+                Origami.Button(p, "use-editor-theme", Loc.Get("launcher.settings.use_editor_theme"))
                     .Width(190)
                     .Height(40)
                     .LeadingIcon(OrigamiIconSet.Pencil)
                     .OnClick(_appearance.UseEditorTheme)
                     .Show();
-                Origami.Button(p, "reset-theme", Loc.Get("launcher.preferences.reset_to_default"))
+                Origami.Button(p, "reset-theme", Loc.Get("launcher.settings.reset_to_default"))
                     .Width(190)
                     .Height(40)
                     .LeadingIcon(LauncherIcons.Refresh)
@@ -178,13 +178,13 @@ public sealed partial class Launcher
 
         using (Card(p, "launch-settings"))
         {
-            Label(p, "launch-settings-title", "launcher.preferences.title", 19, Ink, 28, true);
+            Label(p, "launch-settings-title", "launcher.settings.title", 19, Ink, 28, true);
             Origami.Switch(p, "close-on-editor-launch", store.Settings.CloseOnEditorLaunch, value =>
                 {
                     store.Settings.CloseOnEditorLaunch = value;
                     store.Save();
                 })
-                .LabelLeft(Loc.Get("launcher.preferences.close_on_launch"))
+                .LabelLeft(Loc.Get("launcher.settings.close_on_launch"))
                 .Stretch()
                 .Show();
             Origami.Switch(p, "show-fps", store.Settings.ShowFps, value =>
@@ -192,7 +192,7 @@ public sealed partial class Launcher
                     store.Settings.ShowFps = value;
                     store.Save();
                 })
-                .LabelLeft(Loc.Get("launcher.preferences.show_fps"))
+                .LabelLeft(Loc.Get("launcher.settings.show_fps"))
                 .Stretch()
                 .Show();
         }
@@ -201,7 +201,7 @@ public sealed partial class Launcher
         {
             using (p.Row("launcher-storage-heading").Height(28).Enter())
             {
-                Label(p, "launcher-settings-title", "launcher.preferences.updates_and_storage", 19, Ink, 28, true);
+                Label(p, "launcher-settings-title", "launcher.settings.updates_and_storage", 19, Ink, 28, true);
                 p.Box("launcher-file-size")
                     .Width(110)
                     .Height(28)
@@ -211,7 +211,7 @@ public sealed partial class Launcher
                     .TextColor(Muted)
                     .Alignment(TextAlignment.MiddleRight);
             }
-            Label(p, "launcher-version", Loc.Get("launcher.preferences.version", new
+            Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
             {
                 version = LauncherVersion,
                 platform = Platform.Identifier
@@ -226,7 +226,7 @@ public sealed partial class Launcher
                     else if (LauncherVersion.Split('+')[0].Contains('-'))
                         Start(UpdateLauncherAsync, "launcher.updates.checking");
                 })
-                .LabelLeft(Loc.Get("launcher.preferences.launcher_prereleases"))
+                .LabelLeft(Loc.Get("launcher.settings.launcher_prereleases"))
                 .Stretch().Disabled(Busy).Show();
 
             using (p.Row("launcher-settings-actions")
@@ -239,7 +239,7 @@ public sealed partial class Launcher
                 Button(
                     p,
                     "data-folder",
-                    "launcher.preferences.open_data_folder",
+                    "launcher.settings.open_data_folder",
                     _ =>
                     {
                         Open(store.Home);

@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Prowl.Launcher;
 
-public static class EditorPreferences
+public static class EditorSettings
 {
     public static string? Locale()
     {
@@ -11,10 +11,10 @@ public static class EditorPreferences
             "Prowl",
             "EditorSettings.json"
         );
-        return LauncherStore.ReadJson<LanguagePreference>(settings)?.Locale;
+        return LauncherStore.ReadJson<LanguageSettings>(settings)?.Locale;
     }
 
-    private sealed class LanguagePreference
+    private sealed class LanguageSettings
     {
         public string? Locale
         {

@@ -144,7 +144,7 @@ public sealed partial class Launcher
         store.Save();
         _releases = [];
 
-        Notify("launcher.preferences.repository_saved", prowl);
+        Notify("launcher.settings.repository_saved", prowl);
         await RefreshAsync(token, false);
     }
 

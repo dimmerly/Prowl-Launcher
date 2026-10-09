@@ -7,7 +7,7 @@ using Prowl.Scribe;
 
 namespace Prowl.Launcher;
 
-/// <summary>Uses the editor's theme data and presets, with independent launcher preferences.</summary>
+/// <summary>Uses the editor's theme data and presets, with independent launcher settings.</summary>
 sealed class LauncherAppearance
 {
     private readonly string _path;

@@ -17,7 +17,7 @@ public sealed partial class Launcher
 
     private void DrawNewProject(Paper p)
     {
-        _newProjectDirectory ??= EditorPreferences.ProjectsDirectory();
+        _newProjectDirectory ??= EditorSettings.ProjectsDirectory();
         _newProjectEditorKey ??= store.Settings.DefaultEditorKey ?? _installed.FirstOrDefault()?.Key;
         bool wide = p.ScreenRect.Size.X - SidebarWidth - 56 >= 800;
         using ((wide ? p.Row("new-project-form") : p.Column("new-project-form"))
@@ -152,7 +152,7 @@ public sealed partial class Launcher
         _filePickerOpen = true;
         try
         {
-            string directory = _newProjectDirectory ?? EditorPreferences.ProjectsDirectory();
+            string directory = _newProjectDirectory ?? EditorSettings.ProjectsDirectory();
             Directory.CreateDirectory(directory);
             Origami.OpenFileDialog(FileDialogMode.SelectFolder, selected => completion.TrySetResult(selected), directory);
             if (await completion.Task.WaitAsync(token) is {} selected)
@@ -172,7 +172,7 @@ public sealed partial class Launcher
         InstalledEditor editor = _installed.FirstOrDefault(e => e.Key == _newProjectEditorKey) ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
         // Validate the installation before creating anything on disk.
         _ = _installer.LaunchInfo(editor);
-        string parent = _newProjectDirectory ?? EditorPreferences.ProjectsDirectory();
+        string parent = _newProjectDirectory ?? EditorSettings.ProjectsDirectory();
         string name = _newProjectName;
         string path = await Task.Run(
             () =>

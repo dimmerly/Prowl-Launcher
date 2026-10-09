@@ -44,7 +44,7 @@ static class LauncherIcons
         "launcher.versions.repair" or "launcher.versions.refresh" or "launcher.updates.check" => Refresh,
         "launcher.versions.set_default" => OrigamiIconSet.Star,
         "launcher.versions.changelog" => OrigamiIconSet.File,
-        "launcher.versions.install_folder" or "launcher.preferences.open_data_folder" => OrigamiIconSet.FolderOpen,
+        "launcher.versions.install_folder" or "launcher.settings.open_data_folder" => OrigamiIconSet.FolderOpen,
         _ => null
     };
 }

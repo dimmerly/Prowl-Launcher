@@ -36,7 +36,7 @@ Release ZIPs are kept for automatic updates. They contain separate application f
 
 The **Build and test** workflow builds the launcher and runs its tests on Windows, Linux, and macOS on pushes to `main` and pull requests. The release workflow requires this same test matrix to pass, tests embedded sample extraction on each release platform, and checks that the packaged download can be copied into an installation, render a window, and start a verified update before uploading its artifacts. Linux checks use Xvfb; Windows checks use a pinned software OpenGL fixture that is never included in downloads. The test workflow can also be run manually and does not build sample bundles or publish releases. Tests remain available locally:
 
-In Preferences, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
+In Settings, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
 
 ```sh
 dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release

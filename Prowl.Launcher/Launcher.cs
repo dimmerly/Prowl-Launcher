@@ -66,7 +66,7 @@ public sealed partial class Launcher(
 
     private void InitializeLocalization()
     {
-        string locale = store.Settings.Locale ?? EditorPreferences.Locale() ?? "en";
+        string locale = store.Settings.Locale ?? EditorSettings.Locale() ?? "en";
         if (!LocaleHelper.Codes.Contains(locale))
         {
             locale = "en";

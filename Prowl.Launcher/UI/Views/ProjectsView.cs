@@ -182,7 +182,7 @@ public sealed partial class Launcher
         _filePickerOpen = true;
         try
         {
-            string projectsDirectory = EditorPreferences.ProjectsDirectory();
+            string projectsDirectory = EditorSettings.ProjectsDirectory();
             Directory.CreateDirectory(projectsDirectory);
             Origami.OpenFileDialog(FileDialogMode.SelectFolder, selected => completion.TrySetResult(selected), projectsDirectory);
             path = await completion.Task.WaitAsync(token);

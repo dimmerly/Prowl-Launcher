@@ -38,7 +38,7 @@ public readonly record struct ThemePreset(string Name, string Accent, string Acc
 /// <summary>The editor's built-in color themes.</summary>
 public static class ThemePresets
 {
-    /// <summary>Every built-in theme, in the order the Preferences panel shows them.</summary>
+    /// <summary>Every built-in theme, in the order the Settings panel shows them.</summary>
     public static readonly ThemePreset[] All =
     {
         new("Dark",     "#3B82F6", "#0EA5E9", "#111113", "#1F1F23", "#E4E4E7", Solid: true,

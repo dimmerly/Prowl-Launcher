@@ -46,7 +46,7 @@ public sealed partial class Launcher
             p.Box("sidebar-spacer");
             SidebarLink(p, "github", "GitHub", () => Open("https://github.com/" + store.Settings.ProwlRepository));
             SidebarLink(p, "discord", "Discord", () => Open("https://discord.gg/BqnJ9Rn4sn"), LauncherIcons.Discord);
-            Nav(p, "settings-nav", "launcher.preferences.title", 2);
+            Nav(p, "settings-nav", "launcher.settings.title", 2);
         }
     }
 }
