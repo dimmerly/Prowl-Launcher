@@ -1,4 +1,0 @@
-<Solution>
-    <Project Path="src/Prowl.Launcher.csproj"/>
-    <Project Path="tests/Prowl.Launcher.Test.csproj"/>
-</Solution>
