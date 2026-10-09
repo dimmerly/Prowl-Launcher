@@ -73,6 +73,8 @@ Launcher updates default to `dimmerly/Prowl-Launcher`, independently of the conf
 
 Downloaded updates remain inactive until the new launcher renders its first frame and acknowledges startup. Failed or timed-out startup keeps the current launcher available. If a previously selected update fails on a later launch, the original entry point clears the target and opens its own window.
 
+The launcher checks for updates in the background at startup and when you enable prereleases. Available updates are offered once the launcher is idle, with their changelog in the confirmation dialog. Cancelling or dismissing the dialog remembers that release ID for its repository across restarts and channel changes. New releases are offered normally, and **Check for updates** always lets you revisit a dismissed release. Offline mode and screenshot captures skip automatic startup checks.
+
 Settings saves merge each instance's changes under a shared file lock. Editor installations record their source repository, keeping custom repositories separate even when tags match. Existing installations without repository metadata retain their historical keys and are treated as coming from `ProwlEngine/Prowl`. Interrupted editor repairs retain a journal and backup; startup restores the previous installation when the replacement was not committed, and keeps backups if recovery cannot finish.
 
 These checks trust the release publisher; they do not provide independent cryptographic signing of updates.
