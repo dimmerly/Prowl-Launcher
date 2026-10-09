@@ -371,6 +371,9 @@ public sealed class LauncherTests : IDisposable
 
     [Theory]
     [InlineData("Prowl Launcher-1.2.3-win-x64.zip", "win-x64", "1.2.3")]
+    [InlineData("Prowl-Launcher-1.2.3-win-x64.zip", "win-x64", "1.2.3")]
+    [InlineData("Prowl.Launcher-1.2.3-win-x64.zip", "win-x64", "1.2.3")]
+    [InlineData("Prowl.Launcher-1.2.3-preview-1-win-x64.zip", "win-x64", "1.2.3-preview-1")]
     [InlineData("Prowl Launcher-1.2.3-preview.1+build-win-x64.zip", "win-x64", "1.2.3-preview.1+build")]
     [InlineData("Prowl Launcher-1.2.3-win-x64.zip", "linux-x64", null)]
     [InlineData("Prowl-v9.0.0-win-x64.zip", "win-x64", null)]

@@ -50,7 +50,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
     public static string? VersionFor(ReleaseAsset asset, string platform)
     {
-        Match match = Regex.Match(asset.Name, $"^Prowl Launcher-({VersionPattern})-{Regex.Escape(platform)}\\.zip$");
+        Match match = Regex.Match(asset.Name, $"^Prowl[- .]Launcher-({VersionPattern})-{Regex.Escape(platform)}\\.zip$");
         return match.Success ? match.Groups[1].Value : null;
     }
 

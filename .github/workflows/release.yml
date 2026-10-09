@@ -142,12 +142,12 @@ jobs:
         run: >
           dotnet run --file .github/scripts/package-launcher.cs --
           "publish/Prowl Launcher" "$PLATFORM" "$VERSION"
-          "artifacts/Prowl Launcher-$VERSION-$PLATFORM.zip"
+          "artifacts/Prowl-Launcher-$VERSION-$PLATFORM.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: launcher-${{ matrix.platform }}
-          path: artifacts/Prowl Launcher*
+          path: artifacts/Prowl-Launcher-*
           if-no-files-found: error
 
   release:
@@ -186,5 +186,23 @@ jobs:
 
           flags=()
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$tag" artifacts/* --verify-tag \
+
+          assets=()
+          for file in artifacts/*; do
+            name=$(basename "$file")
+            platform=${name#Prowl-Launcher-$VERSION-}
+            platform=${platform%.*}
+            case "$platform" in
+              win-x64) label="Prowl Launcher for Windows (x64)" ;;
+              linux-x64) label="Prowl Launcher for Linux (x64)" ;;
+              linux-arm64) label="Prowl Launcher for Linux (ARM64)" ;;
+              osx-x64) label="Prowl Launcher for macOS (Intel)" ;;
+              osx-arm64) label="Prowl Launcher for macOS (Apple Silicon)" ;;
+              *) echo "Unexpected release asset: $name"; exit 1 ;;
+            esac
+            if [[ "$name" == *.zip ]]; then label="$label - update archive"; fi
+            assets+=("$file#$label")
+          done
+
+          gh release create "$tag" "${assets[@]}" --verify-tag \
             --title "Prowl Launcher $VERSION" --generate-notes "${flags[@]}"
