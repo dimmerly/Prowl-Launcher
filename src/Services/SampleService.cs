@@ -9,13 +9,13 @@ namespace Prowl.Launcher;
 
 sealed class SampleService
 {
-    private readonly HttpClient http;
-    private readonly LauncherStore store;
+    private readonly HttpClient _http;
+    private readonly LauncherStore _store;
 
     public SampleService(HttpClient http, LauncherStore store)
     {
-        this.http = http;
-        this.store = store;
+        _http = http;
+        _store = store;
         try
         {
             RecoverInterruptedOperations();
@@ -36,8 +36,8 @@ sealed class SampleService
     private string? _loadedCache;
     private DateTime _loadedStamp;
     private IReadOnlyList<Sample>? _loadedCatalog;
-    private string Repository => GitHubRepositoryHelper.Normalize(store.Settings.LauncherRepository);
-    private string CacheRoot => Path.Combine(store.Home, "Samples", GitHubRepositoryHelper.CacheKey(Repository), Platform.Identifier);
+    private string Repository => GitHubRepositoryHelper.Normalize(_store.Settings.LauncherRepository);
+    private string CacheRoot => Path.Combine(_store.Home, "Samples", GitHubRepositoryHelper.CacheKey(Repository), Platform.Identifier);
     private string ContentPath => Path.Combine(CacheRoot, "content");
     public bool IsCached => InstalledCatalog() != null;
     public IReadOnlyList<Sample> Catalog => InstalledCatalog() ?? Samples;
@@ -63,7 +63,7 @@ sealed class SampleService
     {
         token.ThrowIfCancellationRequested();
         // Each running sample owns its output, including any files it keeps open.
-        string output = Path.Combine(store.WorkPath, "sample-" + Guid.NewGuid().ToString("N"));
+        string output = Path.Combine(_store.WorkPath, "sample-" + Guid.NewGuid().ToString("N"));
         string assembly = await ExtractAsync(sample, output, token, progress, allowNetwork);
         token.ThrowIfCancellationRequested();
         Process process = Process.Start(SampleHelper.LaunchInfo(assembly))
@@ -219,8 +219,8 @@ sealed class SampleService
             return false;
         }
         InstalledBundle installed = LauncherStore.ReadJson<InstalledBundle>(Path.Combine(CacheRoot, "installed.json"))!;
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store, Repository).GetAsync(token);
-        (EditorRelease Release, ReleaseAsset Asset)? selected = SelectBundle(releases, Platform.Identifier, store.Settings.LauncherPrereleases);
+        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(_http, _store, Repository).GetAsync(token);
+        (EditorRelease Release, ReleaseAsset Asset)? selected = SelectBundle(releases, Platform.Identifier, _store.Settings.LauncherPrereleases);
         return selected != null && selected.Value.Asset.Digest is { Length: 71 }
                                 && selected.Value.Asset.Digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
                                 && selected.Value.Release.Id != installed.ReleaseId
@@ -233,7 +233,7 @@ sealed class SampleService
         token.ThrowIfCancellationRequested();
         string repository = Repository;
         string cacheRoot = CacheRoot;
-        Directory.CreateDirectory(store.Home);
+        Directory.CreateDirectory(_store.Home);
         await using FileStream downloadLock = await AcquireDownloadLockAsync(repository, token);
         RecoverCache(repository, cacheRoot);
         if (IsCached && !checkForUpdates)
@@ -245,8 +245,8 @@ sealed class SampleService
             throw new InvalidOperationException(Loc.Get("launcher.samples.download_required"));
         }
         progress?.Report(new TransferProgress("launcher.samples.downloading"));
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store, repository).GetAsync(token);
-        (EditorRelease Release, ReleaseAsset Asset) selected = SelectBundle(releases, Platform.Identifier, store.Settings.LauncherPrereleases)
+        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(_http, _store, repository).GetAsync(token);
+        (EditorRelease Release, ReleaseAsset Asset) selected = SelectBundle(releases, Platform.Identifier, _store.Settings.LauncherPrereleases)
                                                                ?? throw new InvalidOperationException(Loc.Get("launcher.samples.no_bundle"));
         InstalledBundle? installed = LauncherStore.ReadJson<InstalledBundle>(Path.Combine(cacheRoot, "installed.json"));
         if (IsCached && string.Equals(installed?.Digest, selected.Asset.Digest, StringComparison.OrdinalIgnoreCase))
@@ -260,13 +260,13 @@ sealed class SampleService
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
         }
 
-        Directory.CreateDirectory(store.WorkPath);
-        string staging = Path.Combine(store.WorkPath, "samples-download-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_store.WorkPath);
+        string staging = Path.Combine(_store.WorkPath, "samples-download-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
         {
             string archivePath = Path.Combine(staging, "samples.zip");
-            await PackageDownloadService.DownloadVerifiedAsync(http, selected.Asset, archivePath, progress, token);
+            await PackageDownloadService.DownloadVerifiedAsync(_http, selected.Asset, archivePath, progress, token);
             progress?.Report(new TransferProgress("launcher.samples.extracting"));
             string content = Path.Combine(staging, "content");
             using (ZipArchive archive = ZipFile.OpenRead(archivePath))
@@ -322,8 +322,8 @@ sealed class SampleService
         {
             return;
         }
-        DirectoryReplacementService.RejectLink(store.Home);
-        DirectoryReplacementService.RejectLink(Path.Combine(store.Home, "Samples"));
+        DirectoryReplacementService.RejectLink(_store.Home);
+        DirectoryReplacementService.RejectLink(Path.Combine(_store.Home, "Samples"));
         DirectoryReplacementService.RejectLink(parent);
         DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
 
@@ -372,7 +372,7 @@ sealed class SampleService
         }
     }
 
-    private string DownloadLockPath(string repository) => Path.Combine(store.Home,
+    private string DownloadLockPath(string repository) => Path.Combine(_store.Home,
         "samples-" + GitHubRepositoryHelper.CacheKey(repository) + "-" + Platform.Identifier + ".lock");
 
     private async Task<FileStream> AcquireDownloadLockAsync(string repository, CancellationToken token)

@@ -62,13 +62,15 @@ public sealed partial class Launcher
         _pendingLauncherUpdate = null;
         CancellationToken token = _launcherUpdateCancellation.Token;
         if (!store.Settings.LauncherAutoUpdate || offline || screenshot != null)
+        {
             return;
+        }
         try
         {
             LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
                 .CheckAsync(Platform.Identifier, LauncherVersion, true, token);
             if (!token.IsCancellationRequested && store.Settings.LauncherAutoUpdate
-                && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
+                                               && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
             {
                 _pendingLauncherUpdate = check.Release == null ? null : check;
             }
@@ -110,7 +112,9 @@ public sealed partial class Launcher
         ++_launcherUpdateCheckGeneration;
         _pendingLauncherUpdate = null;
         if (enabled)
+        {
             _ = CheckLauncherInBackgroundAsync();
+        }
     }
 
     private async Task OfferLauncherUpdateAsync(LauncherUpdateCheck check, CancellationToken token)

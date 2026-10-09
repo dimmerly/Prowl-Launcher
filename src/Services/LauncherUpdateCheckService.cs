@@ -14,7 +14,9 @@ sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
         string repository = GitHubRepositoryHelper.Normalize(store.Settings.LauncherRepository);
         bool prereleases = store.Settings.LauncherPrereleases;
         if (automatic && !store.Settings.LauncherAutoUpdate)
+        {
             return new LauncherUpdateCheck(repository, prereleases, null, false);
+        }
         GitHubReleasesService github = new( http, store, repository );
         IReadOnlyList<EditorRelease> releases = await github.GetAsync(token, timeout);
         EditorRelease? release = LauncherUpdaterService.FindUpdate(releases, platform, currentVersion, prereleases);

@@ -40,7 +40,10 @@ public static class Constants
         public const int SettingsLockRetryMilliseconds = 20;
         public const int SampleLockRetryMilliseconds = 100;
         public static readonly TimeSpan SettingsLockTimeout = TimeSpan.FromSeconds(5);
-        public static IReadOnlyList<string> SupportedPlatforms { get; } = Array.AsReadOnly<string>(
+        public static IReadOnlyList<string> SupportedPlatforms
+        {
+            get;
+        } = Array.AsReadOnly<string>(
             ["win-x64", "win-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"]);
     }
 

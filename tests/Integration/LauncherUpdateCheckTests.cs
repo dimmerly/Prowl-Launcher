@@ -22,16 +22,21 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task DisablingAutomaticUpdatesSkipsRequestsButStillAllowsManualChecks()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         store.Settings.LauncherAutoUpdate = false;
         int requests = 0;
-        using HttpClient http = new(new Handler(_ =>
+        using HttpClient http = new( new Handler(_ =>
         {
             requests++;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            { Content = new StringContent(JsonSerializer.Serialize(new[] { Release(1, "1.1.0") })) });
-        }));
-        LauncherUpdateCheckService service = new(http, store);
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new[]
+                {
+                    Release(1, "1.1.0")
+                }))
+            });
+        }) );
+        LauncherUpdateCheckService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         Assert.Equal(0, requests);
         Assert.Equal(1, (await service.CheckAsync("win-x64", "1.0.0", false)).Release!.Id);
@@ -43,7 +48,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [InlineData(true)]
     public void AutomaticUpdatePreferenceDefaultsToEnabledAndPersists(bool enabled)
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         Assert.True(store.Settings.LauncherAutoUpdate);
         store.Settings.LauncherAutoUpdate = enabled;
         store.Save();
