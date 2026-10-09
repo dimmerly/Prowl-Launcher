@@ -18,14 +18,14 @@ public sealed class Settings
     public bool CloseOnEditorLaunch
     {
         get; set;
-    }
+    } = true;
     public string? DefaultEditorKey
     {
         get; set;
     }
     public string ProwlRepository { get; set; } = GitHubRepositoryHelper.DefaultProwl;
     public string LauncherRepository { get; set; } = GitHubRepositoryHelper.LauncherRepository;
-    public bool LauncherPrereleases { get; set; }
+    public bool LauncherPrereleases { get; set; } = true;
     public Dictionary<string, bool> DismissedLauncherReleases { get; set; } = [];
 
     public bool ShowFps

@@ -35,6 +35,8 @@ internal sealed class LauncherFixture : IDisposable
         Store = new LauncherStore(Home);
         if (fresh)
         {
+            Store.Settings.CloseOnEditorLaunch = false;
+            Store.Settings.LauncherPrereleases = false;
             Store.Settings.Locale = "en";
             Store.Settings.RecentProjectsImported = true;
             Store.Settings.RecentProjectMetadataImported = true;

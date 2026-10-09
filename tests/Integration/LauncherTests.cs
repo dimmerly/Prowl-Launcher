@@ -337,7 +337,7 @@ public sealed class LauncherTests : IDisposable
     {
         byte[] bytes = Archive(("Prowl Launcher/Prowl.Launcher.exe", "preview"));
         LauncherStore store = Store();
-        Assert.False(store.Settings.LauncherPrereleases);
+        Assert.True(store.Settings.LauncherPrereleases);
         store.Settings.LauncherPrereleases = optIn;
         store.Save();
         EditorRelease release = Release(bytes) with

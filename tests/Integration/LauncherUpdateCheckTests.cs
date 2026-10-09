@@ -22,6 +22,8 @@ public sealed class LauncherUpdateCheckTests : IDisposable
         LauncherStore store = new(_home);
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0-preview.1", true));
         LauncherUpdateCheckService service = new(http, store);
+        Assert.Equal(2, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
+        store.Settings.LauncherPrereleases = false;
         Assert.Equal(1, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
         store.Settings.LauncherPrereleases = true;
         LauncherUpdateCheck check = await service.CheckAsync("win-x64", "1.0.0", true);
@@ -84,6 +86,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     public async Task CheckRetainsItsSourceAndChannelSoStaleResultsCanBeDiscarded()
     {
         LauncherStore store = new(_home);
+        store.Settings.LauncherPrereleases = false;
         TaskCompletionSource<HttpResponseMessage> response = new();
         using HttpClient http = new(new Handler(request =>
         {
