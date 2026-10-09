@@ -38,6 +38,8 @@ internal static class LauncherStartupService
         Func<ProcessStartInfo, Process?>? start = null)
     {
         string name = "prowl-ready-" + Guid.NewGuid().ToString("N");
+        // Absolute Unix pipe paths avoid adding a potentially long TMPDIR and CoreFxPipe_ prefix.
+        if (!OperatingSystem.IsWindows()) name = Path.Combine("/tmp", name);
         await using NamedPipeServerStream pipe = new(name, PipeDirection.In, 1,
             PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         ProcessStartInfo info = new(executable) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(executable)! };
