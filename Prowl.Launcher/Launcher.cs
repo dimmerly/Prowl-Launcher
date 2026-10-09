@@ -84,6 +84,9 @@ public sealed partial class Launcher(
         _github = new GitHubReleasesService(_http, store);
         _installer = new EditorInstallerService(_http, store);
 
+        try { _installer.RecoverInterruptedOperations(); }
+        catch (IOException error) { LogError(error); }
+
         store.ImportRecentProjects();
         ReloadInstalled();
 

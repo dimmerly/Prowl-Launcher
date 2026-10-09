@@ -31,6 +31,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         RejectLinks(store.WorkPath);
         RejectLinks(store.VersionsPath);
         using FileStream operation = AcquireOperationLock();
+        RecoverInterruptedInstalls();
         string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
         if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
             || source.Scheme != "https" || source.Host != "github.com"
@@ -75,6 +76,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
                 throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
             }
 
+            LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
             if (Directory.Exists(destination))
             {
                 Directory.Move(destination, backup);
@@ -94,6 +96,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
                 throw;
             }
 
+            if (Directory.Exists(backup)) Directory.Delete(backup, true);
             if (store.Settings.DefaultEditorKey == null)
             {
                 store.Settings.DefaultEditorKey = editor.Key;
@@ -109,9 +112,61 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         finally
         {
             // This is a generated child of Work, never a release-supplied path.
-            if (Directory.Exists(work))
+            // Keep the journal and old installation if rollback or backup cleanup failed.
+            if (Directory.Exists(work) && !Directory.Exists(backup))
             {
                 Directory.Delete(work, true);
+            }
+        }
+    }
+
+    public void RecoverInterruptedOperations()
+    {
+        using FileStream operation = AcquireOperationLock();
+        RecoverInterruptedInstalls();
+    }
+
+    internal void RecoverInterruptedInstalls(Action<string, string>? move = null)
+    {
+        if (!Directory.Exists(store.WorkPath)) return;
+        RejectLinks(store.Home);
+        RejectLinks(store.WorkPath);
+        if (Directory.Exists(store.VersionsPath)) RejectLinks(store.VersionsPath);
+        foreach (string work in Directory.EnumerateDirectories(store.WorkPath))
+        {
+            // Only journaled installer work is recoverable; running samples own other folders.
+            if (!Guid.TryParseExact(Path.GetFileName(work), "N", out _)) continue;
+            RejectLinks(work);
+            InstalledEditor? editor = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(work, "repair.json"));
+            if (editor == null) continue;
+            string backup = Path.Combine(work, "previous");
+            try
+            {
+                string destination = store.InstallPath(editor);
+                if (Directory.Exists(backup))
+                {
+                    RejectLinks(backup);
+                    if (!Directory.Exists(destination))
+                    {
+                        Directory.CreateDirectory(store.VersionsPath);
+                        (move ?? Directory.Move)(backup, destination);
+                    }
+                    else
+                    {
+                        RejectLinks(destination);
+                        InstalledEditor? installed = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(destination, "installation.json"));
+                        if (installed != editor || !File.Exists(store.ExecutablePath(installed)))
+                            throw new IOException("The interrupted editor repair has an incomplete destination; its backup was retained.");
+                        Directory.Delete(backup, true);
+                    }
+                }
+                Directory.Delete(work, true);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                // Never discard a previous installation when recovery cannot finish.
+                try { File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Repair recovery retained {work}: {error}\n"); }
+                catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { }
             }
         }
     }
@@ -177,6 +232,7 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
     public void Uninstall(InstalledEditor editor)
     {
         using FileStream operation = AcquireOperationLock();
+        RecoverInterruptedInstalls();
         string path = store.InstallPath(editor);
         if (!Directory.Exists(path))
         {
