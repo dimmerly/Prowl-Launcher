@@ -183,7 +183,8 @@ static string Run(string executable, params string[] arguments)
     ProcessStartInfo start = new(executable) { UseShellExecute = false, RedirectStandardOutput = true };
     foreach (string argument in arguments)
         start.ArgumentList.Add(argument);
-    using Process process = Process.Start(start)!;
+    using Process process = Process.Start(start)
+        ?? throw new InvalidOperationException($"Could not start {executable}.");
     string output = process.StandardOutput.ReadToEnd();
     process.WaitForExit();
     if (process.ExitCode != 0)

@@ -26,7 +26,7 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     }
 
     internal static bool IsRunningInstallation(string executable) =>
-        LauncherStore.PathsEqual(executable, Environment.ProcessPath!)
+        (Environment.ProcessPath is {} processPath && LauncherStore.PathsEqual(executable, processPath))
         || SourcePath() is { } source && LauncherStore.PathsEqual(executable, source);
 
     private static string? SourcePath()
@@ -103,7 +103,8 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     private static void RegisterLinuxApplication(string root, string executable, bool desktopShortcut)
     {
         string icon = Path.Combine(root, "prowl.png");
-        using Stream image = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")!;
+        using Stream image = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
+            ?? throw new InvalidDataException("The launcher icon is missing.");
         using (FileStream file = File.Create(icon))
             image.CopyTo(file);
 
@@ -218,7 +219,10 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     internal static void CreateWindowsShortcut(string path, string executable)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        object shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!;
+        Type shellType = Type.GetTypeFromProgID("WScript.Shell")
+            ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
+        object shell = Activator.CreateInstance(shellType)
+            ?? throw new InvalidOperationException("Windows Script Host could not be started.");
         object? shortcut = null;
         try
         {

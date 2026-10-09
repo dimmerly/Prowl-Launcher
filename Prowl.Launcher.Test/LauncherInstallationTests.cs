@@ -108,7 +108,10 @@ public sealed class LauncherInstallationTests : IDisposable
         string shortcut = Path.Combine(_work, "Desktop", "Prowl Launcher.lnk");
         LauncherInstallationService.CreateWindowsShortcut(shortcut, executable);
         Assert.True(File.Exists(shortcut));
-        object shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!;
+        Type shellType = Type.GetTypeFromProgID("WScript.Shell")
+            ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
+        object shell = Activator.CreateInstance(shellType)
+            ?? throw new InvalidOperationException("Windows Script Host could not be started.");
         object? link = null;
         try
         {
