@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "安定版のみ",
     "launcher.versions.subtitle": "一度インストールして、必要なバージョンを保持できます。",
     "launcher.versions.title": "バージョン",
+    "launcher.versions.update_available": "新しいバージョンがあります: {{version}}",
     "launcher.versions.uninstall": "アンインストール",
     "launcher.versions.uninstall_description": "このエディターのインストールのみ削除されます。プロジェクトのファイルは保持されます。",
     "launcher.versions.uninstall_title": "{{version}}をアンインストールしますか？",

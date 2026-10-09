@@ -13,6 +13,7 @@ internal sealed class LauncherFixture : IDisposable
     internal LauncherStore Store { get; }
     internal HttpClient Http { get; }
     internal EditorRelease EditorRelease { get; }
+    internal List<EditorRelease> EditorReleases { get; }
     internal EditorRelease StableUpdate { get; }
     internal EditorRelease PreviewUpdate { get; }
     internal int LauncherChecks;
@@ -44,6 +45,7 @@ internal sealed class LauncherFixture : IDisposable
         _launcherZip = ProbeArchive("Prowl.Launcher");
         string platform = Platform.Identifier;
         EditorRelease = Release(11, "v1.0.0", false, "ProwlEngine/Prowl", $"Prowl-v1.0.0-{platform}.zip", _editorZip);
+        EditorReleases = [EditorRelease];
         StableUpdate = Release(201, "v2.0.0", false, "dimmerly/Prowl-Launcher", $"Prowl-Launcher-2.0.0-{platform}.zip", _launcherZip);
         PreviewUpdate = Release(202, "v3.0.0-preview.1", true, "dimmerly/Prowl-Launcher", $"Prowl-Launcher-3.0.0-preview.1-{platform}.zip", _launcherZip);
         Http = new HttpClient(new Handler(Respond)) { Timeout = TimeSpan.FromSeconds(20) };
@@ -103,7 +105,7 @@ internal sealed class LauncherFixture : IDisposable
         string path = request.RequestUri!.AbsolutePath;
         if (request.RequestUri.Host == "api.github.com")
         {
-            if (path.EndsWith("/Prowl/releases", StringComparison.Ordinal)) return Json(new[] { EditorRelease });
+            if (path.EndsWith("/Prowl/releases", StringComparison.Ordinal)) return Json(EditorReleases);
             Interlocked.Increment(ref LauncherChecks);
             return Json(_sampleRelease == null ? new[] { PreviewUpdate, StableUpdate } : new[] { _sampleRelease, PreviewUpdate, StableUpdate });
         }

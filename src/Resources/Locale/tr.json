@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "Yalnızca kararlı",
     "launcher.versions.subtitle": "Bir kez yükleyin. Projelerinizin ihtiyaç duyduğu sürümleri tutun.",
     "launcher.versions.title": "Sürümler",
+    "launcher.versions.update_available": "Yeni sürüm mevcut: {{version}}",
     "launcher.versions.uninstall": "Kaldır",
     "launcher.versions.uninstall_description": "Yalnızca bu editör kurulumu kaldırılacak. Proje dosyalarınız korunacak.",
     "launcher.versions.uninstall_title": "{{version}} kaldırılsın mı?",

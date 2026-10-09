@@ -13,6 +13,16 @@ internal static class LauncherScenarios
 
     internal static async Task Prepare(string scenario, LauncherFixture fixture)
     {
+        if (scenario == "EditorUpdateIndicator")
+        {
+            _editor = await fixture.InstallEditor();
+            fixture.EditorReleases.Clear();
+            fixture.EditorReleases.Add(fixture.EditorRelease with
+            {
+                Id = 12, Tag = "v1.1.0-preview.1", Preview = true,
+                Assets = [fixture.EditorRelease.Assets[0] with { Name = $"Prowl-v1.1.0-preview.1-{Platform.Identifier}.zip" }]
+            });
+        }
         if (scenario.StartsWith("Sample", StringComparison.Ordinal))
         {
             fixture.PublishSamples();
@@ -70,6 +80,29 @@ internal static class LauncherScenarios
         await ui.Frame(3);
         switch (scenario)
         {
+            case "EditorUpdateIndicator":
+                bool HasVersionIndicator() => ui.Nodes().Any(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10
+                    && node.GetParentHandle().IsValid && node.GetParentHandle().Data.X == 8
+                    && node.GetParentHandle().Data.Y > 130 && node.GetParentHandle().Data.Y < 150);
+                Check(!HasVersionIndicator(), "The indicator should stay hidden before a newer release is known.");
+                await ui.Navigate("Versions");
+                await ui.ClickText("Refresh");
+                await ui.Wait(HasVersionIndicator, "A newer preview should show the Versions indicator when previews are included.");
+                var indicator = ui.Nodes().First(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
+                var nav = indicator.GetParentHandle();
+                Check(indicator.Data.X > nav.Data.X + nav.Data.LayoutWidth / 2 && indicator.Data.Y < nav.Data.Y + nav.Data.LayoutHeight / 2,
+                    "The update dot should sit in the top-right corner of the Versions tab.");
+                Check(indicator.Data.OnClick == null, "The update dot must leave navigation clicks to its parent tab.");
+                await ui.ClickText("Stable + Preview");
+                await ui.ClickText("Stable only");
+                await ui.Wait(() => !HasVersionIndicator(), "Stable-only selection must hide a preview-only update.");
+                await ui.ClickText("Stable only");
+                await ui.ClickText("Stable + Preview");
+                await ui.Wait(HasVersionIndicator, "Including previews should restore the indicator.");
+                await ui.ClickText("Install");
+                await ui.Wait(() => f.Store.InstalledEditors().Count == 2, "The preview should install through the normal Versions flow.");
+                await ui.Wait(() => !HasVersionIndicator(), "Installing the newest eligible version should clear the indicator.");
+                break;
             case "SampleDownloadOnce":
                 await ui.Navigate("Samples");
                 f.DelaySampleDownload = true;

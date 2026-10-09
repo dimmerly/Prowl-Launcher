@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "Только стабильные",
     "launcher.versions.subtitle": "Установите один раз. Сохраняйте нужные проектам версии.",
     "launcher.versions.title": "Версии",
+    "launcher.versions.update_available": "Доступна новая версия: {{version}}",
     "launcher.versions.uninstall": "Удалить",
     "launcher.versions.uninstall_description": "Будет удалена только эта установка редактора. Файлы проектов останутся на месте.",
     "launcher.versions.uninstall_title": "Удалить {{version}}?",

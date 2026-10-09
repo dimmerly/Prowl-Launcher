@@ -18,7 +18,7 @@ public sealed class UserWorkflowTests
         "CancelUninstall", "ConfirmUninstall", "CorruptDownload", "CancelDownload", "CloseDuringDownload",
         "ManualUpdateChangelog", "ManualReoffersDismissedUpdate", "EnablePrereleases",
         "AcceptHealthyUpdate", "FailedUpdateStartup", "CloseOnEditorLaunch",
-        "SampleDownloadOnce", "SampleUpdateAvailable", "SampleAlreadyLatest"
+        "SampleDownloadOnce", "SampleUpdateAvailable", "SampleAlreadyLatest", "EditorUpdateIndicator"
     }.Select(scenario => new object[] { scenario });
 
     [Theory]

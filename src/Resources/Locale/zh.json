@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "仅稳定版",
     "launcher.versions.subtitle": "安装一次，保留项目所需的版本。",
     "launcher.versions.title": "版本",
+    "launcher.versions.update_available": "有新版本可用：{{version}}",
     "launcher.versions.uninstall": "卸载",
     "launcher.versions.uninstall_description": "仅移除此编辑器安装。项目文件将保留。",
     "launcher.versions.uninstall_title": "卸载 {{version}}？",

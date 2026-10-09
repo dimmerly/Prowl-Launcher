@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "안정판만",
     "launcher.versions.subtitle": "한 번 설치하고 프로젝트에 필요한 버전을 유지하세요.",
     "launcher.versions.title": "버전",
+    "launcher.versions.update_available": "새 버전 사용 가능: {{version}}",
     "launcher.versions.uninstall": "제거",
     "launcher.versions.uninstall_description": "이 에디터 설치만 제거됩니다. 프로젝트 파일은 유지됩니다.",
     "launcher.versions.uninstall_title": "{{version}}을 제거할까요?",

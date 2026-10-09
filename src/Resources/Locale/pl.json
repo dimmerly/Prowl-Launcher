@@ -203,6 +203,7 @@
     "launcher.versions.stable_only": "Tylko stabilne",
     "launcher.versions.subtitle": "Zainstaluj raz. Zachowaj wersje potrzebne twoim projektom.",
     "launcher.versions.title": "Wersje",
+    "launcher.versions.update_available": "Dostępna nowa wersja: {{version}}",
     "launcher.versions.uninstall": "Odinstaluj",
     "launcher.versions.uninstall_description": "Usunięta zostanie tylko ta instalacja edytora. Pliki projektów zostaną zachowane.",
     "launcher.versions.uninstall_title": "Odinstalować {{version}}?",
