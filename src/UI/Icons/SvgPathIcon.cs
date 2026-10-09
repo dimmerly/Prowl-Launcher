@@ -8,7 +8,7 @@ using Prowl.Quill;
 using Prowl.Vector;
 using Prowl.Vector.Spatial;
 
-using Color = System.Drawing.Color;
+using Color=System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
@@ -36,7 +36,10 @@ public sealed class SvgPathIcon : IOrigamiIcon
     {
         if (_element == null)
         {
-            var path = new SvgPathElement { tag = SvgElement.TagType.path };
+            SvgPathElement path = new()
+            {
+                tag = SvgElement.TagType.path
+            };
             path.Attributes["d"] = _pathData;
             path.Attributes["fill"] = "#ffffff"; // placeholder; the draw colour overrides this per call
             path.Attributes["fill-rule"] = "evenodd";
@@ -49,10 +52,13 @@ public sealed class SvgPathIcon : IOrigamiIcon
     /// <summary> Draws the SVG path into the given rect, aspect-fit and centered, tinted with the specified color. </summary>
     public void Draw(Canvas canvas, Rect rect, Color color, float strokeWidth = 1.5f)
     {
-        if (string.IsNullOrEmpty(_pathData)) return;
+        if (string.IsNullOrEmpty(_pathData))
+        {
+            return;
+        }
 
         // Tint the whole shape to the requested colour (icons are drawn in the host's colour).
-        var element = GetElement();
+        SvgElement element = GetElement();
         element.fillType = SvgElement.ColorType.specific;
         element.fill = Color32.FromArgb(color.A, color.R, color.G, color.B);
 

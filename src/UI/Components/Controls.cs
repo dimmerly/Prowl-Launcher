@@ -37,7 +37,10 @@ public sealed partial class Launcher
             .Rounded(_appearance.Theme.Metrics.Rounding)
             .Cursor(PaperCursor.Pointer)
             .Tooltip(updateVersion == null ? Loc.Get(text) : Loc.Get(text) + "\n"
-                + Loc.Get("launcher.versions.update_available", new { version = updateVersion }))
+                                                                           + Loc.Get("launcher.versions.update_available", new
+                                                                           {
+                                                                               version = updateVersion
+                                                                           }))
             .BackgroundColor(selected ? _appearance.Theme.Selected : Color.Transparent)
             .OnClick(_ => click())
             .Icon(p, icon, color, size: 24);

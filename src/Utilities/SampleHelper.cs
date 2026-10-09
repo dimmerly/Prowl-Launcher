@@ -2,12 +2,12 @@ using System.Diagnostics;
 
 namespace Prowl.Launcher;
 
-internal static class SampleHelper
+static class SampleHelper
 {
     public static ProcessStartInfo LaunchInfo(string assemblyPath)
     {
         string directory = Path.GetDirectoryName(assemblyPath)!;
-        ProcessStartInfo launch = new(Path.Combine(directory, OperatingSystem.IsWindows() ? "Prowl.SampleHost.exe" : "Prowl.SampleHost"))
+        ProcessStartInfo launch = new( Path.Combine(directory, OperatingSystem.IsWindows() ? "Prowl.SampleHost.exe" : "Prowl.SampleHost") )
         {
             UseShellExecute = false,
             CreateNoWindow = true,

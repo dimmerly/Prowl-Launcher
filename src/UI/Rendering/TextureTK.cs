@@ -9,7 +9,7 @@ using Prowl.Vector.Geometry;
 
 namespace Prowl.Launcher;
 
-internal sealed class TextureTK(int glHandle) : IDisposable
+sealed class TextureTK(int glHandle) : IDisposable
 {
     public readonly int Handle = glHandle;
 
@@ -17,7 +17,7 @@ internal sealed class TextureTK(int glHandle) : IDisposable
     public uint Height;
 
 
-    public static TextureTK FromImage(Prowl.Aperture.Image image)
+    public static TextureTK FromImage(Aperture.Image image)
     {
         TextureTK texture = CreateNew((uint)image.Width, (uint)image.Height);
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, image.Width, image.Height,
@@ -43,7 +43,10 @@ internal sealed class TextureTK(int glHandle) : IDisposable
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-        return new TextureTK(handle) { Width = width, Height = height };
+        return new TextureTK(handle)
+        {
+            Width = width, Height = height
+        };
     }
 
     // Set the texture data for a specific region of the texture
@@ -68,9 +71,7 @@ internal sealed class TextureTK(int glHandle) : IDisposable
     }
 
     // Dispose of the texture
-    public void Dispose()
-    {
+    public void Dispose() =>
         // Delete the texture
         GL.DeleteTexture(Handle);
-    }
 }

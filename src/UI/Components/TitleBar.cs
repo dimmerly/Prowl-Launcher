@@ -79,7 +79,7 @@ public sealed partial class Launcher
         {
             _languageThemeSource = _appearance.Theme;
             _languageTheme = _languageThemeSource.Clone();
-            _languageTheme.BorderStrong = System.Drawing.Color.Transparent;
+            _languageTheme.BorderStrong = Color.Transparent;
         }
         using IDisposable theme = Origami.PushTheme(_languageTheme!);
         string locale = store.Settings.Locale ?? "en";
@@ -123,7 +123,7 @@ public sealed partial class Launcher
 
     private void ToggleMaximized()
     {
-        var window = _window;
+        LauncherWindow window = _window;
         window.WindowState = window.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 

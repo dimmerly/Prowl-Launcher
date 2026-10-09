@@ -61,12 +61,16 @@ public sealed class LauncherInstallationTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
         File.WriteAllText(executable, "application");
         if (!OperatingSystem.IsWindows())
+        {
             File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        }
         string target = Path.Combine(_work, "Installed.app");
         LauncherInstallationService.CopyApplication(source, target, true, default);
         Assert.Equal("application", File.ReadAllText(Path.Combine(target, relative)));
         if (!OperatingSystem.IsWindows())
+        {
             Assert.True(File.GetUnixFileMode(Path.Combine(target, relative)).HasFlag(UnixFileMode.UserExecute));
+        }
     }
 
     [Fact]
@@ -82,7 +86,7 @@ public sealed class LauncherInstallationTests : IDisposable
     [Fact]
     public void SourceBuildDoesNotOfferSelfInstallation()
     {
-        LauncherStore store = new(_work);
+        LauncherStore store = new( _work );
         Assert.False(LauncherInstallationService.ShouldOffer(store));
     }
 
@@ -104,15 +108,17 @@ public sealed class LauncherInstallationTests : IDisposable
     public void WindowsShortcutTargetsTheInstalledAppIncludingPathsWithSpaces()
     {
         if (!OperatingSystem.IsWindows())
+        {
             return;
+        }
         string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
         string shortcut = Path.Combine(_work, "Desktop", "Prowl Launcher.lnk");
         LauncherInstallationService.CreateWindowsShortcut(shortcut, executable);
         Assert.True(File.Exists(shortcut));
         Type shellType = Type.GetTypeFromProgID("WScript.Shell")
-            ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
+                         ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
         object shell = Activator.CreateInstance(shellType)
-            ?? throw new InvalidOperationException("Windows Script Host could not be started.");
+                       ?? throw new InvalidOperationException("Windows Script Host could not be started.");
         object? link = null;
         try
         {
@@ -123,7 +129,9 @@ public sealed class LauncherInstallationTests : IDisposable
         finally
         {
             if (link != null)
+            {
                 System.Runtime.InteropServices.Marshal.FinalReleaseComObject(link);
+            }
             System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
         }
     }
@@ -131,6 +139,8 @@ public sealed class LauncherInstallationTests : IDisposable
     public void Dispose()
     {
         if (Directory.Exists(_work))
+        {
             Directory.Delete(_work, true);
+        }
     }
 }

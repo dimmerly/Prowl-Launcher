@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "ポータブルのまま使う",
     "launcher.installation.title": "Prowl Launcher をインストールしますか？",
     "launcher.installation.unavailable": "ダウンロードしたランチャーを起動してインストールしてください。",
-
     "launcher.network.offline": "オフライン",
     "launcher.network.offline_description": "インストール済みのエディターと保存済みのリリースを利用できます。",
     "launcher.operations.cancelled": "キャンセルしました",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "プロジェクト",
     "launcher.projects.unfavourite": "お気に入りから削除",
     "launcher.projects.untitled": "無題",
-
     "launcher.samples.controller_showcase_description": "移動とキャラクターコントローラーのサンプルを試せます。",
     "launcher.samples.controller_showcase_name": "コントローラーサンプル",
     "launcher.samples.hello_prowl_description": "アニメーションするキューブ、照明、基本的な物理演算を使ったシンプルなシーンです。",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "このサンプルはダウンロードしたパッケージに含まれていません。",
     "launcher.samples.vehicle_showcase_description": "サンプル車両を運転し、車両の物理演算を体験できます。",
     "launcher.samples.vehicle_showcase_name": "車両サンプル",
-
     "launcher.sdk.get": "SDKを入手",
     "launcher.sdk.open_anyway": "それでも開く",
     "launcher.sdk.required_description": "プロジェクトのスクリプトをコンパイルするには.NET {{sdk}} SDKが必要です。先にインストールするか、そのままエディターを開いてください。",

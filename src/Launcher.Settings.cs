@@ -21,9 +21,7 @@ public sealed partial class Launcher
                 long total = 0;
                 EnumerationOptions options = new()
                 {
-                    RecurseSubdirectories = true,
-                    IgnoreInaccessible = true,
-                    AttributesToSkip = FileAttributes.ReparsePoint
+                    RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint
                 };
                 foreach (FileInfo file in new DirectoryInfo(store.Home).EnumerateFiles("*", options))
                 {
@@ -54,7 +52,7 @@ public sealed partial class Launcher
         ++_launcherUpdateCheckGeneration;
         _pendingLauncherUpdate = null;
         LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
-            .CheckAsync(Platform.Identifier, LauncherVersion, automatic: false, token);
+            .CheckAsync(Platform.Identifier, LauncherVersion, false, token);
         await OfferLauncherUpdateAsync(check, token);
     }
 
@@ -66,27 +64,43 @@ public sealed partial class Launcher
         try
         {
             LauncherUpdateCheck check = await new LauncherUpdateCheckService(_http, store)
-                .CheckAsync(Platform.Identifier, LauncherVersion, automatic: true, token);
+                .CheckAsync(Platform.Identifier, LauncherVersion, true, token);
             if (!token.IsCancellationRequested && generation == _launcherUpdateCheckGeneration && check.Matches(store.Settings))
+            {
                 _pendingLauncherUpdate = check.Release == null ? null : check;
+            }
         }
-        catch (OperationCanceledException) { }
-        catch (Exception error) { LogError(error); }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception error)
+        {
+            LogError(error);
+        }
     }
 
     private void OfferPendingLauncherUpdate()
     {
-        if (_pendingLauncherUpdate is not { Release: { } release } check
-            || Busy || Modal.IsOpen || _showInstallationPrompt) return;
+        if (_pendingLauncherUpdate is not { Release: {} release } check
+            || Busy || Modal.IsOpen || _showInstallationPrompt)
+        {
+            return;
+        }
         _pendingLauncherUpdate = null;
         if (!check.Matches(store.Settings)
-            || LauncherUpdateCheckService.IsDismissed(store.Settings, check.Repository, release.Id)) return;
+            || LauncherUpdateCheckService.IsDismissed(store.Settings, check.Repository, release.Id))
+        {
+            return;
+        }
         Start(token => OfferLauncherUpdateAsync(check, token), "launcher.updates.checking");
     }
 
     private async Task OfferLauncherUpdateAsync(LauncherUpdateCheck check, CancellationToken token)
     {
-        if (!check.Matches(store.Settings)) return;
+        if (!check.Matches(store.Settings))
+        {
+            return;
+        }
         string current = LauncherVersion;
         bool switchToStable = !store.Settings.LauncherPrereleases && current.Split('+')[0].Contains('-');
         EditorRelease? release = check.Release;
@@ -94,9 +108,9 @@ public sealed partial class Launcher
         {
             Notify(
                 check.UsedCache ? "launcher.updates.check_failed"
-                    : switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
+                : switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
                 check.UsedCache ? "launcher.updates.cached_releases"
-                    : switchToStable ? "" : "launcher.updates.no_updates",
+                : switchToStable ? "" : "launcher.updates.no_updates",
                 check.UsedCache ? ToastType.Warning : ToastType.Success
             );
             return;

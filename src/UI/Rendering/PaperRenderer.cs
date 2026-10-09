@@ -12,7 +12,7 @@ using Prowl.Vector.Geometry;
 
 namespace Prowl.Launcher;
 
-internal class PaperRenderer : ICanvasRenderer
+class PaperRenderer : ICanvasRenderer
 {
     // Use shared shader source from Common
     public static string STROKE_FRAGMENT_SHADER => CanvasShaders.Fragment;
@@ -28,21 +28,21 @@ internal class PaperRenderer : ICanvasRenderer
     private int _fontTextureLoc;
     private int _scissorExtLoc = 0;
 
-    static int _scissorTransformLoc;
-    static int _scissorTranslationLoc;
-    static int _brushTransformLoc;
-    static int _brushTranslationLoc;
-    static int _textureTransformLoc;
-    static int _textureTranslationLoc;
-    static int _sdfPxRangeLoc;
-    static float _sdfPxRange = 4f;
-    static int _brushTypeLoc;
-    static int _brushColor1Loc;
-    static int _brushColor2Loc;
-    static int _brushParamsLoc;
-    static int _brushParams2Loc;
-    static int _atlasTexelSizeLoc;
-    static int _backdropFlipYLoc;
+    private static int _scissorTransformLoc;
+    private static int _scissorTranslationLoc;
+    private static int _brushTransformLoc;
+    private static int _brushTranslationLoc;
+    private static int _textureTransformLoc;
+    private static int _textureTranslationLoc;
+    private static int _sdfPxRangeLoc;
+    private static float _sdfPxRange = 4f;
+    private static int _brushTypeLoc;
+    private static int _brushColor1Loc;
+    private static int _brushColor2Loc;
+    private static int _brushParamsLoc;
+    private static int _brushParams2Loc;
+    private static int _atlasTexelSizeLoc;
+    private static int _backdropFlipYLoc;
 
     private Matrix4 _projection;
     private TextureTK _defaultTexture;
@@ -57,15 +57,15 @@ internal class PaperRenderer : ICanvasRenderer
     private int _blurUpProgram;
     private int _downSrcLoc, _downHalfpixelLoc, _downOffsetLoc;
     private int _upSrcLoc, _upHalfpixelLoc, _upOffsetLoc;
-    private int _blurVao;          // empty VAO for fullscreen-triangle draws
-    private int _blurFbo;          // reused framebuffer for the blur passes
+    private int _blurVao; // empty VAO for fullscreen-triangle draws
+    private int _blurFbo; // reused framebuffer for the blur passes
     // How far below the framebuffer the blur pyramid starts: 1 = half res, 2 = quarter. The canvas
     // composites straight from level 0, so this also decides the resolution the backdrop is sampled
     // at. Quarter is four times cheaper across every pass and is imperceptible above roughly an
     // eight pixel radius, since detail finer than the blur is destroyed anyway.
     private const int BlurBaseShift = 2;
     private const int MaxBlurLevels = 6;
-    private int[] _blurTex = new int[MaxBlurLevels];   // mip pyramid, level 0 is half the viewport
+    private int[] _blurTex = new int[MaxBlurLevels]; // mip pyramid, level 0 is half the viewport
     private Vector2i[] _blurSize = new Vector2i[MaxBlurLevels];
     private int _vertexBufferCapacity;
     private int _indexBufferCapacity;
@@ -80,7 +80,7 @@ internal class PaperRenderer : ICanvasRenderer
     private int _sceneW, _sceneH;
     private bool _renderingOffscreen;
 
-    private int _blurBaseW;        // viewport size the pyramid was built for
+    private int _blurBaseW; // viewport size the pyramid was built for
     private int _blurBaseH;
 
     public bool SupportsBackdropBlur => true;
@@ -103,7 +103,13 @@ internal class PaperRenderer : ICanvasRenderer
 
         // Set the default texture
         TextureTK texture = TextureTK.CreateNew(1, 1);
-        byte[] pixelData = new byte[] { 255, 255, 255, 255 };
+        byte[] pixelData = new byte[]
+        {
+            255,
+            255,
+            255,
+            255
+        };
         texture.SetData(new IntRect(0, 0, 1, 1), pixelData);
         _defaultTexture = texture;
 
@@ -134,20 +140,41 @@ internal class PaperRenderer : ICanvasRenderer
 
     private void DeleteBlurObjects()
     {
-        if (_blurDownProgram != 0) GL.DeleteProgram(_blurDownProgram);
-        if (_blurUpProgram != 0) GL.DeleteProgram(_blurUpProgram);
-        if (_blurVao != 0) GL.DeleteVertexArray(_blurVao);
-        if (_blurFbo != 0) GL.DeleteFramebuffer(_blurFbo);
+        if (_blurDownProgram != 0)
+        {
+            GL.DeleteProgram(_blurDownProgram);
+        }
+        if (_blurUpProgram != 0)
+        {
+            GL.DeleteProgram(_blurUpProgram);
+        }
+        if (_blurVao != 0)
+        {
+            GL.DeleteVertexArray(_blurVao);
+        }
+        if (_blurFbo != 0)
+        {
+            GL.DeleteFramebuffer(_blurFbo);
+        }
         for (int i = 0; i < MaxBlurLevels; i++)
         {
-            if (_blurTex[i] != 0) GL.DeleteTexture(_blurTex[i]);
+            if (_blurTex[i] != 0)
+            {
+                GL.DeleteTexture(_blurTex[i]);
+            }
             _blurTex[i] = 0;
         }
         _blurDownProgram = _blurUpProgram = _blurVao = _blurFbo = 0;
-    if (_sceneTex != 0) GL.DeleteTexture(_sceneTex);
-    if (_sceneFbo != 0) GL.DeleteFramebuffer(_sceneFbo);
-    _sceneTex = _sceneFbo = 0;
-    _sceneW = _sceneH = 0;
+        if (_sceneTex != 0)
+        {
+            GL.DeleteTexture(_sceneTex);
+        }
+        if (_sceneFbo != 0)
+        {
+            GL.DeleteFramebuffer(_sceneFbo);
+        }
+        _sceneTex = _sceneFbo = 0;
+        _sceneW = _sceneH = 0;
         _blurBaseW = _blurBaseH = 0;
     }
 
@@ -182,15 +209,15 @@ internal class PaperRenderer : ICanvasRenderer
         _scissorExtLoc = GL.GetUniformLocation(_shaderProgram, "scissorExt");
 
         _scissorTranslationLoc = GL.GetUniformLocation(_shaderProgram, "scissorTranslation");
-            _brushTransformLoc = GL.GetUniformLocation(_shaderProgram, "brushTransform");
-            _brushTranslationLoc = GL.GetUniformLocation(_shaderProgram, "brushTranslation");
+        _brushTransformLoc = GL.GetUniformLocation(_shaderProgram, "brushTransform");
+        _brushTranslationLoc = GL.GetUniformLocation(_shaderProgram, "brushTranslation");
         _brushTypeLoc = GL.GetUniformLocation(_shaderProgram, "brushType");
         _brushColor1Loc = GL.GetUniformLocation(_shaderProgram, "brushColor1");
         _brushColor2Loc = GL.GetUniformLocation(_shaderProgram, "brushColor2");
         _brushParamsLoc = GL.GetUniformLocation(_shaderProgram, "brushParams");
         _brushParams2Loc = GL.GetUniformLocation(_shaderProgram, "brushParams2");
         _textureTransformLoc = GL.GetUniformLocation(_shaderProgram, "textureTransform");
-            _textureTranslationLoc = GL.GetUniformLocation(_shaderProgram, "textureTranslation");
+        _textureTranslationLoc = GL.GetUniformLocation(_shaderProgram, "textureTranslation");
         _sdfPxRangeLoc = GL.GetUniformLocation(_shaderProgram, "sdfPxRange");
         _atlasTexelSizeLoc = GL.GetUniformLocation(_shaderProgram, "atlasTexelSize");
         _backdropFlipYLoc = GL.GetUniformLocation(_shaderProgram, "backdropFlipY");
@@ -227,27 +254,30 @@ internal class PaperRenderer : ICanvasRenderer
         return program;
     }
 
-    private Matrix4 ToTK(Float4x4 mat) => new Matrix4(
+    private Matrix4 ToTK(Float4x4 mat) => new(
         (float)mat[0, 0], (float)mat[1, 0], (float)mat[2, 0], (float)mat[3, 0],
         (float)mat[0, 1], (float)mat[1, 1], (float)mat[2, 1], (float)mat[3, 1],
         (float)mat[0, 2], (float)mat[1, 2], (float)mat[2, 2], (float)mat[3, 2],
         (float)mat[0, 3], (float)mat[1, 3], (float)mat[2, 3], (float)mat[3, 3]
     );
 
-    private OpenTK.Mathematics.Vector4 ToTK(Prowl.Vector.Float4 v) => new OpenTK.Mathematics.Vector4(
+    private Vector4 ToTK(Float4 v) => new(
         (float)v.X, (float)v.Y, (float)v.Z, (float)v.W
     );
 
-    private OpenTK.Mathematics.Vector4 ToTK(Color32 color) => new OpenTK.Mathematics.Vector4(
+    private Vector4 ToTK(Color32 color) => new(
         color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f
     );
 
     private void SetCustomUniforms(int program, ShaderUniforms uniforms)
     {
-        foreach (var kvp in uniforms.Values)
+        foreach (KeyValuePair<string, object> kvp in uniforms.Values)
         {
             int loc = GL.GetUniformLocation(program, kvp.Key);
-            if (loc < 0) continue;
+            if (loc < 0)
+            {
+                continue;
+            }
 
             switch (kvp.Value)
             {
@@ -267,22 +297,21 @@ internal class PaperRenderer : ICanvasRenderer
                     GL.Uniform4(loc, (float)v4.X, (float)v4.Y, (float)v4.Z, (float)v4.W);
                     break;
                 case Float4x4 mat:
-                    var tkMat = ToTK(mat);
+                    Matrix4 tkMat = ToTK(mat);
                     GL.UniformMatrix4(loc, false, ref tkMat);
                     break;
             }
         }
     }
 
-    public object CreateTexture(uint width, uint height)
-    {
-        return TextureTK.CreateNew(width, height);
-    }
+    public object CreateTexture(uint width, uint height) => TextureTK.CreateNew(width, height);
 
     public Int2 GetTextureSize(object texture)
     {
         if (texture is not TextureTK tkTexture)
+        {
             throw new ArgumentException("Invalid texture type");
+        }
 
         return new Int2((int)tkTexture.Width, (int)tkTexture.Height);
     }
@@ -290,7 +319,9 @@ internal class PaperRenderer : ICanvasRenderer
     public void SetTextureData(object texture, IntRect bounds, byte[] data)
     {
         if (texture is not TextureTK tkTexture)
+        {
             throw new ArgumentException("Invalid texture type");
+        }
         tkTexture.SetData(bounds, data);
     }
 
@@ -310,10 +341,18 @@ internal class PaperRenderer : ICanvasRenderer
     private void EnsureSceneTarget(int w, int h)
     {
         if (_sceneTex != 0 && _sceneW == w && _sceneH == h)
+        {
             return;
+        }
 
-        if (_sceneTex != 0) GL.DeleteTexture(_sceneTex);
-        if (_sceneFbo == 0) _sceneFbo = GL.GenFramebuffer();
+        if (_sceneTex != 0)
+        {
+            GL.DeleteTexture(_sceneTex);
+        }
+        if (_sceneFbo == 0)
+        {
+            _sceneFbo = GL.GenFramebuffer();
+        }
 
         _sceneTex = GL.GenTexture();
         GL.BindTexture(TextureTarget.Texture2D, _sceneTex);
@@ -335,15 +374,22 @@ internal class PaperRenderer : ICanvasRenderer
     private void EnsureBlurTargets(int baseW, int baseH)
     {
         if (_blurTex[0] != 0 && _blurBaseW == baseW && _blurBaseH == baseH)
+        {
             return;
+        }
         for (int i = 0; i < MaxBlurLevels; i++)
-            if (_blurTex[i] != 0) GL.DeleteTexture(_blurTex[i]);
+        {
+            if (_blurTex[i] != 0)
+            {
+                GL.DeleteTexture(_blurTex[i]);
+            }
+        }
 
         // Level 0 is half the viewport; each subsequent level halves again.
         for (int i = 0; i < MaxBlurLevels; i++)
         {
-            int w = Math.Max(1, baseW >> (i + BlurBaseShift));
-            int h = Math.Max(1, baseH >> (i + BlurBaseShift));
+            int w = Math.Max(1, baseW >> i + BlurBaseShift);
+            int h = Math.Max(1, baseH >> i + BlurBaseShift);
             _blurSize[i] = new Vector2i(w, h);
             _blurTex[i] = CreateBlurTexture(w, h);
         }
@@ -369,7 +415,7 @@ internal class PaperRenderer : ICanvasRenderer
 
         float r = MathF.Max(radius / (1 << BlurBaseShift), 2f);
         iterations = Math.Clamp((int)MathF.Floor(MathF.Log2(r)) - 1, 1, MaxBlurLevels - 1);
-        offset = Math.Clamp(r / (1 << (iterations + 1)), 0.5f, 6f);
+        offset = Math.Clamp(r / (1 << iterations + 1), 0.5f, 6f);
     }
 
     /// <summary>
@@ -381,7 +427,9 @@ internal class PaperRenderer : ICanvasRenderer
     {
         // Round up on growth so a steadily growing canvas does not resize every frame.
         if (sizeInBytes > capacity)
+        {
             capacity = Math.Max(sizeInBytes, capacity == 0 ? 64 * 1024 : capacity * 2);
+        }
 
         // Same call either way: it allocates on the first pass and orphans on every later one.
         GL.BufferData(target, capacity, IntPtr.Zero, BufferUsageHint.StreamDraw);
@@ -419,14 +467,18 @@ internal class PaperRenderer : ICanvasRenderer
         GL.Uniform1(_downOffsetLoc, offset);
         BlurPass(_sceneTex, _blurTex[0], _blurSize[0], _downHalfpixelLoc, new Vector2i(_fbWidth, _fbHeight));
         for (int i = 0; i < iterations; i++)
+        {
             BlurPass(_blurTex[i], _blurTex[i + 1], _blurSize[i + 1], _downHalfpixelLoc, _blurSize[i]);
+        }
 
         // Upsample chain: level iterations -> ... -> 0.
         GL.UseProgram(_blurUpProgram);
         GL.Uniform1(_upSrcLoc, 0);
         GL.Uniform1(_upOffsetLoc, offset);
         for (int i = iterations; i > 0; i--)
+        {
             BlurPass(_blurTex[i], _blurTex[i - 1], _blurSize[i - 1], _upHalfpixelLoc, _blurSize[i - 1]);
+        }
 
         // Restore state for canvas drawing, back into whichever target the frame is drawing to.
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, _renderingOffscreen ? _sceneFbo : 0);
@@ -463,32 +515,38 @@ internal class PaperRenderer : ICanvasRenderer
 
         // Skip if canvas is empty
         if (drawCalls.Count == 0)
+        {
             return;
+        }
 
         // Only frames that actually contain a frosted shape pay for the offscreen target; anything
-    // else draws straight to the default framebuffer exactly as before.
-    _renderingOffscreen = false;
-    for (int i = 0; i < drawCalls.Count; i++)
-    {
-        if (drawCalls[i].Brush.BackdropBlur > 0f) { _renderingOffscreen = true; break; }
-    }
+        // else draws straight to the default framebuffer exactly as before.
+        _renderingOffscreen = false;
+        for (int i = 0; i < drawCalls.Count; i++)
+        {
+            if (drawCalls[i].Brush.BackdropBlur > 0f)
+            {
+                _renderingOffscreen = true;
+                break;
+            }
+        }
 
-    if (_renderingOffscreen)
-    {
-        EnsureSceneTarget(_fbWidth, _fbHeight);
+        if (_renderingOffscreen)
+        {
+            EnsureSceneTarget(_fbWidth, _fbHeight);
 
-        // Seed with what is already on screen, so a frosted shape blurs whatever the host
-        // drew underneath the canvas and not just the canvas own content.
-        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0);
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _sceneFbo);
-        GL.BlitFramebuffer(0, 0, _fbWidth, _fbHeight, 0, 0, _fbWidth, _fbHeight,
-            ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+            // Seed with what is already on screen, so a frosted shape blurs whatever the host
+            // drew underneath the canvas and not just the canvas own content.
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0);
+            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _sceneFbo);
+            GL.BlitFramebuffer(0, 0, _fbWidth, _fbHeight, 0, 0, _fbWidth, _fbHeight,
+                ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, _sceneFbo);
-        GL.Viewport(0, 0, _fbWidth, _fbHeight);
-    }
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, _sceneFbo);
+            GL.Viewport(0, 0, _fbWidth, _fbHeight);
+        }
 
-    // Configure OpenGL state
+        // Configure OpenGL state
         GL.Disable(EnableCap.DepthTest);
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha);
@@ -525,15 +583,17 @@ internal class PaperRenderer : ICanvasRenderer
         // Active texture unit for sampling
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.Uniform1(_textureSamplerLocation, 0); // texture unit 0
-        GL.Uniform1(_fontTextureLoc, 1);         // texture unit 1: persistent font atlas
+        GL.Uniform1(_fontTextureLoc, 1); // texture unit 1: persistent font atlas
 
         // Draw all draw calls in the canvas
         int indexOffset = 0;
-        foreach (var drawCall in drawCalls)
+        foreach (DrawCall drawCall in drawCalls)
         {
             // Backdrop blur: capture and blur the framebuffer behind this shape first.
             if (drawCall.Brush.BackdropBlur > 0f)
+            {
                 RenderBackdropBlur((float)drawCall.Brush.BackdropBlur);
+            }
 
             // Handle texture binding. Bind the font atlas to unit 1 first, then the brush
             // texture to unit 0 last so the active unit stays 0 for the rest of the setup.
@@ -549,16 +609,22 @@ internal class PaperRenderer : ICanvasRenderer
                 // Set projection (required for all shaders to work correctly)
                 int projLoc = GL.GetUniformLocation(customProgram, "projection");
                 if (projLoc >= 0)
+                {
                     GL.UniformMatrix4(projLoc, false, ref _projection);
+                }
 
                 // Set texture sampler
                 int texLoc = GL.GetUniformLocation(customProgram, "texture0");
                 if (texLoc >= 0)
+                {
                     GL.Uniform1(texLoc, 0);
+                }
 
                 // Set user-provided uniforms
                 if (drawCall.ShaderUniforms != null)
+                {
                     SetCustomUniforms(customProgram, drawCall.ShaderUniforms);
+                }
             }
             else
             {
@@ -570,13 +636,13 @@ internal class PaperRenderer : ICanvasRenderer
                 // folded in, so the shader needs neither a matrix nor a dpi divide.
                 float fbScale = canvas.FramebufferScale;
 
-                drawCall.GetScissor(fbScale, out var scissorXf, out var scissorT, out var extent);
+                drawCall.GetScissor(fbScale, out Float4 scissorXf, out Float2 scissorT, out Float2 extent);
                 GL.Uniform4(_scissorTransformLoc, (float)scissorXf.X, (float)scissorXf.Y, (float)scissorXf.Z, (float)scissorXf.W);
                 GL.Uniform2(_scissorTranslationLoc, (float)scissorT.X, (float)scissorT.Y);
                 GL.Uniform2(_scissorExtLoc, (float)extent.X, (float)extent.Y);
 
                 // Set brush parameters
-                drawCall.GetBrushTransform(fbScale, out var brushXf, out var brushT);
+                drawCall.GetBrushTransform(fbScale, out Float4 brushXf, out Float2 brushT);
                 GL.Uniform4(_brushTransformLoc, (float)brushXf.X, (float)brushXf.Y, (float)brushXf.Z, (float)brushXf.W);
                 GL.Uniform2(_brushTranslationLoc, (float)brushT.X, (float)brushT.Y);
                 GL.Uniform1(_brushTypeLoc, (int)drawCall.Brush.Type);
@@ -586,7 +652,7 @@ internal class PaperRenderer : ICanvasRenderer
                 GL.Uniform2(_brushParams2Loc, (float)drawCall.Brush.CornerRadii, (float)drawCall.Brush.Feather);
 
                 // Set texture transform parameters
-                drawCall.GetTextureTransform(fbScale, out var texXf, out var texT);
+                drawCall.GetTextureTransform(fbScale, out Float4 texXf, out Float2 texT);
                 GL.Uniform4(_textureTransformLoc, (float)texXf.X, (float)texXf.Y, (float)texXf.Z, (float)texXf.W);
                 GL.Uniform2(_textureTranslationLoc, (float)texT.X, (float)texT.Y);
                 GL.Uniform1(_sdfPxRangeLoc, _sdfPxRange);
@@ -596,7 +662,7 @@ internal class PaperRenderer : ICanvasRenderer
                 GL.Uniform1(_backdropTexLoc, 3);
                 // Font atlas texel size, so the text distance field resolves at any zoom. The generated
                 // shader takes this as a uniform rather than calling textureSize.
-                var atlas = drawCall.FontAtlas as TextureTK ?? _defaultTexture;
+                TextureTK atlas = drawCall.FontAtlas as TextureTK ?? _defaultTexture;
                 GL.Uniform2(_atlasTexelSizeLoc, atlas.Width > 0 ? 1f / atlas.Width : 0f, atlas.Height > 0 ? 1f / atlas.Height : 0f);
                 GL.Uniform1(_backdropBlurAmountLoc, (float)drawCall.Brush.BackdropBlur);
                 // The default framebuffer is bottom-left origin here, so the backdrop sample flips.

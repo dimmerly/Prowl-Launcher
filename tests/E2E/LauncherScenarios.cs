@@ -1,11 +1,14 @@
 using System.Text.Json;
+
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
+using Prowl.PaperUI.LayoutEngine;
+
 using static Prowl.Launcher.Test.E2E.UiDriver;
 
 namespace Prowl.Launcher.Test.E2E;
 
-internal static class LauncherScenarios
+static class LauncherScenarios
 {
     private static InstalledEditor? _editor;
     private static Project? _project;
@@ -19,8 +22,16 @@ internal static class LauncherScenarios
             fixture.EditorReleases.Clear();
             fixture.EditorReleases.Add(fixture.EditorRelease with
             {
-                Id = 12, Tag = "v1.1.0-preview.1", Preview = true,
-                Assets = [fixture.EditorRelease.Assets[0] with { Name = $"Prowl-v1.1.0-preview.1-{Platform.Identifier}.zip" }]
+                Id = 12,
+                Tag = "v1.1.0-preview.1",
+                Preview = true,
+                Assets =
+                [
+                    fixture.EditorRelease.Assets[0] with
+                    {
+                        Name = $"Prowl-v1.1.0-preview.1-{Platform.Identifier}.zip"
+                    }
+                ]
             });
         }
         if (scenario.StartsWith("Sample", StringComparison.Ordinal))
@@ -28,31 +39,56 @@ internal static class LauncherScenarios
             fixture.PublishSamples();
             LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
             if (scenario is "SampleUpdateAvailable" or "SampleAlreadyLatest")
+            {
                 await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
-            if (scenario == "SampleUpdateAvailable") fixture.PublishSamples(newer: true);
+            }
+            if (scenario == "SampleUpdateAvailable")
+            {
+                fixture.PublishSamples(newer: true);
+            }
         }
-        string[] installedScenarios = ["CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
+        string[] installedScenarios =
+        [
+            "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
             "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
-            "CorruptDownload", "CloseOnEditorLaunch"];
-        if (installedScenarios.Contains(scenario)) _editor = await fixture.InstallEditor();
-        string[] projectScenarios = ["OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor",
-            "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch"];
-        if (projectScenarios.Contains(scenario)) _project = fixture.AddProject("Alpha Game", _editor);
+            "CorruptDownload", "CloseOnEditorLaunch"
+        ];
+        if (installedScenarios.Contains(scenario))
+        {
+            _editor = await fixture.InstallEditor();
+        }
+        string[] projectScenarios =
+        [
+            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor",
+            "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch"
+        ];
+        if (projectScenarios.Contains(scenario))
+        {
+            _project = fixture.AddProject("Alpha Game", _editor);
+        }
         if (scenario == "SearchProjects")
         {
             fixture.AddProject("Alpha Game");
             fixture.AddProject("Beta Game");
         }
-        if (scenario == "FavoriteProject") fixture.AddProject("Beta Game");
+        if (scenario == "FavoriteProject")
+        {
+            fixture.AddProject("Beta Game");
+        }
         if (scenario is "AddExistingProject" or "DuplicateProjectImport")
         {
             _project = fixture.AddProject("Imported Game");
             fixture.Store.Settings.Projects.Clear();
             fixture.Store.Save();
         }
-        if (scenario == "MissingProject") Directory.Delete(_project!.Path, true);
+        if (scenario == "MissingProject")
+        {
+            Directory.Delete(_project!.Path, true);
+        }
         if (scenario == "RepairEditor" || scenario == "CorruptDownload")
+        {
             File.WriteAllText(fixture.Store.ExecutablePath(_editor!), "broken editor");
+        }
         if (scenario == "RejectExistingProjectFolder")
         {
             Directory.CreateDirectory(Path.Combine(fixture.Projects, "My Game"));
@@ -62,12 +98,22 @@ internal static class LauncherScenarios
         {
             EditorRelease release = fixture.EditorRelease with
             {
-                Id = 12, Tag = "v1.1.0", Assets = [fixture.EditorRelease.Assets[0] with { Name = $"Prowl-v1.1.0-{Platform.Identifier}.zip" }]
+                Id = 12,
+                Tag = "v1.1.0",
+                Assets =
+                [
+                    fixture.EditorRelease.Assets[0] with
+                    {
+                        Name = $"Prowl-v1.1.0-{Platform.Identifier}.zip"
+                    }
+                ]
             };
             _secondEditorKey = (await new EditorInstallerService(fixture.Http, fixture.Store).InstallAsync(release, Platform.Identifier)).Key;
         }
         if (scenario == "ManualReoffersDismissedUpdate")
+        {
             LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+        }
         if (scenario == "CloseOnEditorLaunch")
         {
             fixture.Store.Settings.CloseOnEditorLaunch = true;
@@ -82,14 +128,14 @@ internal static class LauncherScenarios
         {
             case "EditorUpdateIndicator":
                 bool HasVersionIndicator() => ui.Nodes().Any(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10
-                    && node.GetParentHandle().IsValid && node.GetParentHandle().Data.X == 8
-                    && node.GetParentHandle().Data.Y > 130 && node.GetParentHandle().Data.Y < 150);
+                                                                                                 && node.GetParentHandle().IsValid && node.GetParentHandle().Data.X == 8
+                                                                                                 && node.GetParentHandle().Data.Y > 130 && node.GetParentHandle().Data.Y < 150);
                 Check(!HasVersionIndicator(), "The indicator should stay hidden before a newer release is known.");
                 await ui.Navigate("Versions");
                 await ui.ClickText("Refresh");
                 await ui.Wait(HasVersionIndicator, "A newer preview should show the Versions indicator when previews are included.");
-                var indicator = ui.Nodes().First(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
-                var nav = indicator.GetParentHandle();
+                ElementHandle indicator = ui.Nodes().First(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
+                ElementHandle nav = indicator.GetParentHandle();
                 Check(indicator.Data.X > nav.Data.X + nav.Data.LayoutWidth / 2 && indicator.Data.Y < nav.Data.Y + nav.Data.LayoutHeight / 2,
                     "The update dot should sit in the top-right corner of the Versions tab.");
                 Check(indicator.Data.OnClick == null, "The update dot must leave navigation clicks to its parent tab.");
@@ -110,7 +156,7 @@ internal static class LauncherScenarios
                 await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"), "Sample download should show progress at the top.");
                 Check(ui.Text("Downloading samples").Data.Y < ui.Text("Hello Prowl").Data.Y, "Download progress must appear above sample cards.");
                 await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")), "The selected sample should launch after the shared download.");
-                await ui.Wait(() => UiDriver.GetField<object?>(ui.Launcher, "_operation") == null, "Sample startup should finish.");
+                await ui.Wait(() => GetField<object?>(ui.Launcher, "_operation") == null, "Sample startup should finish.");
                 await ui.ClickText("Physics Showcase");
                 await ui.Wait(() => File.ReadAllLines(Path.Combine(f.Home, "sample-launch.log")).Length == 2, "A second sample should use the shared local runtime.");
                 Check(f.SampleDownloads == 1, "All sample cards must share one download.");
@@ -127,7 +173,7 @@ internal static class LauncherScenarios
                 break;
             case "SampleAlreadyLatest":
                 await ui.Navigate("Samples");
-                await ui.Wait(() => !UiDriver.GetField<bool>(ui.Launcher, "_sampleUpdateChecking"), "The background sample check should finish.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher, "_sampleUpdateChecking"), "The background sample check should finish.");
                 await ui.Frame(10);
                 Check(!ui.HasText("Update samples"), "The update button must be hidden without a newer bundle.");
                 Check(f.SampleDownloads == 1, "Checking for updates must not download anything.");
@@ -174,12 +220,17 @@ internal static class LauncherScenarios
                     await ui.Wait(() => ui.HasText(error), "The form should explain why project creation failed.");
                     Check(f.Saved().Projects.Count == 0 && !File.Exists(f.LaunchRecord), "Invalid creation must not register or launch a project.");
                     if (scenario == "RejectExistingProjectFolder")
+                    {
                         Check(File.ReadAllText(Path.Combine(f.Projects, "My Game", "keep.txt")) == "Existing data", "Existing project data must not be overwritten.");
+                    }
                 }
                 break;
             case "OpenPinnedProject":
             case "CloseOnEditorLaunch":
-                if (scenario == "CloseOnEditorLaunch") ui.ExpectClose();
+                if (scenario == "CloseOnEditorLaunch")
+                {
+                    ui.ExpectClose();
+                }
                 await ui.ClickText("Open");
                 if (scenario == "CloseOnEditorLaunch")
                 {
@@ -275,7 +326,9 @@ internal static class LauncherScenarios
                 await ui.Wait(() => Modal.IsOpen, "Uninstall should require confirmation.");
                 await ui.ClickText(scenario == "CancelUninstall" ? "Cancel" : "Uninstall");
                 if (scenario == "CancelUninstall")
+                {
                     Check(File.Exists(f.Store.ExecutablePath(_editor!)), "Cancel must keep the editor installed.");
+                }
                 else
                 {
                     await ui.Wait(() => f.Store.InstalledEditors().Count == 0 && f.Saved().DefaultEditorKey == null,
@@ -382,11 +435,17 @@ internal static class LauncherScenarios
     internal static void AfterClose(string scenario, LauncherFixture fixture)
     {
         if (scenario == "AcceptHealthyUpdate")
-            Check(fixture.Saved().LauncherExecutable is { } path && File.Exists(path), "Only a healthy update may be activated before closing.");
+        {
+            Check(fixture.Saved().LauncherExecutable is {} path && File.Exists(path), "Only a healthy update may be activated before closing.");
+        }
         if (scenario == "CloseDuringDownload")
+        {
             Check(fixture.Store.InstalledEditors().Count == 0 && !Directory.EnumerateDirectories(fixture.Store.WorkPath).Any(),
                 "Closing during download must wait for cancellation and cleanup.");
+        }
         if (scenario == "CloseOnEditorLaunch")
+        {
             Check(fixture.Saved().Projects.Single().LastOpened != default, "Close-on-launch must still persist project history.");
+        }
     }
 }

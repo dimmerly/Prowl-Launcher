@@ -1,4 +1,5 @@
 using System.Drawing;
+
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
@@ -20,14 +21,20 @@ public sealed partial class Launcher
     {
         if (!offline && screenshot == null && !Busy && _samples.IsCached && !_sampleUpdateChecking
             && _sampleUpdatesCheckedRepository != store.Settings.LauncherRepository)
+        {
             _ = CheckSamplesInBackgroundAsync();
+        }
 
         if (_sampleUpdateAvailable && _samples.IsCached && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
+        {
             Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
+        }
 
         IReadOnlyList<Sample> samples = _samples.Catalog;
         if (samples.Count == 0)
+        {
             return;
+        }
 
         const float gap = 12;
         // Leave eight pixels on each edge for the hover scale to expand inside the scroll clip.
@@ -39,7 +46,9 @@ public sealed partial class Launcher
             using (p.Row("sample-row-" + first).Height(cardWidth).Gap(gap).Enter())
             {
                 foreach (Sample sample in samples.Skip(first).Take(columns))
+                {
                     DrawSampleCard(p, sample, cardWidth);
+                }
             }
         }
     }
@@ -52,10 +61,17 @@ public sealed partial class Launcher
         {
             bool available = await _samples.HasUpdateAsync(_backgroundCancellation.Token);
             if (!_backgroundCancellation.IsCancellationRequested && store.Settings.LauncherRepository == repository)
+            {
                 _sampleUpdateAvailable = available;
+            }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested) { }
-        catch (Exception error) { LogError(error); }
+        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception error)
+        {
+            LogError(error);
+        }
         finally
         {
             _sampleUpdateChecking = false;
@@ -86,7 +102,9 @@ public sealed partial class Launcher
             .OnClick(_ =>
             {
                 if (!Busy && runnable)
+                {
                     Start(token => RunSampleAsync(sample, token), "launcher.samples.run");
+                }
             });
         if (runnable && !Busy)
         {
@@ -99,8 +117,9 @@ public sealed partial class Launcher
             using (p.Box(id + "image").PositionType(PositionType.SelfDirected)
                 .Left(0).Top(0).Size(width, width).Clip().IsNotInteractable().Enter())
             {
-                var texture = _sampleThumbnails.Get(sample);
+                TextureTK? texture = _sampleThumbnails.Get(sample);
                 if (texture is not null)
+                {
                     p.Draw((canvas, rect) =>
                     {
                         float w = (float)rect.Size.X, h = (float)rect.Size.Y;
@@ -116,6 +135,7 @@ public sealed partial class Launcher
                         canvas.RoundedRectFilled(x, y, w, h, rounding, Color.White);
                         canvas.RestoreState();
                     });
+                }
             }
             float captionHeight = Math.Max(80, width * 0.25f);
             p.Box(id + "shade").PositionType(PositionType.SelfDirected)
@@ -132,9 +152,11 @@ public sealed partial class Launcher
                     .Wrap(TextWrapMode.Wrap);
                 string description = runnable ? sample.Description : Loc.Get("launcher.samples.unavailable");
                 if (!string.IsNullOrWhiteSpace(description))
+                {
                     p.Box(id + "description").Height(UnitValue.Auto).IsNotInteractable()
                         .Text(description, _font)
                         .FontSize(17).TextColor(Color.FromArgb(235, 239, 246)).Wrap(TextWrapMode.Wrap);
+                }
             }
 
             if (_launchingSampleId == sample.Id)

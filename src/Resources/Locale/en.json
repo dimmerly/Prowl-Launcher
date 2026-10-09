@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "Keep portable",
     "launcher.installation.title": "Install Prowl Launcher?",
     "launcher.installation.unavailable": "Run the downloaded launcher to install it.",
-
     "launcher.network.offline": "Offline",
     "launcher.network.offline_description": "Installed editors and saved releases are available.",
     "launcher.operations.cancelled": "Cancelled",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "Projects",
     "launcher.projects.unfavourite": "Unfavourite",
     "launcher.projects.untitled": "Untitled",
-
     "launcher.samples.controller_showcase_description": "Try movement and character controller examples.",
     "launcher.samples.controller_showcase_name": "Controller Showcase",
     "launcher.samples.hello_prowl_description": "A simple scene with animated cubes, lighting and basic physics.",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "This sample is not included in the downloaded bundle.",
     "launcher.samples.vehicle_showcase_description": "Drive the sample vehicles and explore vehicle physics.",
     "launcher.samples.vehicle_showcase_name": "Vehicle Showcase",
-
     "launcher.sdk.get": "Get SDK",
     "launcher.sdk.open_anyway": "Open anyway",
     "launcher.sdk.required_description": "Prowl needs the .NET {{sdk}} SDK to compile project scripts. Install it first, or open the editor anyway.",

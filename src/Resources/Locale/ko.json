@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "포터블로 사용",
     "launcher.installation.title": "Prowl Launcher를 설치할까요?",
     "launcher.installation.unavailable": "다운로드한 런처를 실행하여 설치하세요.",
-
     "launcher.network.offline": "오프라인",
     "launcher.network.offline_description": "설치된 에디터와 저장된 릴리스를 사용할 수 있습니다.",
     "launcher.operations.cancelled": "취소됨",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "프로젝트",
     "launcher.projects.unfavourite": "즐겨찾기 해제",
     "launcher.projects.untitled": "제목 없음",
-
     "launcher.samples.controller_showcase_description": "이동과 캐릭터 컨트롤러 예제를 체험하세요.",
     "launcher.samples.controller_showcase_name": "컨트롤러 샘플",
     "launcher.samples.hello_prowl_description": "애니메이션 큐브, 조명, 기본 물리 효과가 있는 간단한 장면입니다.",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "이 샘플은 다운로드한 패키지에 포함되어 있지 않습니다.",
     "launcher.samples.vehicle_showcase_description": "샘플 차량을 운전하고 차량 물리를 살펴보세요.",
     "launcher.samples.vehicle_showcase_name": "차량 샘플",
-
     "launcher.sdk.get": "SDK 받기",
     "launcher.sdk.open_anyway": "그래도 열기",
     "launcher.sdk.required_description": "Prowl에서 프로젝트 스크립트를 컴파일하려면 .NET {{sdk}} SDK가 필요합니다. 먼저 설치하거나 에디터를 바로 여세요.",

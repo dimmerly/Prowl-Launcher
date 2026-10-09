@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+
 using Xunit;
 
 namespace Prowl.Launcher.Test;
@@ -8,20 +9,22 @@ namespace Prowl.Launcher.Test;
 public sealed class LauncherUpdateCheckTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlUpdateCheckTests", Guid.NewGuid().ToString("N"));
-    private static EditorRelease Release(long id, string version, bool preview = false) => new(id, "v" + version,
+    private static EditorRelease Release(long id, string version, bool preview = false) => new( id, "v" + version,
         preview, false, DateTimeOffset.UtcNow, "https://github.com/dimmerly/Prowl-Launcher/releases/tag/v" + version,
-        "## Changes\n\n- A new feature\n- A bug fix", [new ReleaseAsset($"Prowl-Launcher-{version}-win-x64.zip", "", 1, null)]);
+        "## Changes\n\n- A new feature\n- A bug fix", [new ReleaseAsset($"Prowl-Launcher-{version}-win-x64.zip", "", 1, null)] );
 
-    private static HttpClient Client(params EditorRelease[] releases) => new(new Handler(_ =>
+    private static HttpClient Client(params EditorRelease[] releases) => new( new Handler(_ =>
         Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-        { Content = new StringContent(JsonSerializer.Serialize(releases)) })));
+        {
+            Content = new StringContent(JsonSerializer.Serialize(releases))
+        })) );
 
     [Fact]
     public async Task OptingIntoPrereleasesSelectsPreviewAndKeepsItsChangelog()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0-preview.1", true));
-        LauncherUpdateCheckService service = new(http, store);
+        LauncherUpdateCheckService service = new( http, store );
         Assert.Equal(2, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
         store.Settings.LauncherPrereleases = false;
         Assert.Equal(1, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
@@ -35,11 +38,11 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task StartupDismissalSurvivesRestartAndManualCheckCanStillOfferIt()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         LauncherUpdateCheckService.Dismiss(store, store.Settings.LauncherRepository, 2);
         store = new LauncherStore(_home);
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0"));
-        LauncherUpdateCheckService service = new(http, store);
+        LauncherUpdateCheckService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         Assert.Equal(2, (await service.CheckAsync("win-x64", "1.0.0", false)).Release!.Id);
     }
@@ -47,7 +50,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task ANewReleaseIsOfferedEvenAfterDismissingThePreviousOne()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         LauncherUpdateCheckService.Dismiss(store, store.Settings.LauncherRepository, 1);
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0"));
         Assert.Equal(2, (await new LauncherUpdateCheckService(http, store).CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
@@ -56,14 +59,14 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task DismissalsStayScopedToRepositoryAndPersistAcrossChannelChanges()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         string repository = store.Settings.LauncherRepository;
         LauncherUpdateCheckService.Dismiss(store, repository, 1);
         LauncherUpdateCheckService.Dismiss(store, repository, 2);
         store.Settings.LauncherPrereleases = true;
         store.Save();
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0-preview.1", true));
-        LauncherUpdateCheckService service = new(http, store);
+        LauncherUpdateCheckService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         store.Settings.LauncherPrereleases = false;
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
@@ -74,7 +77,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public void ConcurrentDismissalsDoNotOverwriteEachOther()
     {
-        LauncherStore first = new(_home), second = new(_home);
+        LauncherStore first = new( _home ), second = new( _home );
         LauncherUpdateCheckService.Dismiss(first, first.Settings.LauncherRepository, 1);
         LauncherUpdateCheckService.Dismiss(second, second.Settings.LauncherRepository, 2);
         Settings saved = new LauncherStore(_home).Settings;
@@ -85,19 +88,24 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task CheckRetainsItsSourceAndChannelSoStaleResultsCanBeDiscarded()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         store.Settings.LauncherPrereleases = false;
         TaskCompletionSource<HttpResponseMessage> response = new();
-        using HttpClient http = new(new Handler(request =>
+        using HttpClient http = new( new Handler(request =>
         {
             Assert.Equal("/repos/dimmerly/Prowl-Launcher/releases", request.RequestUri!.AbsolutePath);
             return response.Task;
-        }));
+        }) );
         Task<LauncherUpdateCheck> pending = new LauncherUpdateCheckService(http, store).CheckAsync("win-x64", "1.0.0", true);
         store.Settings.LauncherPrereleases = true;
         store.Settings.LauncherRepository = "someone/custom-launcher";
         response.SetResult(new HttpResponseMessage(HttpStatusCode.OK)
-        { Content = new StringContent(JsonSerializer.Serialize(new[] { Release(1, "1.1.0") })) });
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new[]
+            {
+                Release(1, "1.1.0")
+            }))
+        });
         LauncherUpdateCheck check = await pending;
         Assert.Equal("dimmerly/Prowl-Launcher", check.Repository);
         Assert.False(check.Prereleases);
@@ -107,9 +115,12 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task ADeadlineUsesCachedReleasesAndReportsThatTheyWereCached()
     {
-        LauncherStore store = new(_home);
-        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[] { Release(1, "1.1.0") });
-        using HttpClient http = new(new StalledHandler());
+        LauncherStore store = new( _home );
+        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[]
+        {
+            Release(1, "1.1.0")
+        });
+        using HttpClient http = new( new StalledHandler() );
         LauncherUpdateCheck check = await new LauncherUpdateCheckService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50));
         Assert.True(check.UsedCache);
@@ -119,8 +130,8 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task ADeadlineWithoutACacheReportsNetworkFailureInsteadOfUserCancellation()
     {
-        LauncherStore store = new(_home);
-        using HttpClient http = new(new StalledHandler());
+        LauncherStore store = new( _home );
+        using HttpClient http = new( new StalledHandler() );
         await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdateCheckService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50)));
     }
@@ -128,9 +139,12 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     [Fact]
     public async Task ExplicitCancellationDoesNotReturnCachedReleases()
     {
-        LauncherStore store = new(_home);
-        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[] { Release(1, "1.1.0") });
-        using HttpClient http = new(new StalledHandler());
+        LauncherStore store = new( _home );
+        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[]
+        {
+            Release(1, "1.1.0")
+        });
+        using HttpClient http = new( new StalledHandler() );
         using CancellationTokenSource cancellation = new();
         Task<LauncherUpdateCheck> check = new LauncherUpdateCheckService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, cancellation.Token, TimeSpan.FromSeconds(10));
@@ -152,5 +166,11 @@ public sealed class LauncherUpdateCheckTests : IDisposable
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request);
     }
 
-    public void Dispose() { if (Directory.Exists(_home)) Directory.Delete(_home, true); }
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 }

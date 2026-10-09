@@ -7,7 +7,7 @@
 
 namespace Prowl.Launcher;
 
-internal static class CanvasShaders
+static class CanvasShaders
 {
     public const string Vertex = @"#version 330
 uniform mat4 projection;

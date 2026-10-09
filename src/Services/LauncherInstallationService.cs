@@ -7,27 +7,31 @@ using Prowl.Rosetta;
 
 namespace Prowl.Launcher;
 
-internal sealed class LauncherInstallationService(LauncherStore store)
+sealed class LauncherInstallationService(LauncherStore store)
 {
     internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled
-        && typeof(Launcher).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true")
-        && SourcePath() != null;
+                                                             && typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+                                                                 .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true")
+                                                             && SourcePath() != null;
 
     internal static string InstallRoot(LauncherStore store)
     {
         if (OperatingSystem.IsMacOS())
+        {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Applications");
+        }
 
         if (OperatingSystem.IsWindows())
+        {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Prowl Launcher");
+        }
 
         return Path.Combine(store.Home, "Application");
     }
 
     internal static bool IsRunningInstallation(string executable) =>
-        (Environment.ProcessPath is {} processPath && LauncherStore.PathsEqual(executable, processPath))
-        || SourcePath() is { } source && LauncherStore.PathsEqual(executable, source);
+        Environment.ProcessPath is {} processPath && LauncherStore.PathsEqual(executable, processPath)
+        || SourcePath() is {} source && LauncherStore.PathsEqual(executable, source);
 
     private static string? SourcePath()
     {
@@ -47,7 +51,7 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     public async Task<string> InstallAsync(bool desktopShortcut, CancellationToken token)
     {
         string source = SourcePath() ?? throw new InvalidOperationException(Loc.Get("launcher.installation.unavailable"));
-        string version = typeof(Launcher).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
+        string version = typeof( Launcher ).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
         string root = InstallRoot(store);
         string fileName = OperatingSystem.IsWindows() ? "Prowl.Launcher.exe" : "Prowl Launcher.AppImage";
         string relative = OperatingSystem.IsMacOS() ? "Prowl Launcher.app" : Path.Combine(version, fileName);
@@ -60,7 +64,9 @@ internal sealed class LauncherInstallationService(LauncherStore store)
             {
                 // A previous attempt may have copied the app before shortcut creation failed.
                 if (!SameApplication(source, destination, OperatingSystem.IsMacOS(), token))
+                {
                     CopyApplication(source, destination, OperatingSystem.IsMacOS(), token);
+                }
             }, token);
         }
 
@@ -97,24 +103,30 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         CreateWindowsShortcut(Path.Combine(programs, "Prowl Launcher.lnk"), executable);
 
         if (desktopShortcut)
+        {
             CreateWindowsShortcut(Path.Combine(DesktopDirectory(), "Prowl Launcher.lnk"), executable);
+        }
     }
 
     private static void RegisterLinuxApplication(string root, string executable, bool desktopShortcut)
     {
         string icon = Path.Combine(root, "prowl.png");
-        using Stream image = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
-            ?? throw new InvalidDataException("The launcher icon is missing.");
+        using Stream image = typeof( Launcher ).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
+                             ?? throw new InvalidDataException("The launcher icon is missing.");
         using (FileStream file = File.Create(icon))
+        {
             image.CopyTo(file);
+        }
 
         string data = Environment.GetEnvironmentVariable("XDG_DATA_HOME")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
+                      ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
         string entry = DesktopEntry(executable, icon);
         WriteDesktopEntry(Path.Combine(data, "applications", "com.prowlengine.launcher.desktop"), entry);
 
         if (desktopShortcut)
+        {
             WriteDesktopEntry(Path.Combine(DesktopDirectory(), "Prowl Launcher.desktop"), entry);
+        }
     }
 
     private static void CreateMacShortcut(string destination)
@@ -123,14 +135,18 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         Directory.CreateDirectory(Path.GetDirectoryName(shortcut)!);
 
         if (!Directory.Exists(shortcut) && !File.Exists(shortcut))
+        {
             Directory.CreateSymbolicLink(shortcut, destination);
+        }
     }
 
     internal static void CopyApplication(string source, string destination, bool bundle, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (File.Exists(destination) || Directory.Exists(destination))
+        {
             throw new IOException(Loc.Get("launcher.installation.already_exists"));
+        }
 
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         string temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -152,9 +168,13 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         finally
         {
             if (Directory.Exists(temporary))
+            {
                 Directory.Delete(temporary, true);
+            }
             else if (File.Exists(temporary))
+            {
                 File.Delete(temporary);
+            }
         }
     }
 
@@ -165,7 +185,9 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         {
             token.ThrowIfCancellationRequested();
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            {
                 throw new IOException(Loc.Get("launcher.errors.archive_link"));
+            }
 
             string target = LauncherStore.SafeChildPath(destination, Path.GetRelativePath(source, path));
             if (Directory.Exists(path))
@@ -184,24 +206,34 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     {
         token.ThrowIfCancellationRequested();
         if (!bundle)
+        {
             return SameFile(source, destination);
+        }
         if (!Directory.Exists(destination))
+        {
             return false;
+        }
         string[] files = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
         if (files.Length != Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Length)
+        {
             return false;
+        }
         foreach (string file in files)
         {
             token.ThrowIfCancellationRequested();
             if (!SameFile(file, LauncherStore.SafeChildPath(destination, Path.GetRelativePath(source, file))))
+            {
                 return false;
+            }
         }
         return true;
 
         static bool SameFile(string source, string target)
         {
             if (!File.Exists(target) || new FileInfo(source).Length != new FileInfo(target).Length)
+            {
                 return false;
+            }
             using FileStream original = File.OpenRead(source);
             using FileStream installed = File.OpenRead(target);
             return SHA256.HashData(original).SequenceEqual(SHA256.HashData(installed));
@@ -212,7 +244,9 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     {
         File.Copy(source, target);
         if (!OperatingSystem.IsWindows())
+        {
             File.SetUnixFileMode(target, File.GetUnixFileMode(source) | UnixFileMode.UserRead);
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -220,9 +254,9 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         Type shellType = Type.GetTypeFromProgID("WScript.Shell")
-            ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
+                         ?? throw new PlatformNotSupportedException("Windows Script Host is unavailable.");
         object shell = Activator.CreateInstance(shellType)
-            ?? throw new InvalidOperationException("Windows Script Host could not be started.");
+                       ?? throw new InvalidOperationException("Windows Script Host could not be started.");
         object? shortcut = null;
         try
         {
@@ -236,7 +270,9 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         finally
         {
             if (shortcut != null)
+            {
                 Marshal.FinalReleaseComObject(shortcut);
+            }
             Marshal.FinalReleaseComObject(shell);
         }
     }
@@ -248,14 +284,14 @@ internal sealed class LauncherInstallationService(LauncherStore store)
     }
 
     internal static string DesktopEntry(string executable, string icon) => $"""
-        [Desktop Entry]
-        Type=Application
-        Name=Prowl Launcher
-        Exec={QuoteDesktopExecutable(executable)}
-        Icon={icon.Replace("\\", "\\\\")}
-        Terminal=false
-        Categories=Development;
-        """.ReplaceLineEndings("\n") + "\n";
+                                                                            [Desktop Entry]
+                                                                            Type=Application
+                                                                            Name=Prowl Launcher
+                                                                            Exec={QuoteDesktopExecutable(executable)}
+                                                                            Icon={icon.Replace("\\", "\\\\")}
+                                                                            Terminal=false
+                                                                            Categories=Development;
+                                                                            """.ReplaceLineEndings("\n") + "\n";
 
     internal static string QuoteDesktopExecutable(string path) => "\"" + path
         .Replace("\\", "\\\\\\\\")
@@ -269,6 +305,8 @@ internal sealed class LauncherInstallationService(LauncherStore store)
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, entry);
         if (!OperatingSystem.IsWindows())
+        {
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
     }
 }

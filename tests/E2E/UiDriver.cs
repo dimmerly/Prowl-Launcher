@@ -1,14 +1,17 @@
 using System.Diagnostics;
 using System.Reflection;
+
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+
+using Prowl.Aperture;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 
 namespace Prowl.Launcher.Test.E2E;
 
 /// <summary>Drives the real rendered Paper tree through its pointer/key input pipeline.</summary>
-internal sealed class UiDriver(Launcher launcher, string diagnostics)
+sealed class UiDriver(Launcher launcher, string diagnostics)
 {
     private readonly List<TaskCompletionSource> _frames = [];
     private GameWindow _window = null!;
@@ -21,39 +24,52 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     internal Paper Paper => _paper;
     internal Launcher Launcher => launcher;
 
-    internal void Attach(Func<UiDriver, Task> scenario)
+    internal void Attach(Func<UiDriver, Task> scenario) => _ = Task.Run(async () =>
     {
-        _ = Task.Run(async () =>
+        Stopwatch timeout = Stopwatch.StartNew();
+        while (GetField<GameWindow?>(launcher, "_window") is not {} window)
         {
-            Stopwatch timeout = Stopwatch.StartNew();
-            while (GetField<GameWindow?>(launcher, "_window") is not { } window)
+            if (timeout.Elapsed > TimeSpan.FromSeconds(10))
             {
-                if (timeout.Elapsed > TimeSpan.FromSeconds(10)) throw new TimeoutException("The native window was not created.");
-                await Task.Delay(10);
+                throw new TimeoutException("The native window was not created.");
             }
-            _window = GetField<GameWindow>(launcher, "_window");
-            _window.RenderFrame += _ => OnFrame(scenario);
-        });
-    }
+            await Task.Delay(10);
+        }
+        _window = GetField<GameWindow>(launcher, "_window");
+        _window.RenderFrame += _ => OnFrame(scenario);
+    });
 
     private void OnFrame(Func<UiDriver, Task> scenario)
     {
-        if (GetField<Paper?>(launcher, "_paper") is not { } paper || paper.ElementCount == 0) return;
+        if (GetField<Paper?>(launcher, "_paper") is not {} paper || paper.ElementCount == 0)
+        {
+            return;
+        }
         _paper = paper;
         _window.IsVisible = false;
         // Hidden windows are normally throttled to 5 Hz. Keep automation deterministic and responsive.
         SetField(launcher, "_windowResizing", true);
         TaskCompletionSource[] pending = _frames.ToArray();
         _frames.Clear();
-        foreach (var frame in pending) frame.TrySetResult();
-        if (_started) return;
+        foreach (TaskCompletionSource frame in pending)
+        {
+            frame.TrySetResult();
+        }
+        if (_started)
+        {
+            return;
+        }
         _started = true;
         _ = RunScenario(scenario);
     }
 
     private async Task RunScenario(Func<UiDriver, Task> scenario)
     {
-        try { await scenario(this); Completed = true; }
+        try
+        {
+            await scenario(this);
+            Completed = true;
+        }
         catch (Exception error)
         {
             Failure = error;
@@ -69,7 +85,7 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     {
         for (int i = 0; i < count; i++)
         {
-            TaskCompletionSource next = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource next = new( TaskCreationOptions.RunContinuationsAsynchronously );
             _frames.Add(next);
             await next.Task.WaitAsync(TimeSpan.FromSeconds(10));
         }
@@ -81,9 +97,15 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
         pending.Push(_paper.RootElement);
         while (pending.TryPop(out ElementHandle node))
         {
-            if (!node.IsValid) continue;
+            if (!node.IsValid)
+            {
+                continue;
+            }
             yield return node;
-            foreach (int child in node.Data.ChildIndices.AsEnumerable().Reverse()) pending.Push(new ElementHandle(_paper, child));
+            foreach (int child in node.Data.ChildIndices.AsEnumerable().Reverse())
+            {
+                pending.Push(new ElementHandle(_paper, child));
+            }
         }
     }
 
@@ -98,7 +120,9 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     private static ElementHandle InteractiveAncestor(ElementHandle node)
     {
         while (node.IsValid && node.Data.OnClick == null && node.Data.OnPress == null && node.Data.OnTextInput == null)
+        {
             node = node.GetParentHandle();
+        }
         return node;
     }
 
@@ -106,35 +130,64 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
     // Read those snapshots for selection; all actions still travel through Paper input.
     private IEnumerable<string> Labels(ElementHandle node)
     {
-        if (node.Data.Paragraph is { } paragraph) yield return paragraph;
+        if (node.Data.Paragraph is {} paragraph)
+        {
+            yield return paragraph;
+        }
         if (node.Data.OnTextInput != null)
         {
-            var state = _paper.GetElementStorage<ElementBuilder.TextInputState>(node, "TextInputState", default);
-            if (state.Value is { } text) yield return text;
+            ElementBuilder.TextInputState state = _paper.GetElementStorage<ElementBuilder.TextInputState>(node, "TextInputState", default);
+            if (state.Value is {} text)
+            {
+                yield return text;
+            }
         }
         object data = node.Data;
-        foreach (string name in new[] { "_renderCommands", "_foregroundRenderCommands" })
+        foreach (string name in new[]
+            {
+                "_renderCommands",
+                "_foregroundRenderCommands"
+            })
         {
-            if (data.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(data) is not System.Collections.IEnumerable commands) continue;
+            if (data.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(data) is not System.Collections.IEnumerable commands)
+            {
+                continue;
+            }
             foreach (object command in commands)
             {
                 object? action = command.GetType().GetField("RenderAction")?.GetValue(command)
-                    ?? command.GetType().GetProperty("RenderAction")?.GetValue(command);
+                                 ?? command.GetType().GetProperty("RenderAction")?.GetValue(command);
                 if (action is Delegate render)
-                    foreach (string label in SnapshotLabels(render.Target, 0)) yield return label;
+                {
+                    foreach (string label in SnapshotLabels(render.Target, 0))
+                    {
+                        yield return label;
+                    }
+                }
             }
         }
     }
 
     private static IEnumerable<string> SnapshotLabels(object? value, int depth)
     {
-        if (value == null || depth > 2) yield break;
+        if (value == null || depth > 2)
+        {
+            yield break;
+        }
         foreach (FieldInfo field in value.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
         {
             object? child = field.GetValue(value);
-            if (child is string text && field.Name is "Label" or "Text" or "Placeholder" or "_placeholder" or "value") yield return text;
+            if (child is string text && field.Name is "Label" or "Text" or "Placeholder" or "_placeholder" or "value")
+            {
+                yield return text;
+            }
             else if (child != null && (field.FieldType.Name.Contains("Snapshot") || field.FieldType.Name.Contains("DisplayClass") || field.FieldType.Name == "TextInputSettings"))
-                foreach (string label in SnapshotLabels(child, depth + 1)) yield return label;
+            {
+                foreach (string label in SnapshotLabels(child, depth + 1))
+                {
+                    yield return label;
+                }
+            }
         }
     }
 
@@ -143,7 +196,10 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
         Stopwatch clock = Stopwatch.StartNew();
         while (!condition())
         {
-            if (clock.Elapsed.TotalSeconds > seconds) throw new TimeoutException(description + "\n" + DumpTree());
+            if (clock.Elapsed.TotalSeconds > seconds)
+            {
+                throw new TimeoutException(description + "\n" + DumpTree());
+            }
             await Frame();
         }
     }
@@ -153,7 +209,9 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
         await Wait(() => Text(text).IsValid, "Expected visible control: " + text);
         ElementHandle node = Text(text);
         while (node.IsValid && node.Data.OnClick == null && node.Data.OnPress == null && node.Data.OnTextInput == null)
+        {
             node = node.GetParentHandle();
+        }
         Check(node.IsValid, "No interactive ancestor for " + text);
         await Click(node);
     }
@@ -240,7 +298,10 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
 
     internal static void Check(bool condition, string description)
     {
-        if (!condition) throw new InvalidOperationException(description);
+        if (!condition)
+        {
+            throw new InvalidOperationException(description);
+        }
     }
 
     internal void Close()
@@ -255,8 +316,11 @@ internal sealed class UiDriver(Launcher launcher, string diagnostics)
         byte[] pixels = new byte[width * height * 4], flipped = new byte[width * height * 4];
         OpenTK.Graphics.OpenGL4.GL.ReadPixels(0, 0, width, height,
             OpenTK.Graphics.OpenGL4.PixelFormat.Rgba, OpenTK.Graphics.OpenGL4.PixelType.UnsignedByte, pixels);
-        for (int y = 0; y < height; y++) Array.Copy(pixels, y * width * 4, flipped, (height - 1 - y) * width * 4, width * 4);
-        using var image = Prowl.Aperture.Image.FromPixels(flipped, width, height, Prowl.Aperture.PixelFormat.Rgba8);
+        for (int y = 0; y < height; y++)
+        {
+            Array.Copy(pixels, y * width * 4, flipped, (height - 1 - y) * width * 4, width * 4);
+        }
+        using Image image = Aperture.Image.FromPixels(flipped, width, height, Aperture.PixelFormat.Rgba8);
         image.Save(path);
     }
 

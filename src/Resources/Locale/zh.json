@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "保持便携",
     "launcher.installation.title": "安装 Prowl Launcher？",
     "launcher.installation.unavailable": "运行下载的启动器以进行安装。",
-
     "launcher.network.offline": "离线",
     "launcher.network.offline_description": "可使用已安装的编辑器和已保存的版本。",
     "launcher.operations.cancelled": "已取消",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "项目",
     "launcher.projects.unfavourite": "取消收藏",
     "launcher.projects.untitled": "未命名",
-
     "launcher.samples.controller_showcase_description": "体验移动和角色控制器示例。",
     "launcher.samples.controller_showcase_name": "控制器示例",
     "launcher.samples.hello_prowl_description": "包含动画方块、灯光和基础物理的简单场景。",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "此示例不包含在下载的包中。",
     "launcher.samples.vehicle_showcase_description": "驾驶示例车辆并探索车辆物理。",
     "launcher.samples.vehicle_showcase_name": "车辆示例",
-
     "launcher.sdk.get": "获取 SDK",
     "launcher.sdk.open_anyway": "仍然打开",
     "launcher.sdk.required_description": "Prowl 需要 .NET {{sdk}} SDK 来编译项目脚本。请先安装，或仍然打开编辑器。",

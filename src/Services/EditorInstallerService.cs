@@ -36,8 +36,13 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
         if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
             || source.Scheme != "https" || source.Host != "github.com"
             || !source.AbsolutePath.StartsWith($"/{repository}/releases/download/", StringComparison.OrdinalIgnoreCase))
+        {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
-        InstalledEditor editor = new( release.Id, release.Tag, platform, "", DateTimeOffset.UtcNow ) { Repository = repository };
+        }
+        InstalledEditor editor = new( release.Id, release.Tag, platform, "", DateTimeOffset.UtcNow )
+        {
+            Repository = repository
+        };
         string destination = store.InstallPath(editor);
         if (Directory.Exists(destination))
         {
@@ -96,7 +101,10 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
                 throw;
             }
 
-            if (Directory.Exists(backup)) Directory.Delete(backup, true);
+            if (Directory.Exists(backup))
+            {
+                Directory.Delete(backup, true);
+            }
             if (store.Settings.DefaultEditorKey == null)
             {
                 store.Settings.DefaultEditorKey = editor.Key;
@@ -128,17 +136,29 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
 
     internal void RecoverInterruptedInstalls(Action<string, string>? move = null)
     {
-        if (!Directory.Exists(store.WorkPath)) return;
+        if (!Directory.Exists(store.WorkPath))
+        {
+            return;
+        }
         RejectLinks(store.Home);
         RejectLinks(store.WorkPath);
-        if (Directory.Exists(store.VersionsPath)) RejectLinks(store.VersionsPath);
+        if (Directory.Exists(store.VersionsPath))
+        {
+            RejectLinks(store.VersionsPath);
+        }
         foreach (string work in Directory.EnumerateDirectories(store.WorkPath))
         {
             // Only journaled installer work is recoverable; running samples own other folders.
-            if (!Guid.TryParseExact(Path.GetFileName(work), "N", out _)) continue;
+            if (!Guid.TryParseExact(Path.GetFileName(work), "N", out _))
+            {
+                continue;
+            }
             RejectLinks(work);
             InstalledEditor? editor = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(work, "repair.json"));
-            if (editor == null) continue;
+            if (editor == null)
+            {
+                continue;
+            }
             string backup = Path.Combine(work, "previous");
             try
             {
@@ -156,7 +176,9 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
                         RejectLinks(destination);
                         InstalledEditor? installed = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(destination, "installation.json"));
                         if (installed != editor || !File.Exists(store.ExecutablePath(installed)))
+                        {
                             throw new IOException("The interrupted editor repair has an incomplete destination; its backup was retained.");
+                        }
                         Directory.Delete(backup, true);
                     }
                 }
@@ -165,8 +187,13 @@ public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
             {
                 // Never discard a previous installation when recovery cannot finish.
-                try { File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Repair recovery retained {work}: {error}\n"); }
-                catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { }
+                try
+                {
+                    File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Repair recovery retained {work}: {error}\n");
+                }
+                catch (Exception logError) when (logError is IOException or UnauthorizedAccessException)
+                {
+                }
             }
         }
     }

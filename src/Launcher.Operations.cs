@@ -44,7 +44,10 @@ public sealed partial class Launcher
             await action(_operation.Token);
             if (_restart != null)
             {
-                Process.Start(new ProcessStartInfo(_restart) { UseShellExecute = false });
+                Process.Start(new ProcessStartInfo(_restart)
+                {
+                    UseShellExecute = false
+                });
                 _closeAfterCancel = true;
             }
         }
@@ -84,11 +87,14 @@ public sealed partial class Launcher
         try
         {
             _immediateProgress = !_samples.IsCached;
-            if (_immediateProgress) _operationTitle = "launcher.samples.downloading";
-            await _samples.EnsureDownloadedAsync(Transfer(), token, allowNetwork: !offline);
+            if (_immediateProgress)
+            {
+                _operationTitle = "launcher.samples.downloading";
+            }
+            await _samples.EnsureDownloadedAsync(Transfer(), token, !offline);
             _immediateProgress = false;
             _operationTitle = "launcher.samples.run";
-            await _samples.RunAsync(sample, Transfer(), token, allowNetwork: !offline);
+            await _samples.RunAsync(sample, Transfer(), token, !offline);
         }
         finally
         {

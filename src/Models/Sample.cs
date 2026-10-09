@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+
 using Prowl.Rosetta;
 
 namespace Prowl.Launcher;

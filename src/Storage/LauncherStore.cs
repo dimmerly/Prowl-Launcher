@@ -3,6 +3,7 @@ using Prowl.Rosetta;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace Prowl.Launcher;
@@ -54,13 +55,20 @@ public sealed class LauncherStore
         Dictionary<string, Project> existing = Settings.Projects.ToDictionary(p => ProjectPath(p.Path));
         foreach (Project project in saved.Projects)
         {
-            if (!existing.TryGetValue(ProjectPath(project.Path), out Project? current)) continue;
-            foreach (var property in typeof(Project).GetProperties())
+            if (!existing.TryGetValue(ProjectPath(project.Path), out Project? current))
+            {
+                continue;
+            }
+            foreach (PropertyInfo property in typeof( Project ).GetProperties())
+            {
                 property.SetValue(current, property.GetValue(project));
+            }
         }
         saved.Projects = saved.Projects.Select(p => existing.GetValueOrDefault(ProjectPath(p.Path)) ?? p).ToList();
-        foreach (var property in typeof(Settings).GetProperties())
+        foreach (PropertyInfo property in typeof( Settings ).GetProperties())
+        {
             property.SetValue(Settings, property.GetValue(saved));
+        }
         _savedSettings = Snapshot(saved);
     }
 
@@ -69,8 +77,14 @@ public sealed class LauncherStore
         Stopwatch clock = Stopwatch.StartNew();
         while (true)
         {
-            try { return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-            catch (IOException) when (clock.Elapsed < TimeSpan.FromSeconds(5)) { Thread.Sleep(20); }
+            try
+            {
+                return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException) when (clock.Elapsed < TimeSpan.FromSeconds(5))
+            {
+                Thread.Sleep(20);
+            }
         }
     }
 
@@ -91,20 +105,32 @@ public sealed class LauncherStore
             return settings;
         }
 
-        if (File.Exists(path)) PreserveDamagedSettings(path);
+        if (File.Exists(path))
+        {
+            PreserveDamagedSettings(path);
+        }
         string backup = path + ".bak";
         settings = ReadSettings(backup);
         bool restored = settings != null;
-        if (settings == null && File.Exists(backup)) PreserveDamagedSettings(backup);
+        if (settings == null && File.Exists(backup))
+        {
+            PreserveDamagedSettings(backup);
+        }
         settings ??= new Settings();
         NormalizeSettings(settings);
-        if (restored) WriteJson(path, settings);
+        if (restored)
+        {
+            WriteJson(path, settings);
+        }
         return settings;
     }
 
     private static Settings? ReadSettings(string path)
     {
-        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), JsonOptions); }
+        try
+        {
+            return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), JsonOptions);
+        }
         catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException or JsonException)
         {
             return null;
@@ -120,18 +146,33 @@ public sealed class LauncherStore
         Dictionary<string, Project> projects = [];
         foreach (Project? project in settings.Projects ?? [])
         {
-            if (project == null || string.IsNullOrWhiteSpace(project.Path)) continue;
+            if (project == null || string.IsNullOrWhiteSpace(project.Path))
+            {
+                continue;
+            }
             string key;
-            try { key = ProjectPath(project.Path); }
-            catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException) { continue; }
-            project.Name ??= System.IO.Path.GetFileName(project.Path);
+            try
+            {
+                key = ProjectPath(project.Path);
+            }
+            catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                continue;
+            }
+            project.Name ??= Path.GetFileName(project.Path);
             if (projects.TryGetValue(key, out Project? existing))
             {
                 existing.Favorite |= project.Favorite;
                 existing.EditorKey ??= project.EditorKey;
-                if (project.LastOpened > existing.LastOpened) existing.LastOpened = project.LastOpened;
+                if (project.LastOpened > existing.LastOpened)
+                {
+                    existing.LastOpened = project.LastOpened;
+                }
             }
-            else projects.Add(key, project);
+            else
+            {
+                projects.Add(key, project);
+            }
         }
         settings.Projects = projects.Values.ToList();
         settings.ProwlRepository = ValidRepository(settings.ProwlRepository, GitHubRepositoryHelper.DefaultProwl);
@@ -139,9 +180,18 @@ public sealed class LauncherStore
 
         static string ValidRepository(string? value, string fallback)
         {
-            if (value == null) return fallback;
-            try { return GitHubRepositoryHelper.Normalize(value); }
-            catch (InvalidDataException) { return fallback; }
+            if (value == null)
+            {
+                return fallback;
+            }
+            try
+            {
+                return GitHubRepositoryHelper.Normalize(value);
+            }
+            catch (InvalidDataException)
+            {
+                return fallback;
+            }
         }
     }
 
@@ -152,27 +202,46 @@ public sealed class LauncherStore
     private static void MergeProperties(JsonObject baseline, JsonObject local, JsonObject target, params string[] skip)
     {
         foreach ((string key, JsonNode? value) in local)
-            if (!skip.Contains(key) && !JsonNode.DeepEquals(baseline[key], value)) target[key] = value?.DeepClone();
+        {
+            if (!skip.Contains(key) && !JsonNode.DeepEquals(baseline[key], value))
+            {
+                target[key] = value?.DeepClone();
+            }
+        }
     }
 
     private static JsonArray MergeProjects(JsonArray baseline, JsonArray local, JsonArray disk)
     {
         Dictionary<string, JsonObject> Index(JsonArray projects) => projects.Cast<JsonObject>()
             .ToDictionary(p => ProjectPath(p["Path"]!.GetValue<string>()));
-        var before = Index(baseline);
-        var edits = Index(local);
-        var merged = Index(disk);
-        foreach (string removed in before.Keys.Except(edits.Keys)) merged.Remove(removed);
+        Dictionary<string, JsonObject> before = Index(baseline);
+        Dictionary<string, JsonObject> edits = Index(local);
+        Dictionary<string, JsonObject> merged = Index(disk);
+        foreach (string removed in before.Keys.Except(edits.Keys))
+        {
+            merged.Remove(removed);
+        }
         foreach ((string path, JsonObject project) in edits)
         {
             if (before.TryGetValue(path, out JsonObject? original))
             {
-                if (JsonNode.DeepEquals(original, project)) continue;
+                if (JsonNode.DeepEquals(original, project))
+                {
+                    continue;
+                }
                 if (!merged.TryGetValue(path, out JsonObject? target))
+                {
                     merged[path] = (JsonObject)project.DeepClone();
-                else MergeProperties(original, project, target);
+                }
+                else
+                {
+                    MergeProperties(original, project, target);
+                }
             }
-            else merged[path] = (JsonObject)project.DeepClone();
+            else
+            {
+                merged[path] = (JsonObject)project.DeepClone();
+            }
         }
         return new JsonArray(merged.Values.Select(p => (JsonNode)p.DeepClone()).ToArray());
     }
@@ -209,7 +278,7 @@ public sealed class LauncherStore
     public string InstallPath(InstalledEditor editor)
     {
         if (editor.ReleaseId <= 0 || !SupportedPlatforms.Contains(editor.Platform)
-            || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
+                                  || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
         }
@@ -302,12 +371,10 @@ public sealed class LauncherStore
         // Match both historical preview-4 tags and the editor's newer preview.4 version format.
         InstalledEditor? matching = InstalledEditors()
             .FirstOrDefault(e => e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
-                && NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
+                                 && NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
         Project project = new()
         {
-            Name = name,
-            Path = root,
-            EditorKey = matching?.Key ?? Settings.DefaultEditorKey
+            Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
         };
         Settings.Projects.Add(project);
         Save();

@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "Taşınabilir kullan",
     "launcher.installation.title": "Prowl Launcher kurulsun mu?",
     "launcher.installation.unavailable": "Kurmak için indirdiğiniz launcher’ı çalıştırın.",
-
     "launcher.network.offline": "Çevrimdışı",
     "launcher.network.offline_description": "Yüklü editörler ve kaydedilen sürümler kullanılabilir.",
     "launcher.operations.cancelled": "İptal edildi",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "Projeler",
     "launcher.projects.unfavourite": "Favorilerden kaldır",
     "launcher.projects.untitled": "Adsiz",
-
     "launcher.samples.controller_showcase_description": "Hareket ve karakter kontrolcüsü örneklerini deneyin.",
     "launcher.samples.controller_showcase_name": "Kontrolcü örneği",
     "launcher.samples.hello_prowl_description": "Animasyonlu küpler, aydınlatma ve temel fizik içeren basit bir sahne.",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "Bu örnek indirilen pakete dahil değil.",
     "launcher.samples.vehicle_showcase_description": "Örnek araçları sürün ve araç fiziğini keşfedin.",
     "launcher.samples.vehicle_showcase_name": "Araç örneği",
-
     "launcher.sdk.get": "SDK edin",
     "launcher.sdk.open_anyway": "Yine de aç",
     "launcher.sdk.required_description": "Proje betiklerini derlemek için Prowl, .NET {{sdk}} SDK gerektirir. Önce yükleyin veya editörü yine de açın.",

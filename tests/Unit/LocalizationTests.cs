@@ -27,12 +27,12 @@ public sealed class LocalizationTests
         Loc.Configure(config => config
             .SetFallbackLocale("en")
             .SetLocale("en")
-            .AddProvider(new EmbeddedResourceProvider(typeof(Launcher).Assembly, "Prowl.Launcher.Locale")));
+            .AddProvider(new EmbeddedResourceProvider(typeof( Launcher ).Assembly, "Prowl.Launcher.Locale")));
 
-        Sample translated = new("HelloProwl");
+        Sample translated = new( "HelloProwl" );
         Assert.Equal("Hello Prowl", translated.Name);
         Assert.Equal(Catalog("en")["launcher.samples.hello_prowl_description"], translated.Description);
-        Sample unknown = new("NewHTTPSample");
+        Sample unknown = new( "NewHTTPSample" );
         Assert.Equal("New HTTP Sample", unknown.Name);
         Assert.Equal("", unknown.Description);
     }

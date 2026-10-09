@@ -14,7 +14,8 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
     );
     public bool UsedCache
     {
-        get; private set;
+        get;
+        private set;
     }
 
     public async Task<IReadOnlyList<EditorRelease>> GetAsync(CancellationToken token = default, TimeSpan? timeout = null)
@@ -28,9 +29,9 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
         {
             List<EditorRelease> releases = [];
             // Pagination includes older versions and prereleases; /latest would hide previews.
-            for (int page = 1; ; page++)
+            for (int page = 1;; page++)
             {
-                using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}");
+                using HttpRequestMessage request = new( HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}" );
                 request.Headers.UserAgent.ParseAdd("Prowl-Launcher/1.0");
                 request.Headers.Accept.ParseAdd("application/vnd.github+json");
                 using HttpResponseMessage response = await http.SendAsync(request, deadline.Token);
@@ -58,7 +59,9 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             if (cached == null)
             {
                 if (e is OperationCanceledException)
+                {
                     throw new HttpRequestException("The GitHub release request timed out.", e);
+                }
                 throw;
             }
 

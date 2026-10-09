@@ -24,14 +24,14 @@ public sealed partial class Launcher
     private bool _windowResizing;
     private bool _mouseOverWindow;
     private long _lastScroll;
-    private WindowScale _windowScale = new(1, 1);
+    private WindowScale _windowScale = new( 1, 1 );
 
     public void Run(string title, int width, int height)
     {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
-        using UiContext context = _context = new();
-        using LauncherWindow window = _window = new(this, title, width, height);
+        using UiContext context = _context = new UiContext();
+        using LauncherWindow window = _window = new LauncherWindow(this, title, width, height);
         window.Run();
     }
 
@@ -98,7 +98,9 @@ public sealed partial class Launcher
         OnGui(_paper);
         _paper.EndFrame();
         if (LauncherStartupService.ReadyPipe != null)
+        {
             _ = LauncherStartupService.ReportReadyAsync();
+        }
         CaptureScreenshot();
     }
 
@@ -134,7 +136,7 @@ public sealed partial class Launcher
         _paper.DisplayFramebufferScale = new Float2(DisplayScale, DisplayScale);
     }
 
-    private Float2 Pointer(float x, float y) => new(x / _windowScale.Input, y / _windowScale.Input);
+    private Float2 Pointer(float x, float y) => new( x / _windowScale.Input, y / _windowScale.Input );
 
     private bool HandleCloseRequested()
     {

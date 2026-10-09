@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "Использовать без установки",
     "launcher.installation.title": "Установить Prowl Launcher?",
     "launcher.installation.unavailable": "Запустите скачанный launcher, чтобы установить его.",
-
     "launcher.network.offline": "Нет подключения",
     "launcher.network.offline_description": "Доступны установленные редакторы и сохранённые выпуски.",
     "launcher.operations.cancelled": "Отменено",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "Проекты",
     "launcher.projects.unfavourite": "Убрать из избранного",
     "launcher.projects.untitled": "Без названия",
-
     "launcher.samples.controller_showcase_description": "Попробуйте примеры движения и управления персонажами.",
     "launcher.samples.controller_showcase_name": "Пример контроллеров",
     "launcher.samples.hello_prowl_description": "Простая сцена с анимированными кубами, освещением и базовой физикой.",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "Этот пример не входит в загруженный пакет.",
     "launcher.samples.vehicle_showcase_description": "Управляйте машинами в примере и изучите физику транспорта.",
     "launcher.samples.vehicle_showcase_name": "Пример транспорта",
-
     "launcher.sdk.get": "Скачать SDK",
     "launcher.sdk.open_anyway": "Всё равно открыть",
     "launcher.sdk.required_description": "Для компиляции скриптов проекта Prowl нужен .NET {{sdk}} SDK. Сначала установите его или всё равно откройте редактор.",

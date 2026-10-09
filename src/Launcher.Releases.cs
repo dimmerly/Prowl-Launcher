@@ -16,21 +16,30 @@ public sealed partial class Launcher
     {
         string? current = null;
         foreach (InstalledEditor editor in installed.Where(editor => editor.Platform == platform
-            && editor.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)))
+                                                                     && editor.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)))
         {
             string version = EditorVersion(editor.Tag);
             if (LauncherUpdaterService.IsNewer(version, "0.0.0")
-                && (current == null || LauncherUpdaterService.IsNewer(version, current))) current = version;
+                && (current == null || LauncherUpdaterService.IsNewer(version, current)))
+            {
+                current = version;
+            }
         }
-        if (current == null) return null;
+        if (current == null)
+        {
+            return null;
+        }
 
         EditorRelease? update = null;
         foreach (EditorRelease release in releases.Where(release => !release.Draft
-            && (includePrereleases || !release.Preview) && release.AssetFor(platform) != null))
+                                                                    && (includePrereleases || !release.Preview) && release.AssetFor(platform) != null))
         {
             string version = EditorVersion(release.Tag);
-            if ((!includePrereleases && version.Split('+')[0].Contains('-'))
-                || !LauncherUpdaterService.IsNewer(version, current)) continue;
+            if (!includePrereleases && version.Split('+')[0].Contains('-')
+                || !LauncherUpdaterService.IsNewer(version, current))
+            {
+                continue;
+            }
             update = release;
             current = version;
         }

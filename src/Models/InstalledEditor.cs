@@ -11,7 +11,11 @@ public sealed record InstalledEditor(
 )
 {
     // Metadata without provenance belongs to the historical default repository.
-    public string Repository { get; init; } = GitHubRepositoryHelper.DefaultProwl;
+    public string Repository
+    {
+        get;
+        init;
+    } = GitHubRepositoryHelper.DefaultProwl;
     public string Key => Repository.Equals(GitHubRepositoryHelper.DefaultProwl, StringComparison.OrdinalIgnoreCase)
         ? $"{Tag}-{Platform}"
         : $"{Tag}-{Platform}-{GitHubRepositoryHelper.CacheKey(Repository)}";

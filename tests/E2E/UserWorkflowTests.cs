@@ -1,4 +1,5 @@
 using System.Diagnostics;
+
 using Xunit;
 
 namespace Prowl.Launcher.Test.E2E;
@@ -12,17 +13,45 @@ public sealed class UserWorkflowTests
 {
     public static IEnumerable<object[]> Scenarios() => new[]
     {
-        "EmptyProjects", "NavigatePages", "CancelNewProject", "CreateProjectAndOpenIt", "RejectInvalidProjectName",
-        "RejectExistingProjectFolder", "OpenPinnedProject", "RemoveProject", "SearchProjects", "FavoriteProject",
-        "ChooseProjectEditor", "MissingProject", "CancelFolderPicker", "AddExistingProject", "DuplicateProjectImport", "InstallEditor", "RepairEditor",
-        "CancelUninstall", "ConfirmUninstall", "CorruptDownload", "CancelDownload", "CloseDuringDownload",
-        "ManualUpdateChangelog", "ManualReoffersDismissedUpdate", "EnablePrereleases",
-        "AcceptHealthyUpdate", "FailedUpdateStartup", "CloseOnEditorLaunch",
-        "SampleDownloadOnce", "SampleUpdateAvailable", "SampleAlreadyLatest", "EditorUpdateIndicator"
-    }.Select(scenario => new object[] { scenario });
+        "EmptyProjects",
+        "NavigatePages",
+        "CancelNewProject",
+        "CreateProjectAndOpenIt",
+        "RejectInvalidProjectName",
+        "RejectExistingProjectFolder",
+        "OpenPinnedProject",
+        "RemoveProject",
+        "SearchProjects",
+        "FavoriteProject",
+        "ChooseProjectEditor",
+        "MissingProject",
+        "CancelFolderPicker",
+        "AddExistingProject",
+        "DuplicateProjectImport",
+        "InstallEditor",
+        "RepairEditor",
+        "CancelUninstall",
+        "ConfirmUninstall",
+        "CorruptDownload",
+        "CancelDownload",
+        "CloseDuringDownload",
+        "ManualUpdateChangelog",
+        "ManualReoffersDismissedUpdate",
+        "EnablePrereleases",
+        "AcceptHealthyUpdate",
+        "FailedUpdateStartup",
+        "CloseOnEditorLaunch",
+        "SampleDownloadOnce",
+        "SampleUpdateAvailable",
+        "SampleAlreadyLatest",
+        "EditorUpdateIndicator"
+    }.Select(scenario => new object[]
+    {
+        scenario
+    });
 
     [Theory]
-    [MemberData(nameof(Scenarios))]
+    [MemberData(nameof( Scenarios ))]
     public async Task CommonUserActionCompletesThroughTheRenderedUi(string scenario)
     {
         string root = ArtifactDirectory(scenario);
@@ -48,7 +77,7 @@ public sealed class UserWorkflowTests
     private static string ArtifactDirectory(string scenario)
     {
         string artifacts = Environment.GetEnvironmentVariable("PROWL_E2E_ARTIFACTS")
-            ?? Path.Combine(Path.GetTempPath(), "ProwlLauncherE2E");
+                           ?? Path.Combine(Path.GetTempPath(), "ProwlLauncherE2E");
         string root = Path.Combine(artifacts, scenario + "-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
@@ -56,12 +85,11 @@ public sealed class UserWorkflowTests
 
     private static async Task RunScenario(string scenario, string root)
     {
-        ProcessStartInfo info = new("dotnet")
+        ProcessStartInfo info = new( "dotnet" )
         {
-            UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardOutput = true, RedirectStandardError = true
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true
         };
-        info.ArgumentList.Add(typeof(UserWorkflowTests).Assembly.Location);
+        info.ArgumentList.Add(typeof( UserWorkflowTests ).Assembly.Location);
         info.ArgumentList.Add("--e2e");
         info.ArgumentList.Add(scenario);
         info.ArgumentList.Add(root);
@@ -70,7 +98,7 @@ public sealed class UserWorkflowTests
         using Process child = Process.Start(info)!;
         Task<string> stdout = child.StandardOutput.ReadToEndAsync();
         Task<string> stderr = child.StandardError.ReadToEndAsync();
-        using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(60));
+        using CancellationTokenSource deadline = new( TimeSpan.FromSeconds(60) );
         try
         {
             await child.WaitForExitAsync(deadline.Token);
@@ -104,10 +132,13 @@ public sealed class UserWorkflowTests
             try
             {
                 using Process probe = Process.GetProcessById(id);
-                if (!probe.HasExited) probe.Kill(entireProcessTree: true);
+                if (!probe.HasExited)
+                {
+                    probe.Kill(entireProcessTree: true);
+                }
                 await probe.WaitForExitAsync();
             }
-            catch (ArgumentException) { }
+            catch (ArgumentException) {}
         }
     }
 

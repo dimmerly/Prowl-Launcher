@@ -1,4 +1,5 @@
 using Prowl.Rosetta;
+
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -69,9 +70,11 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         {
             ReleaseAsset? asset = AssetFor(release, platform);
             string? version = asset == null ? null : VersionFor(asset, platform);
-            if (version == null || (!includePrereleases && version.Split('+')[0].Contains('-'))
-                || (newestVersion != null && !IsNewer(version, newestVersion)))
+            if (version == null || !includePrereleases && version.Split('+')[0].Contains('-')
+                                || newestVersion != null && !IsNewer(version, newestVersion))
+            {
                 continue;
+            }
 
             newest = release;
             newestVersion = version;
@@ -86,8 +89,8 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         CancellationToken token = default
     )
     {
-        if (release.Draft || (release.Preview && !store.Settings.LauncherPrereleases)
-            || release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
+        if (release.Draft || release.Preview && !store.Settings.LauncherPrereleases
+                          || release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }
@@ -97,11 +100,15 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
             || source.Scheme != "https" || source.Host != "github.com"
             || !source.AbsolutePath.StartsWith($"/{repository}/releases/download/", StringComparison.OrdinalIgnoreCase))
+        {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
+        }
 
         string version = VersionFor(asset, platform)!;
         if (!store.Settings.LauncherPrereleases && version.Split('+')[0].Contains('-'))
+        {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
+        }
 
         string versions = Path.Combine(store.Home, "LauncherVersions", GitHubRepositoryHelper.CacheKey(repository));
         string target = LauncherStore.SafeChildPath(versions, $"{version}-{platform}");
@@ -118,7 +125,9 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         );
         string? executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
         if (executable == null && IsRunning(target))
+        {
             throw new IOException("Close the launcher using this version before repairing its update.");
+        }
         await Task.Run(() => DirectoryReplacementService.Recover(target,
             path => ValidateInstallation(path, null, name, token) != null), token);
         executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
@@ -146,7 +155,10 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
                 await Task.Run(() => WriteInstallation(extracted, entry, asset.Digest!, token), token);
                 token.ThrowIfCancellationRequested();
-                if (IsRunning(target)) throw new IOException("Close the launcher using this version before repairing its update.");
+                if (IsRunning(target))
+                {
+                    throw new IOException("Close the launcher using this version before repairing its update.");
+                }
                 DirectoryReplacementService.Replace(extracted, target);
                 executable = LauncherStore.SafeChildPath(target, Path.GetRelativePath(extracted, entry));
             }
@@ -165,7 +177,10 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         foreach (string path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
         {
             token.ThrowIfCancellationRequested();
-            if (Path.GetRelativePath(root, path) == ManifestName) continue;
+            if (Path.GetRelativePath(root, path) == ManifestName)
+            {
+                continue;
+            }
             using FileStream input = File.OpenRead(path);
             files.Add(Path.GetRelativePath(root, path), Convert.ToHexString(SHA256.HashData(input)));
         }
@@ -174,20 +189,29 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
     private static string? ValidateInstallation(string root, string? digest, string name, CancellationToken token)
     {
-        if (!Directory.Exists(root)) return null;
+        if (!Directory.Exists(root))
+        {
+            return null;
+        }
         try
         {
             DirectoryReplacementService.RejectLinks(root);
             Installation? installed = LauncherStore.ReadJson<Installation>(Path.Combine(root, ManifestName));
             if (installed?.Files == null || installed.Files.Count == 0
-                || (digest != null && !string.Equals(digest, installed.Digest, StringComparison.OrdinalIgnoreCase))
-                || !installed.Files.ContainsKey(installed.Executable)
-                || Path.GetFileName(installed.Executable) != name) return null;
+                                         || digest != null && !string.Equals(digest, installed.Digest, StringComparison.OrdinalIgnoreCase)
+                                         || !installed.Files.ContainsKey(installed.Executable)
+                                         || Path.GetFileName(installed.Executable) != name)
+            {
+                return null;
+            }
             foreach ((string relative, string hash) in installed.Files)
             {
                 token.ThrowIfCancellationRequested();
                 using FileStream input = File.OpenRead(LauncherStore.SafeChildPath(root, relative));
-                if (!Convert.ToHexString(SHA256.HashData(input)).Equals(hash, StringComparison.OrdinalIgnoreCase)) return null;
+                if (!Convert.ToHexString(SHA256.HashData(input)).Equals(hash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
             }
             return LauncherStore.SafeChildPath(root, installed.Executable);
         }
@@ -206,11 +230,19 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             {
                 try
                 {
-                    if (process.MainModule?.FileName is { } file && file.StartsWith(root,
-                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) return true;
+                    if (process.MainModule?.FileName is {} file && file.StartsWith(root,
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
                 }
-                catch (InvalidOperationException) { }
-                catch (System.ComponentModel.Win32Exception) { return true; }
+                catch (InvalidOperationException)
+                {
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    return true;
+                }
             }
         }
         return false;

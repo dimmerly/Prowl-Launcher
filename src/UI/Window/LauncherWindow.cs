@@ -132,9 +132,13 @@ public sealed partial class Launcher
         {
             string name = key.ToString();
             if (name.Length == 2 && name[0] == 'D' && char.IsDigit(name[1]))
+            {
                 name = "Num" + name[1];
+            }
             if (Enum.TryParse(name, out PaperKey paperKey))
+            {
                 owner._paper?.SetKeyState(paperKey, down);
+            }
         }
 
         protected override void OnTextInput(TextInputEventArgs args)

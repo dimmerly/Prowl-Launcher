@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI.LayoutEngine;
+using Prowl.PaperUI.Markdown;
 using Prowl.Scribe;
 
 namespace Prowl.Launcher;
@@ -19,11 +20,11 @@ public sealed partial class Launcher
         EditorRelease? changelog = null)
     {
         TaskCompletionSource<bool> completion = new();
-        float scale = Math.Max(0.01f, (DisplayScale / UiScale)) * UiScale;
+        float scale = Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
         float screenWidth = _window.FramebufferSize.X / scale;
         float width = Math.Min(changelog == null ? 560 : 840, screenWidth - 48);
         float notesHeight = Math.Max(100, Math.Min(360, _window.FramebufferSize.Y / scale * 0.72f - 200));
-        var markdown = changelog == null ? null : ReleaseNotesMarkdown(changelog);
+        MarkdownBuilder? markdown = changelog == null ? null : ReleaseNotesMarkdown(changelog);
         ModalBuilder dialog = Origami.Modal(Loc.Get(title))
             .Width(width)
             .Content(p =>

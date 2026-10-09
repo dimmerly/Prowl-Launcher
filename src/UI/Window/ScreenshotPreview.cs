@@ -89,7 +89,7 @@ public sealed partial class Launcher
             Array.Copy(pixels, y * width * 4, flipped, (height - 1 - y) * width * 4, width * 4);
         }
 
-        using Image image = Aperture.Image.FromPixels(flipped, width, height, Aperture.PixelFormat.Rgba8);
+        using Image image = Image.FromPixels(flipped, width, height, PixelFormat.Rgba8);
         image.Save(screenshot);
         ForceClose();
     }

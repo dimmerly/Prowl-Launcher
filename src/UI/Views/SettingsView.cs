@@ -1,11 +1,10 @@
 using Prowl.Rosetta;
-
 using Prowl.Launcher.Theming;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 
-using Color = System.Drawing.Color;
+using Color=System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
@@ -189,7 +188,7 @@ public sealed partial class Launcher
                     .LeadingIcon(LauncherIcons.Refresh)
                     .OnClick(() =>
                     {
-                        var defaults = new Settings();
+                        Settings defaults = new();
                         store.Settings.UiScale = defaults.UiScale;
                         store.Settings.LogoColor = defaults.LogoColor;
                         store.Save();
@@ -236,8 +235,7 @@ public sealed partial class Launcher
             }
             Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
             {
-                version = LauncherVersion,
-                platform = Platform.Identifier
+                version = LauncherVersion, platform = Platform.Identifier
             }), 13, Muted, 24);
 
             Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, value =>
@@ -245,9 +243,13 @@ public sealed partial class Launcher
                     store.Settings.LauncherPrereleases = value;
                     store.Save();
                     if (value)
+                    {
                         _ = CheckLauncherInBackgroundAsync();
+                    }
                     else if (LauncherVersion.Split('+')[0].Contains('-'))
+                    {
                         Start(UpdateLauncherAsync, "launcher.updates.checking");
+                    }
                 })
                 .LabelLeft(Loc.Get("launcher.settings.launcher_prereleases"))
                 .Stretch().Disabled(Busy).Show();

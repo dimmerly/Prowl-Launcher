@@ -20,7 +20,7 @@ static class LauncherIcons
     {
         using Stream stream = typeof( LauncherIcons ).Assembly.GetManifestResourceStream($"Prowl.Launcher.Icons.{name}.svg")
                               ?? throw new InvalidOperationException($"Missing SVG icon: {name}");
-        XElement svg = System.Xml.Linq.XElement.Load(stream);
+        XElement svg = XElement.Load(stream);
         float[] viewBox = svg.Attribute("viewBox")!.Value.Split(' ')
             .Select(value => float.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
             .ToArray();

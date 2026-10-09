@@ -7,9 +7,12 @@ public sealed class EditorUpdateIndicatorTests
     private const string Repository = GitHubRepositoryHelper.DefaultProwl;
     private const string Platform = "win-x64";
     private static InstalledEditor Installed(string tag, string repository = Repository, string platform = Platform) =>
-        new(1, tag, platform, "Prowl.Editor.exe", DateTimeOffset.UtcNow) { Repository = repository };
+        new( 1, tag, platform, "Prowl.Editor.exe", DateTimeOffset.UtcNow )
+        {
+            Repository = repository
+        };
     private static EditorRelease Release(string tag, bool preview = false, bool draft = false, string platform = Platform) =>
-        new(2, tag, preview, draft, DateTimeOffset.UtcNow, "", null, [new($"Prowl-{tag}-{platform}.zip", "", 1, null)]);
+        new( 2, tag, preview, draft, DateTimeOffset.UtcNow, "", null, [new ReleaseAsset($"Prowl-{tag}-{platform}.zip", "", 1, null)] );
 
     [Theory]
     [InlineData("v1.1.0", false, false, true)]
@@ -28,10 +31,7 @@ public sealed class EditorUpdateIndicatorTests
     [InlineData("v1.0-preview-4", "v1.0-preview-5")]
     [InlineData("v1.0.0-preview.9", "v1.0.0-preview.10")]
     [InlineData("v1.0.0-preview.10", "v1.0.0")]
-    public void HistoricalTagsAndPrereleaseNumbersCompareCorrectly(string installed, string available)
-    {
-        Assert.NotNull(Launcher.FindEditorUpdate([Release(available, available.Contains('-'))], [Installed(installed)], Repository, Platform, true));
-    }
+    public void HistoricalTagsAndPrereleaseNumbersCompareCorrectly(string installed, string available) => Assert.NotNull(Launcher.FindEditorUpdate([Release(available, available.Contains('-'))], [Installed(installed)], Repository, Platform, true));
 
     [Fact]
     public void OnlyTheNewestInstalledVersionIsTheBaseline()
@@ -56,11 +56,8 @@ public sealed class EditorUpdateIndicatorTests
     }
 
     [Fact]
-    public void DraftsUnsupportedPlatformsAndInvalidVersionsDoNotShowAnIndicator()
-    {
-        Assert.Null(Launcher.FindEditorUpdate([Release("v2.0.0", draft: true), Release("v2.0.0", platform: "linux-x64"), Release("unknown")],
-            [Installed("v1.0.0")], Repository, Platform, true));
-    }
+    public void DraftsUnsupportedPlatformsAndInvalidVersionsDoNotShowAnIndicator() => Assert.Null(Launcher.FindEditorUpdate([Release("v2.0.0", draft: true), Release("v2.0.0", platform: "linux-x64"), Release("unknown")],
+        [Installed("v1.0.0")], Repository, Platform, true));
 
     [Fact]
     public void OtherRepositoriesPlatformsAndFirstTimeInstallsDoNotShowAnUpdateIndicator()

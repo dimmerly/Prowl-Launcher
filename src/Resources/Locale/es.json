@@ -50,7 +50,6 @@
     "launcher.installation.keep_portable": "Usar como portátil",
     "launcher.installation.title": "¿Instalar Prowl Launcher?",
     "launcher.installation.unavailable": "Ejecuta el launcher descargado para instalarlo.",
-
     "launcher.network.offline": "Sin conexión",
     "launcher.network.offline_description": "Los editores instalados y las versiones guardadas están disponibles.",
     "launcher.operations.cancelled": "Cancelado",
@@ -125,7 +124,6 @@
     "launcher.projects.title": "Proyectos",
     "launcher.projects.unfavourite": "Quitar favorito",
     "launcher.projects.untitled": "Sin titulo",
-
     "launcher.samples.controller_showcase_description": "Prueba ejemplos de movimiento y control de personajes.",
     "launcher.samples.controller_showcase_name": "Ejemplo de controladores",
     "launcher.samples.hello_prowl_description": "Una escena sencilla con cubos animados, iluminación y física básica.",
@@ -151,7 +149,6 @@
     "launcher.samples.unavailable": "Este ejemplo no está incluido en el paquete descargado.",
     "launcher.samples.vehicle_showcase_description": "Conduce los vehículos de ejemplo y explora su física.",
     "launcher.samples.vehicle_showcase_name": "Ejemplo de vehículos",
-
     "launcher.sdk.get": "Obtener SDK",
     "launcher.sdk.open_anyway": "Abrir de todos modos",
     "launcher.sdk.required_description": "Prowl necesita el SDK de .NET {{sdk}} para compilar los scripts del proyecto. Instálalo primero o abre el editor de todos modos.",

@@ -10,8 +10,8 @@ public sealed class EditorRecoveryTests : IDisposable
 
     private (LauncherStore store, InstalledEditor editor, string work) InterruptedRepair()
     {
-        LauncherStore store = new(_home);
-        InstalledEditor editor = new(1, "v1.0.0", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow);
+        LauncherStore store = new( _home );
+        InstalledEditor editor = new( 1, "v1.0.0", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow );
         string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
         string previous = Path.Combine(work, "previous");
         LauncherStore.WriteJson(Path.Combine(previous, "installation.json"), editor);
@@ -23,7 +23,7 @@ public sealed class EditorRecoveryTests : IDisposable
     [Fact]
     public void StartupRestoresTheOldEditorAfterInterruptionBetweenMoves()
     {
-        var (store, editor, work) = InterruptedRepair();
+        (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
         new EditorInstallerService(_http, store).RecoverInterruptedOperations();
         Assert.Equal("old editor", File.ReadAllText(store.ExecutablePath(editor)));
         Assert.Single(store.InstalledEditors());
@@ -33,8 +33,8 @@ public sealed class EditorRecoveryTests : IDisposable
     [Fact]
     public void FailedRestorationRetainsBackupAndJournalForTheNextAttempt()
     {
-        var (store, editor, work) = InterruptedRepair();
-        EditorInstallerService installer = new(_http, store);
+        (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
+        EditorInstallerService installer = new( _http, store );
         installer.RecoverInterruptedInstalls((_, _) => throw new IOException("Locked destination"));
         Assert.True(File.Exists(Path.Combine(work, "repair.json")));
         Assert.Equal("old editor", File.ReadAllText(Path.Combine(work, "previous", editor.ExecutableRelativePath)));
@@ -45,7 +45,7 @@ public sealed class EditorRecoveryTests : IDisposable
     [Fact]
     public void CommittedRepairKeepsTheNewEditorAndRemovesOnlyItsBackup()
     {
-        var (store, editor, work) = InterruptedRepair();
+        (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
         LauncherStore.WriteJson(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
         File.WriteAllText(store.ExecutablePath(editor), "new editor");
         string sample = Path.Combine(store.WorkPath, "sample-running", "data.txt");
@@ -60,7 +60,7 @@ public sealed class EditorRecoveryTests : IDisposable
     [Fact]
     public void IncompleteDestinationNeverCausesTheOldEditorToBeDeleted()
     {
-        var (store, editor, work) = InterruptedRepair();
+        (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
         Directory.CreateDirectory(store.InstallPath(editor));
         new EditorInstallerService(_http, store).RecoverInterruptedOperations();
         Assert.Equal("old editor", File.ReadAllText(Path.Combine(work, "previous", editor.ExecutableRelativePath)));
@@ -70,6 +70,9 @@ public sealed class EditorRecoveryTests : IDisposable
     public void Dispose()
     {
         _http.Dispose();
-        if (Directory.Exists(_home)) Directory.Delete(_home, true);
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
     }
 }

@@ -1,24 +1,27 @@
 namespace Prowl.Launcher;
 
-internal sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release, bool UsedCache)
+sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release, bool UsedCache)
 {
     internal bool Matches(Settings settings) => Prereleases == settings.LauncherPrereleases
-        && Repository.Equals(settings.LauncherRepository, StringComparison.OrdinalIgnoreCase);
+                                                && Repository.Equals(settings.LauncherRepository, StringComparison.OrdinalIgnoreCase);
 }
 
-internal sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
+sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
 {
     internal async Task<LauncherUpdateCheck> CheckAsync(string platform, string currentVersion,
         bool automatic, CancellationToken token = default, TimeSpan? timeout = null)
     {
         string repository = GitHubRepositoryHelper.Normalize(store.Settings.LauncherRepository);
         bool prereleases = store.Settings.LauncherPrereleases;
-        GitHubReleasesService github = new(http, store, repository);
+        GitHubReleasesService github = new( http, store, repository );
         IReadOnlyList<EditorRelease> releases = await github.GetAsync(token, timeout);
         EditorRelease? release = LauncherUpdaterService.FindUpdate(releases, platform, currentVersion, prereleases);
         // Select the newest eligible release first; dismissal must not offer an older release instead.
-        if (automatic && release != null && IsDismissed(store.Settings, repository, release.Id)) release = null;
-        return new(repository, prereleases, release, github.UsedCache);
+        if (automatic && release != null && IsDismissed(store.Settings, repository, release.Id))
+        {
+            release = null;
+        }
+        return new LauncherUpdateCheck(repository, prereleases, release, github.UsedCache);
     }
 
     internal static bool IsDismissed(Settings settings, string repository, long releaseId) =>

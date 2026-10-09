@@ -4,51 +4,85 @@ public sealed class Settings
 {
     public bool InstallationPromptHandled
     {
-        get; set;
+        get;
+        set;
     }
     public string? InstalledLauncherExecutable
     {
-        get; set;
+        get;
+        set;
     }
     public string? LauncherExecutable
     {
-        get; set;
+        get;
+        set;
     }
 
     public bool CloseOnEditorLaunch
     {
-        get; set;
+        get;
+        set;
     } = true;
     public string? DefaultEditorKey
     {
-        get; set;
+        get;
+        set;
     }
-    public string ProwlRepository { get; set; } = GitHubRepositoryHelper.DefaultProwl;
-    public string LauncherRepository { get; set; } = GitHubRepositoryHelper.LauncherRepository;
-    public bool LauncherPrereleases { get; set; } = true;
-    public Dictionary<string, bool> DismissedLauncherReleases { get; set; } = [];
+    public string ProwlRepository
+    {
+        get;
+        set;
+    } = GitHubRepositoryHelper.DefaultProwl;
+    public string LauncherRepository
+    {
+        get;
+        set;
+    } = GitHubRepositoryHelper.LauncherRepository;
+    public bool LauncherPrereleases
+    {
+        get;
+        set;
+    } = true;
+    public Dictionary<string, bool> DismissedLauncherReleases
+    {
+        get;
+        set;
+    } = [];
 
     public bool ShowFps
     {
-        get; set;
+        get;
+        set;
     }
     public string? Locale
     {
-        get; set;
+        get;
+        set;
     }
-    public float UiScale { get; set; } = 1;
+    public float UiScale
+    {
+        get;
+        set;
+    } = 1;
     public string? LogoColor
     {
-        get; set;
+        get;
+        set;
     }
 
     public bool RecentProjectsImported
     {
-        get; set;
+        get;
+        set;
     }
     public bool RecentProjectMetadataImported
     {
-        get; set;
+        get;
+        set;
     }
-    public List<Project> Projects { get; set; } = [];
+    public List<Project> Projects
+    {
+        get;
+        set;
+    } = [];
 }

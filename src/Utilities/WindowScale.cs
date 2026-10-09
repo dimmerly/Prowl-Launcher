@@ -1,6 +1,6 @@
 namespace Prowl.Launcher;
 
-internal readonly record struct WindowScale(float Rendering, float Input)
+readonly record struct WindowScale(float Rendering, float Input)
 {
     internal static WindowScale Calculate(float interfaceScale, float contentScale, float framebufferRatio)
     {

@@ -40,7 +40,7 @@ public sealed partial class Launcher(
 
         InitializeServices();
         ShowPreviewChangelog();
-        _showInstallationPrompt = installationPreview || (screenshot == null && LauncherInstallationService.ShouldOffer(store));
+        _showInstallationPrompt = installationPreview || screenshot == null && LauncherInstallationService.ShouldOffer(store);
 
         if (StartPreviewOperation())
         {
@@ -50,7 +50,10 @@ public sealed partial class Launcher(
         if (!offline)
         {
             _ = RefreshInBackgroundAsync();
-            if (screenshot == null) _ = CheckLauncherInBackgroundAsync();
+            if (screenshot == null)
+            {
+                _ = CheckLauncherInBackgroundAsync();
+            }
         }
         else if (screenshot == null)
         {
@@ -88,8 +91,14 @@ public sealed partial class Launcher(
         _installer = new EditorInstallerService(_http, store);
         _samples = new SampleService(_http, store);
 
-        try { _installer.RecoverInterruptedOperations(); }
-        catch (IOException error) { LogError(error); }
+        try
+        {
+            _installer.RecoverInterruptedOperations();
+        }
+        catch (IOException error)
+        {
+            LogError(error);
+        }
 
         store.ImportRecentProjects();
         ReloadInstalled();
