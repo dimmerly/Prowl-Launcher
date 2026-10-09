@@ -16,11 +16,19 @@ sealed class SampleService
     {
         this.http = http;
         this.store = store;
-        try { RecoverInterruptedOperations(); }
+        try
+        {
+            RecoverInterruptedOperations();
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            try { File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Sample recovery: {error}\n"); }
-            catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { }
+            try
+            {
+                File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Sample recovery: {error}\n");
+            }
+            catch (Exception logError) when (logError is IOException or UnauthorizedAccessException)
+            {
+            }
         }
     }
 
@@ -62,7 +70,7 @@ sealed class SampleService
                           ?? throw new InvalidOperationException(Loc.Get("launcher.samples.start_failed"));
         Task<int> completion = MonitorAsync(process, output);
         // Report startup crashes through the operation panel, retaining logs for later failures.
-        if (await Task.WhenAny(completion, Task.Delay(Constants.Startup.SampleStartupMilliseconds)) == completion && await completion != 0)
+        if (await Task.WhenAny(completion, Task.Delay(1500)) == completion && await completion != 0)
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.start_failed"));
         }
@@ -287,18 +295,33 @@ sealed class SampleService
     {
         string repository = Repository;
         string cacheRoot = CacheRoot;
-        if (!Directory.Exists(Path.GetDirectoryName(cacheRoot))) return;
+        if (!Directory.Exists(Path.GetDirectoryName(cacheRoot)))
+        {
+            return;
+        }
         FileStream operation;
         // Startup must not wait for another launcher that is downloading a bundle.
-        try { operation = new FileStream(DownloadLockPath(repository), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { return; }
-        using (operation) RecoverCache(repository, cacheRoot);
+        try
+        {
+            operation = new FileStream(DownloadLockPath(repository), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+        using (operation)
+        {
+            RecoverCache(repository, cacheRoot);
+        }
     }
 
     private void RecoverCache(string repository, string cacheRoot)
     {
         string parent = Path.GetDirectoryName(cacheRoot)!;
-        if (!Directory.Exists(parent)) return;
+        if (!Directory.Exists(parent))
+        {
+            return;
+        }
         DirectoryReplacementService.RejectLink(store.Home);
         DirectoryReplacementService.RejectLink(Path.Combine(store.Home, "Samples"));
         DirectoryReplacementService.RejectLink(parent);
@@ -309,29 +332,44 @@ sealed class SampleService
         foreach (string backup in Directory.EnumerateDirectories(parent, prefix + "*").OrderByDescending(Directory.GetLastWriteTimeUtc))
         {
             if (!Guid.TryParseExact(Path.GetFileName(backup)[prefix.Length..], "N", out _)
-                || !IsValidCache(backup, repository)) continue;
+                || !IsValidCache(backup, repository))
+            {
+                continue;
+            }
             if (!IsValidCache(cacheRoot, repository))
             {
                 Directory.Move(backup, cacheRoot + ".previous");
                 DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
             }
-            else Directory.Delete(backup, true);
+            else
+            {
+                Directory.Delete(backup, true);
+            }
         }
         _loadedCache = null;
     }
 
     private static bool IsValidCache(string root, string repository)
     {
-        if (!Directory.Exists(root)) return false;
+        if (!Directory.Exists(root))
+        {
+            return false;
+        }
         try
         {
             DirectoryReplacementService.RejectLinks(root);
             InstalledBundle? installed = LauncherStore.ReadJson<InstalledBundle>(Path.Combine(root, "installed.json"));
-            if (installed == null || installed.Repository != repository || installed.Platform != Platform.Identifier) return false;
+            if (installed == null || installed.Repository != repository || installed.Platform != Platform.Identifier)
+            {
+                return false;
+            }
             ValidateContent(Path.Combine(root, "content"));
             return true;
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return false; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
+        {
+            return false;
+        }
     }
 
     private string DownloadLockPath(string repository) => Path.Combine(store.Home,
@@ -349,7 +387,7 @@ sealed class SampleService
             }
             catch (IOException)
             {
-                await Task.Delay(Constants.Storage.SampleLockRetryMilliseconds, token);
+                await Task.Delay(100, token);
             }
         }
     }

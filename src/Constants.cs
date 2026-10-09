@@ -31,6 +31,9 @@ public static class Constants
 
     public static class Storage
     {
+        public const Environment.SpecialFolder HomeBaseFolder = Environment.SpecialFolder.ApplicationData;
+        public const string ApplicationFolderName = "Prowl";
+        public const string LauncherFolderName = "Launcher";
         public const string HomeEnvironment = "PROWL_LAUNCHER_HOME";
         public const string LauncherManifest = "launcher-installation.json";
         public const long MaxExpandedArchiveBytes = 8L * 1024 * 1024 * 1024;

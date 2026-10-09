@@ -21,5 +21,8 @@ public static class Platform
         }
     }
 
-    public static string DefaultHome => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Prowl", "Launcher");
+    public static string DefaultHome => Path.Combine(
+        Environment.GetFolderPath(Constants.Storage.HomeBaseFolder),
+        Constants.Storage.ApplicationFolderName,
+        Constants.Storage.LauncherFolderName);
 }
