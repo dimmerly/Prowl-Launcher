@@ -272,6 +272,104 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LauncherUpdates_PrereleasesRequireOptIn(bool includePrereleases)
+    {
+        EditorRelease stable = Release([]) with
+        {
+            Preview = false,
+            Assets = [new ReleaseAsset("Prowl Launcher-1.1.0-win-x64.zip", "", 0, null)]
+        };
+        EditorRelease preview = stable with
+        {
+            Id = 2,
+            Preview = true,
+            Assets = [new ReleaseAsset("Prowl Launcher-1.2.0-preview-1-win-x64.zip", "", 0, null)]
+        };
+        EditorRelease draft = preview with { Id = 3, Draft = true };
+        Assert.Equal(includePrereleases ? preview : stable,
+            LauncherUpdaterService.FindUpdate([draft, preview, stable], "win-x64", "1.0.0", includePrereleases));
+        Assert.Null(LauncherUpdaterService.FindUpdate([preview], "win-x64", "1.2.0", includePrereleases));
+        Assert.Null(LauncherUpdaterService.FindUpdate([preview with { Preview = false }], "win-x64", "1.0.0"));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task LauncherUpdate_PrereleaseInstallationHonorsSavedOptIn(bool optIn, bool previewFlag)
+    {
+        byte[] bytes = Archive(("Prowl Launcher/Prowl.Launcher.exe", "preview"));
+        LauncherStore store = Store();
+        Assert.False(store.Settings.LauncherPrereleases);
+        store.Settings.LauncherPrereleases = optIn;
+        store.Save();
+        EditorRelease release = Release(bytes) with
+        {
+            Preview = previewFlag,
+            Assets = [new ReleaseAsset("Prowl Launcher-1.1.0-preview-1-win-x64.zip",
+                "https://github.com/dimmerly/Prowl-Launcher/releases/download/v1.1.0-preview-1/launcher.zip",
+                bytes.Length, "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)))]
+        };
+        using HttpClient http = Client(bytes);
+        LauncherUpdaterService updater = new(http, new LauncherStore(_home));
+        if (optIn)
+            Assert.Equal("preview", File.ReadAllText(await updater.InstallAsync(release, "win-x64")));
+        else
+            await Assert.ThrowsAsync<InvalidDataException>(() => updater.InstallAsync(release, "win-x64"));
+    }
+
+    [Fact]
+    public void LauncherUpdates_OptingOutOffersLatestStableEvenWhenOlder()
+    {
+        EditorRelease Stable(long id, string version) => Release([], id) with
+        {
+            Preview = false,
+            Assets = [new ReleaseAsset($"Prowl Launcher-{version}-win-x64.zip", "", 0, null)]
+        };
+        EditorRelease older = Stable(1, "1.0.0");
+        EditorRelease latest = Stable(2, "1.1.0");
+        EditorRelease preview = Stable(3, "1.2.0-preview-2") with { Preview = true };
+        EditorRelease draft = Stable(4, "2.0.0") with { Draft = true };
+        EditorRelease[] releases = [draft, preview, older, latest];
+        Assert.Equal(latest, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.2.0-preview-1"));
+        Assert.Equal(preview, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.2.0-preview-1", true));
+        Assert.Null(LauncherUpdaterService.FindUpdate([preview], "win-x64", "1.2.0-preview-1"));
+        Assert.Null(LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.2.0"));
+    }
+
+    [Fact]
+    public async Task LauncherUpdate_ConfiguredRepositoryHasSeparateInstallations()
+    {
+        byte[] bytes = Archive(("Prowl Launcher/Prowl.Launcher.exe", "launcher"));
+        LauncherStore store = Store();
+        EditorRelease release = Release(bytes) with
+        {
+            Preview = false,
+            Assets = [new ReleaseAsset("Prowl Launcher-1.1.0-win-x64.zip",
+                "https://github.com/dimmerly/Prowl-Launcher/releases/download/v1.1.0/launcher.zip",
+                bytes.Length, "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)))]
+        };
+        using HttpClient http = Client(bytes);
+        LauncherUpdaterService updater = new(http, store);
+        string official = await updater.InstallAsync(release, "win-x64");
+        store.Settings.LauncherRepository = "someone/custom-launcher";
+        store.Save();
+        await Assert.ThrowsAsync<InvalidDataException>(() => updater.InstallAsync(release, "win-x64"));
+        ReleaseAsset asset = release.Assets.Single() with
+        {
+            DownloadUrl = "https://github.com/someone/custom-launcher/releases/download/v1.1.0/launcher.zip"
+        };
+        string custom = await updater.InstallAsync(release with { Assets = [asset] }, "win-x64");
+        Assert.NotEqual(official, custom);
+        Assert.True(File.Exists(official));
+        Assert.Equal("launcher", File.ReadAllText(custom));
+        Assert.Equal(store.Settings.LauncherRepository, new LauncherStore(_home).Settings.LauncherRepository);
+    }
+
+    [Theory]
     [InlineData("Prowl Launcher-1.2.3-win-x64.zip", "win-x64", "1.2.3")]
     [InlineData("Prowl Launcher-1.2.3-preview.1+build-win-x64.zip", "win-x64", "1.2.3-preview.1+build")]
     [InlineData("Prowl Launcher-1.2.3-win-x64.zip", "linux-x64", null)]
@@ -323,15 +421,16 @@ public sealed class LauncherTests : IDisposable
     {
         LauncherStore store = Store();
         store.Settings.ProwlRepository = "someone/custom-editor";
+        store.Settings.LauncherRepository = "someone/custom-launcher";
         Uri? requested = null;
         using HttpClient http = new(new Handler(request =>
         {
             requested = request.RequestUri;
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") };
         }));
-        GitHubReleasesService github = new(http, store, GitHubRepositoryHelper.LauncherRepository);
+        GitHubReleasesService github = new(http, store, store.Settings.LauncherRepository);
         await github.GetAsync();
-        Assert.Equal($"/repos/{GitHubRepositoryHelper.LauncherRepository}/releases", requested!.AbsolutePath);
+        Assert.Equal($"/repos/{store.Settings.LauncherRepository}/releases", requested!.AbsolutePath);
     }
 
     [LiveFact]

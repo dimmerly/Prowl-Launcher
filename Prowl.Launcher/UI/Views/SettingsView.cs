@@ -12,6 +12,7 @@ namespace Prowl.Launcher;
 public sealed partial class Launcher
 {
     private string? _prowlRepositoryDraft;
+    private string? _launcherRepositoryDraft;
     private string _launcherStorageSize = "—";
     private Task? _storageSizeRefresh;
     private DateTimeOffset _nextStorageSizeRefresh;
@@ -19,7 +20,7 @@ public sealed partial class Launcher
     {
         using (Card(p, "repository-settings"))
         {
-            Label(p, "repositories-title", "launcher.preferences.repository", 19, Ink, 28, true);
+            Label(p, "repositories-title", "launcher.preferences.repositories", 19, Ink, 28, true);
             Label(
                 p,
                 "repositories-info",
@@ -31,13 +32,17 @@ public sealed partial class Launcher
             _prowlRepositoryDraft ??= store.Settings.ProwlRepository;
             Label(p, "prowl-repository-label", "launcher.preferences.prowl_releases", 14, Ink, 26);
             Origami.TextField(p, "prowl-repository", _prowlRepositoryDraft, value => _prowlRepositoryDraft = value).Show();
+
+            _launcherRepositoryDraft ??= store.Settings.LauncherRepository;
+            Label(p, "launcher-repository-label", "launcher.preferences.launcher_releases", 14, Ink, 26);
+            Origami.TextField(p, "launcher-repository", _launcherRepositoryDraft, value => _launcherRepositoryDraft = value).Show();
             using (p.Row("repository-actions")
                 .Height(UnitValue.Auto)
                 .WrapContent()
                 .Gap(8)
                 .Enter())
             {
-                Button(p, "save-repositories", "launcher.preferences.save_repository", SaveRepositoriesAsync, true, 170);
+                Button(p, "save-repositories", "launcher.preferences.save_repositories", SaveRepositoriesAsync, true, 170);
                 Button(p, "reset-repositories", "launcher.preferences.official_repository", ResetRepositoryDraftsAsync, width: 165);
             }
         }
@@ -211,6 +216,17 @@ public sealed partial class Launcher
                 version = LauncherVersion,
                 platform = Platform.Identifier
             }), 13, Muted, 24);
+
+            Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, value =>
+                {
+                    store.Settings.LauncherPrereleases = value;
+                    store.Save();
+                    if (!value && LauncherVersion.Split('+')[0].Contains('-'))
+                        Start(UpdateLauncherAsync, "launcher.updates.checking");
+                })
+                .LabelLeft(Loc.Get("launcher.preferences.launcher_prereleases"))
+                .Stretch().Disabled(Busy).Show();
+
             using (p.Row("launcher-settings-actions")
                 .Height(UnitValue.Auto)
                 .WrapContent()

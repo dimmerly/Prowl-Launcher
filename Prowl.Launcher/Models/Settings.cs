@@ -24,6 +24,8 @@ public sealed class Settings
         get; set;
     }
     public string ProwlRepository { get; set; } = GitHubRepositoryHelper.DefaultProwl;
+    public string LauncherRepository { get; set; } = GitHubRepositoryHelper.LauncherRepository;
+    public bool LauncherPrereleases { get; set; }
 
     public bool ShowFps
     {

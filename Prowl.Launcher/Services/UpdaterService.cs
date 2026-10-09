@@ -57,15 +57,16 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     public static ReleaseAsset? AssetFor(EditorRelease release, string platform) => release.Assets
         .FirstOrDefault(asset => VersionFor(asset, platform) != null);
 
-    public static EditorRelease? FindUpdate(IEnumerable<EditorRelease> releases, string platform, string currentVersion)
+    public static EditorRelease? FindUpdate(IEnumerable<EditorRelease> releases, string platform, string currentVersion, bool includePrereleases = false)
     {
         EditorRelease? newest = null;
-        string newestVersion = currentVersion;
-        foreach (EditorRelease release in releases.Where(release => !release.Draft && !release.Preview))
+        string? newestVersion = !includePrereleases && currentVersion.Split('+')[0].Contains('-') ? null : currentVersion;
+        foreach (EditorRelease release in releases.Where(release => !release.Draft && (includePrereleases || !release.Preview)))
         {
             ReleaseAsset? asset = AssetFor(release, platform);
             string? version = asset == null ? null : VersionFor(asset, platform);
-            if (version == null || !IsNewer(version, newestVersion))
+            if (version == null || (!includePrereleases && version.Split('+')[0].Contains('-'))
+                || (newestVersion != null && !IsNewer(version, newestVersion)))
                 continue;
 
             newest = release;
@@ -81,19 +82,24 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         CancellationToken token = default
     )
     {
-        if (release.Draft || release.Preview || release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
+        if (release.Draft || (release.Preview && !store.Settings.LauncherPrereleases)
+            || release.Id <= 0 || !LauncherStore.SupportedPlatforms.Contains(platform))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }
 
         ReleaseAsset asset = AssetFor(release, platform) ?? throw new InvalidDataException(Loc.Get("launcher.errors.no_platform_update"));
+        string repository = GitHubRepositoryHelper.Normalize(store.Settings.LauncherRepository);
         if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
             || source.Scheme != "https" || source.Host != "github.com"
-            || !source.AbsolutePath.StartsWith($"/{GitHubRepositoryHelper.LauncherRepository}/releases/download/", StringComparison.OrdinalIgnoreCase))
+            || !source.AbsolutePath.StartsWith($"/{repository}/releases/download/", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
 
         string version = VersionFor(asset, platform)!;
-        string versions = Path.Combine(store.Home, "LauncherVersions");
+        if (!store.Settings.LauncherPrereleases && version.Split('+')[0].Contains('-'))
+            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
+
+        string versions = Path.Combine(store.Home, "LauncherVersions", GitHubRepositoryHelper.CacheKey(repository));
         string target = LauncherStore.SafeChildPath(versions, $"{version}-{platform}");
         string name = platform.StartsWith("win-", StringComparison.Ordinal) ? "Prowl.Launcher.exe" : "Prowl.Launcher";
         Directory.CreateDirectory(versions);

@@ -34,6 +34,8 @@ Release ZIPs are kept for automatic updates. They are not needed for the initial
 
 Launcher tests remain available locally; they are not run by CI/CD.
 
+In Preferences, opt in to launcher prereleases to receive preview updates. Turning this off while running a prerelease offers the latest stable release, including an older version, with confirmation before installation. The GitHub repository settings let you choose separate sources for editor releases and launcher updates.
+
 ```sh
 dotnet test Prowl.Launcher.Test/Prowl.Launcher.Test.csproj -c Release
 ```
