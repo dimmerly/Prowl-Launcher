@@ -40,7 +40,9 @@ public sealed class LauncherStore
         string path = Path.Combine(Home, "settings.json");
         JsonObject local = Snapshot(Settings);
         JsonObject merged = Snapshot(ReadJson<Settings>(path) ?? new Settings());
-        MergeProperties(_savedSettings, local, merged, "Projects");
+        MergeProperties(_savedSettings, local, merged, "Projects", "DismissedLauncherReleases");
+        MergeProperties((JsonObject)_savedSettings["DismissedLauncherReleases"]!,
+            (JsonObject)local["DismissedLauncherReleases"]!, (JsonObject)merged["DismissedLauncherReleases"]!);
         merged["Projects"] = MergeProjects((JsonArray)_savedSettings["Projects"]!,
             (JsonArray)local["Projects"]!, (JsonArray)merged["Projects"]!);
         Settings saved = merged.Deserialize<Settings>(JsonOptions)!;
@@ -73,10 +75,10 @@ public sealed class LauncherStore
     private static string ProjectPath(string path) => OperatingSystem.IsWindows()
         ? Path.GetFullPath(path).ToUpperInvariant() : Path.GetFullPath(path);
 
-    private static void MergeProperties(JsonObject baseline, JsonObject local, JsonObject target, string? skip = null)
+    private static void MergeProperties(JsonObject baseline, JsonObject local, JsonObject target, params string[] skip)
     {
         foreach ((string key, JsonNode? value) in local)
-            if (key != skip && !JsonNode.DeepEquals(baseline[key], value)) target[key] = value?.DeepClone();
+            if (!skip.Contains(key) && !JsonNode.DeepEquals(baseline[key], value)) target[key] = value?.DeepClone();
     }
 
     private static JsonArray MergeProjects(JsonArray baseline, JsonArray local, JsonArray disk)

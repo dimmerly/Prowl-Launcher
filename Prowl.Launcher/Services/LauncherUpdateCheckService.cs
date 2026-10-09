@@ -24,12 +24,13 @@ internal sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore 
     }
 
     internal static bool IsDismissed(Settings settings, string repository, long releaseId) =>
-        settings.DismissedLauncherReleases.TryGetValue(GitHubRepositoryHelper.CacheKey(repository), out long dismissed)
-        && dismissed == releaseId;
+        settings.DismissedLauncherReleases.TryGetValue(DismissalKey(repository, releaseId), out bool dismissed) && dismissed;
 
     internal static void Dismiss(LauncherStore store, string repository, long releaseId)
     {
-        store.Settings.DismissedLauncherReleases[GitHubRepositoryHelper.CacheKey(repository)] = releaseId;
+        store.Settings.DismissedLauncherReleases[DismissalKey(repository, releaseId)] = true;
         store.Save();
     }
+
+    private static string DismissalKey(string repository, long releaseId) => $"{GitHubRepositoryHelper.CacheKey(repository)}-{releaseId}";
 }
