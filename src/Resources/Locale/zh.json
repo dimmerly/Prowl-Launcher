@@ -141,7 +141,7 @@
     "launcher.samples.updated": "示例已更新",
     "launcher.samples.extracting": "正在准备示例",
     "launcher.samples.download_required": "请先连接互联网下载示例，再离线运行。",
-    "launcher.samples.no_bundle": "此平台和发布渠道没有可用的示例包。",
+    "launcher.samples.no_bundle": "没有兼容的示例包。",
     "launcher.samples.scripting_showcase_description": "探索脚本和组件行为。",
     "launcher.samples.scripting_showcase_name": "脚本示例",
     "launcher.samples.start_failed": "无法启动示例。",

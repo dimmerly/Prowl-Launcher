@@ -141,7 +141,7 @@
     "launcher.samples.updated": "サンプルを更新しました",
     "launcher.samples.extracting": "サンプルを準備中",
     "launcher.samples.download_required": "オフラインで実行する前に、インターネットに接続してサンプルをダウンロードしてください。",
-    "launcher.samples.no_bundle": "このプラットフォームとリリースチャンネルで利用できるサンプルパッケージはありません。",
+    "launcher.samples.no_bundle": "対応するサンプルがありません。",
     "launcher.samples.scripting_showcase_description": "スクリプトとコンポーネントの動作を体験できます。",
     "launcher.samples.scripting_showcase_name": "スクリプティングサンプル",
     "launcher.samples.start_failed": "サンプルを起動できませんでした。",

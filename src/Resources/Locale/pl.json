@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Przykłady zaktualizowane",
     "launcher.samples.extracting": "Przygotowywanie przykładów",
     "launcher.samples.download_required": "Połącz się z internetem, aby pobrać przykłady przed uruchomieniem ich offline.",
-    "launcher.samples.no_bundle": "Brak pakietu przykładów dla tej platformy i kanału wydań.",
+    "launcher.samples.no_bundle": "Brak zgodnych przykładów.",
     "launcher.samples.scripting_showcase_description": "Poznaj komponenty, cykl życia i interakcje sterowane skryptami.",
     "launcher.samples.scripting_showcase_name": "Skrypty",
     "launcher.samples.start_failed": "Nie udało się uruchomić przykładu.",

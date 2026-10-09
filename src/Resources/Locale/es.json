@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Ejemplos actualizados",
     "launcher.samples.extracting": "Preparando ejemplos",
     "launcher.samples.download_required": "Conéctate a Internet para descargar los ejemplos antes de ejecutarlos sin conexión.",
-    "launcher.samples.no_bundle": "No hay un paquete de ejemplos disponible para esta plataforma y canal de versiones.",
+    "launcher.samples.no_bundle": "No hay ejemplos compatibles.",
     "launcher.samples.scripting_showcase_description": "Explora los scripts y el comportamiento de los componentes.",
     "launcher.samples.scripting_showcase_name": "Ejemplo de scripts",
     "launcher.samples.start_failed": "No se pudo iniciar el ejemplo.",

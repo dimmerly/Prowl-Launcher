@@ -141,7 +141,7 @@
     "launcher.samples.updated": "샘플 업데이트 완료",
     "launcher.samples.extracting": "샘플 준비 중",
     "launcher.samples.download_required": "오프라인으로 실행하기 전에 인터넷에 연결하여 샘플을 다운로드하세요.",
-    "launcher.samples.no_bundle": "이 플랫폼과 릴리스 채널에서 사용할 수 있는 샘플 패키지가 없습니다.",
+    "launcher.samples.no_bundle": "호환되는 샘플이 없습니다.",
     "launcher.samples.scripting_showcase_description": "스크립팅과 컴포넌트 동작을 살펴보세요.",
     "launcher.samples.scripting_showcase_name": "스크립팅 샘플",
     "launcher.samples.start_failed": "샘플를 시작하지 못했습니다.",

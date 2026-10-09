@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Örnekler güncellendi",
     "launcher.samples.extracting": "Örnekler hazırlanıyor",
     "launcher.samples.download_required": "Örnekleri çevrimdışı çalıştırmadan önce indirmek için internete bağlanın.",
-    "launcher.samples.no_bundle": "Bu platform ve sürüm kanalı için örnek paketi bulunmuyor.",
+    "launcher.samples.no_bundle": "Uyumlu örnek paketi yok.",
     "launcher.samples.scripting_showcase_description": "Betikleri ve bileşen davranışlarını keşfedin.",
     "launcher.samples.scripting_showcase_name": "Betik örneği",
     "launcher.samples.start_failed": "Örnek başlatılamadı.",

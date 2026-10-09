@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Samples updated",
     "launcher.samples.extracting": "Preparing samples",
     "launcher.samples.download_required": "Connect to the internet to download samples before running them offline.",
-    "launcher.samples.no_bundle": "No sample bundle is available for this platform and release channel.",
+    "launcher.samples.no_bundle": "No compatible sample bundle.",
     "launcher.samples.scripting_showcase_description": "Explore scripting and component behavior.",
     "launcher.samples.scripting_showcase_name": "Scripting Showcase",
     "launcher.samples.start_failed": "The sample could not be started.",

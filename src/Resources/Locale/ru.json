@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Примеры обновлены",
     "launcher.samples.extracting": "Подготовка примеров",
     "launcher.samples.download_required": "Подключитесь к интернету, чтобы загрузить примеры перед запуском без сети.",
-    "launcher.samples.no_bundle": "Для этой платформы и канала выпусков нет доступного пакета примеров.",
+    "launcher.samples.no_bundle": "Нет совместимых примеров.",
     "launcher.samples.scripting_showcase_description": "Изучите скрипты и поведение компонентов.",
     "launcher.samples.scripting_showcase_name": "Пример скриптов",
     "launcher.samples.start_failed": "Не удалось запустить пример.",

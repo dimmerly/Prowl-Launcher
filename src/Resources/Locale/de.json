@@ -141,7 +141,7 @@
     "launcher.samples.updated": "Beispiele aktualisiert",
     "launcher.samples.extracting": "Beispiele werden vorbereitet",
     "launcher.samples.download_required": "Verbinde dich mit dem Internet, um Beispiele vor der Offline-Nutzung herunterzuladen.",
-    "launcher.samples.no_bundle": "Für diese Plattform und diesen Veröffentlichungskanal ist kein Beispielpaket verfügbar.",
+    "launcher.samples.no_bundle": "Kein kompatibles Beispielpaket.",
     "launcher.samples.scripting_showcase_description": "Entdecke Scripting und das Verhalten von Komponenten.",
     "launcher.samples.scripting_showcase_name": "Scripting-Beispiel",
     "launcher.samples.start_failed": "Das Beispiel konnte nicht gestartet werden.",
