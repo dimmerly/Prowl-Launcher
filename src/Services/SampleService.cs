@@ -7,8 +7,23 @@ using System.Text.Json;
 
 namespace Prowl.Launcher;
 
-sealed class SampleService(HttpClient http, LauncherStore store)
+sealed class SampleService
 {
+    private readonly HttpClient http;
+    private readonly LauncherStore store;
+
+    public SampleService(HttpClient http, LauncherStore store)
+    {
+        this.http = http;
+        this.store = store;
+        try { RecoverInterruptedOperations(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            try { File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Sample recovery: {error}\n"); }
+            catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
     private sealed record InstalledBundle(string Repository, string Platform, long ReleaseId, string Tag, string Digest);
     private string? _loadedCache;
     private DateTime _loadedStamp;
@@ -93,6 +108,7 @@ sealed class SampleService(HttpClient http, LauncherStore store)
         }
         await EnsureDownloadedAsync(progress, token, allowNetwork);
         await using FileStream copyLock = await AcquireDownloadLockAsync(Repository, token);
+        RecoverCache(Repository, CacheRoot);
         if (!IsAvailable(sample))
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.unavailable"));
@@ -207,6 +223,11 @@ sealed class SampleService(HttpClient http, LauncherStore store)
         bool allowNetwork = true, bool checkForUpdates = false)
     {
         token.ThrowIfCancellationRequested();
+        string repository = Repository;
+        string cacheRoot = CacheRoot;
+        Directory.CreateDirectory(store.Home);
+        await using FileStream downloadLock = await AcquireDownloadLockAsync(repository, token);
+        RecoverCache(repository, cacheRoot);
         if (IsCached && !checkForUpdates)
         {
             return;
@@ -214,14 +235,6 @@ sealed class SampleService(HttpClient http, LauncherStore store)
         if (!allowNetwork)
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.download_required"));
-        }
-        string repository = Repository;
-        string cacheRoot = CacheRoot;
-        Directory.CreateDirectory(store.Home);
-        await using FileStream downloadLock = await AcquireDownloadLockAsync(repository, token);
-        if (IsCached && !checkForUpdates)
-        {
-            return;
         }
         progress?.Report(new TransferProgress("launcher.samples.downloading"));
         IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store, repository).GetAsync(token);
@@ -258,28 +271,8 @@ sealed class SampleService(HttpClient http, LauncherStore store)
             File.Delete(archivePath);
             token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.GetDirectoryName(cacheRoot)!);
-            string backup = cacheRoot + ".backup-" + Guid.NewGuid().ToString("N");
-            if (Directory.Exists(cacheRoot))
-            {
-                Directory.Move(cacheRoot, backup);
-            }
-            try
-            {
-                Directory.Move(staging, cacheRoot);
-            }
-            catch
-            {
-                if (Directory.Exists(backup))
-                {
-                    Directory.Move(backup, cacheRoot);
-                }
-                throw;
-            }
+            DirectoryReplacementService.Replace(staging, cacheRoot);
             _loadedCache = null;
-            if (Directory.Exists(backup))
-            {
-                Directory.Delete(backup, true);
-            }
         }
         finally
         {
@@ -290,9 +283,63 @@ sealed class SampleService(HttpClient http, LauncherStore store)
         }
     }
 
+    internal void RecoverInterruptedOperations()
+    {
+        string repository = Repository;
+        string cacheRoot = CacheRoot;
+        if (!Directory.Exists(Path.GetDirectoryName(cacheRoot))) return;
+        FileStream operation;
+        // Startup must not wait for another launcher that is downloading a bundle.
+        try { operation = new FileStream(DownloadLockPath(repository), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+        catch (IOException) { return; }
+        using (operation) RecoverCache(repository, cacheRoot);
+    }
+
+    private void RecoverCache(string repository, string cacheRoot)
+    {
+        string parent = Path.GetDirectoryName(cacheRoot)!;
+        if (!Directory.Exists(parent)) return;
+        DirectoryReplacementService.RejectLink(store.Home);
+        DirectoryReplacementService.RejectLink(Path.Combine(store.Home, "Samples"));
+        DirectoryReplacementService.RejectLink(parent);
+        DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
+
+        // Restore backups made by older launcher versions as well.
+        string prefix = Platform.Identifier + ".backup-";
+        foreach (string backup in Directory.EnumerateDirectories(parent, prefix + "*").OrderByDescending(Directory.GetLastWriteTimeUtc))
+        {
+            if (!Guid.TryParseExact(Path.GetFileName(backup)[prefix.Length..], "N", out _)
+                || !IsValidCache(backup, repository)) continue;
+            if (!IsValidCache(cacheRoot, repository))
+            {
+                Directory.Move(backup, cacheRoot + ".previous");
+                DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
+            }
+            else Directory.Delete(backup, true);
+        }
+        _loadedCache = null;
+    }
+
+    private static bool IsValidCache(string root, string repository)
+    {
+        if (!Directory.Exists(root)) return false;
+        try
+        {
+            DirectoryReplacementService.RejectLinks(root);
+            InstalledBundle? installed = LauncherStore.ReadJson<InstalledBundle>(Path.Combine(root, "installed.json"));
+            if (installed == null || installed.Repository != repository || installed.Platform != Platform.Identifier) return false;
+            ValidateContent(Path.Combine(root, "content"));
+            return true;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return false; }
+    }
+
+    private string DownloadLockPath(string repository) => Path.Combine(store.Home,
+        "samples-" + GitHubRepositoryHelper.CacheKey(repository) + "-" + Platform.Identifier + ".lock");
+
     private async Task<FileStream> AcquireDownloadLockAsync(string repository, CancellationToken token)
     {
-        string path = Path.Combine(store.Home, "samples-" + GitHubRepositoryHelper.CacheKey(repository) + "-" + Platform.Identifier + ".lock");
+        string path = DownloadLockPath(repository);
         while (true)
         {
             token.ThrowIfCancellationRequested();

@@ -94,6 +94,79 @@ public sealed class SampleHelperTests : IDisposable
         Assert.Empty(Directory.EnumerateDirectories(fixture.Store.WorkPath));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestartRestoresABundleMovedAsideBeforeACrash(bool legacy)
+    {
+        using BundleFixture fixture = new(_home);
+        await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
+        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        string backup = cache + (legacy ? ".backup-" + Guid.NewGuid().ToString("N") : ".previous");
+        Directory.Move(cache, backup);
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
+        Assert.True(restarted.IsCached);
+        string assembly = await restarted.ExtractAsync(new("HelloProwl"), Path.Combine(_home, "offline"), allowNetwork: false);
+        Assert.Equal("fixture assembly", File.ReadAllText(assembly));
+        Assert.Equal(1, fixture.Downloads);
+        Assert.False(Directory.Exists(backup));
+    }
+
+    [Fact]
+    public async Task RestartRetainsACompleteReplacementAndRemovesItsBackup()
+    {
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
+        await samples.EnsureDownloadedAsync();
+        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        string retained = Path.Combine(_home, "retained");
+        Directory.Move(cache, retained);
+        fixture.PublishUpdate();
+        await samples.EnsureDownloadedAsync(checkForUpdates: true);
+        Directory.Move(retained, cache + ".previous");
+
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
+        Assert.True(restarted.IsCached);
+        Assert.Equal("second", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
+        Assert.False(Directory.Exists(cache + ".previous"));
+    }
+
+    [Fact]
+    public async Task RestartRestoresTheBackupWhenTheReplacementIsIncomplete()
+    {
+        using BundleFixture fixture = new(_home);
+        await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
+        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        Directory.Move(cache, cache + ".previous");
+        Directory.CreateDirectory(cache);
+        File.WriteAllText(Path.Combine(cache, "partial"), "interrupted");
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
+        Assert.True(restarted.IsCached);
+        Assert.Equal("first", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
+        Assert.False(File.Exists(Path.Combine(cache, "partial")));
+        Assert.False(Directory.Exists(cache + ".previous"));
+    }
+
+    [Fact]
+    public async Task StartupDoesNotRecoverWhileAnotherInstanceOwnsTheBundleLock()
+    {
+        using BundleFixture fixture = new(_home);
+        await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
+        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        string lockPath = Path.Combine(_home, "samples-" + GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository) + "-" + Platform.Identifier + ".lock");
+        SampleService restarted;
+        using (FileStream operation = new(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+        {
+            Directory.Move(cache, cache + ".previous");
+            restarted = new SampleService(fixture.Http, new LauncherStore(_home));
+            Assert.False(restarted.IsCached);
+            Assert.True(Directory.Exists(cache + ".previous"));
+        }
+        await restarted.EnsureDownloadedAsync(allowNetwork: false);
+        Assert.True(restarted.IsCached);
+        Assert.Equal(1, fixture.Downloads);
+    }
+
     [Fact]
     public async Task CancelledDownloadCanBeRetriedWithoutPartialFiles()
     {
