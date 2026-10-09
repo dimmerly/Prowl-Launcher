@@ -9,14 +9,12 @@ internal sealed record LauncherUpdateCheck(string Repository, bool Prereleases, 
 internal sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
 {
     internal async Task<LauncherUpdateCheck> CheckAsync(string platform, string currentVersion,
-        bool automatic, CancellationToken token = default)
+        bool automatic, CancellationToken token = default, TimeSpan? timeout = null)
     {
         string repository = GitHubRepositoryHelper.Normalize(store.Settings.LauncherRepository);
         bool prereleases = store.Settings.LauncherPrereleases;
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-        timeout.CancelAfter(TimeSpan.FromSeconds(15));
         GitHubReleasesService github = new(http, store, repository);
-        IReadOnlyList<EditorRelease> releases = await github.GetAsync(timeout.Token);
+        IReadOnlyList<EditorRelease> releases = await github.GetAsync(token, timeout);
         EditorRelease? release = LauncherUpdaterService.FindUpdate(releases, platform, currentVersion, prereleases);
         // Select the newest eligible release first; dismissal must not offer an older release instead.
         if (automatic && release != null && IsDismissed(store.Settings, repository, release.Id)) release = null;

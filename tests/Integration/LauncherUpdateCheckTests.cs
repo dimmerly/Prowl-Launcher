@@ -101,6 +101,49 @@ public sealed class LauncherUpdateCheckTests : IDisposable
         Assert.False(check.Matches(store.Settings));
     }
 
+    [Fact]
+    public async Task ADeadlineUsesCachedReleasesAndReportsThatTheyWereCached()
+    {
+        LauncherStore store = new(_home);
+        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[] { Release(1, "1.1.0") });
+        using HttpClient http = new(new StalledHandler());
+        LauncherUpdateCheck check = await new LauncherUpdateCheckService(http, store)
+            .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50));
+        Assert.True(check.UsedCache);
+        Assert.Equal(1, check.Release!.Id);
+    }
+
+    [Fact]
+    public async Task ADeadlineWithoutACacheReportsNetworkFailureInsteadOfUserCancellation()
+    {
+        LauncherStore store = new(_home);
+        using HttpClient http = new(new StalledHandler());
+        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdateCheckService(http, store)
+            .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50)));
+    }
+
+    [Fact]
+    public async Task ExplicitCancellationDoesNotReturnCachedReleases()
+    {
+        LauncherStore store = new(_home);
+        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[] { Release(1, "1.1.0") });
+        using HttpClient http = new(new StalledHandler());
+        using CancellationTokenSource cancellation = new();
+        Task<LauncherUpdateCheck> check = new LauncherUpdateCheckService(http, store)
+            .CheckAsync("win-x64", "1.0.0", false, cancellation.Token, TimeSpan.FromSeconds(10));
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => check);
+    }
+
+    private sealed class StalledHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            await Task.Delay(Timeout.Infinite, token);
+            throw new InvalidOperationException("The stalled request should have been cancelled.");
+        }
+    }
+
     private sealed class Handler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request);

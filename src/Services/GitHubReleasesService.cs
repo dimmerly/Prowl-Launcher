@@ -17,11 +17,13 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
         get; private set;
     }
 
-    public async Task<IReadOnlyList<EditorRelease>> GetAsync(CancellationToken token = default)
+    public async Task<IReadOnlyList<EditorRelease>> GetAsync(CancellationToken token = default, TimeSpan? timeout = null)
     {
         UsedCache = false;
         string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
         string cachePath = CachePath(store, repository);
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+        deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(15));
         try
         {
             List<EditorRelease> releases = [];
@@ -31,14 +33,14 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
                 using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}");
                 request.Headers.UserAgent.ParseAdd("Prowl-Launcher/1.0");
                 request.Headers.Accept.ParseAdd("application/vnd.github+json");
-                using HttpResponseMessage response = await http.SendAsync(request, token);
+                using HttpResponseMessage response = await http.SendAsync(request, deadline.Token);
                 if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
                 {
                     throw new HttpRequestException(Loc.Get("launcher.errors.github_rate_limit"));
                 }
 
                 response.EnsureSuccessStatusCode();
-                List<EditorRelease> batch = await response.Content.ReadFromJsonAsync<List<EditorRelease>>(token) ?? [];
+                List<EditorRelease> batch = await response.Content.ReadFromJsonAsync<List<EditorRelease>>(deadline.Token) ?? [];
                 releases.AddRange(batch.Where(r => !r.Draft));
                 if (batch.Count < 100)
                 {
@@ -55,6 +57,8 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             List<EditorRelease>? cached = LauncherStore.ReadJson<List<EditorRelease>>(cachePath);
             if (cached == null)
             {
+                if (e is OperationCanceledException)
+                    throw new HttpRequestException("The GitHub release request timed out.", e);
                 throw;
             }
 
