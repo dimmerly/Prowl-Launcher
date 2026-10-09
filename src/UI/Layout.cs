@@ -46,7 +46,7 @@ public sealed partial class Launcher
                     .Gap(14)
                     .Enter())
                 {
-                    DrawHeading(p);
+                    DrawHeading(p, _tab == 3 ? DrawSamplesHeadingActions : null);
 
                     if (progressVisible)
                     {

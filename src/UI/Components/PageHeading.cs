@@ -1,11 +1,12 @@
 using Prowl.Rosetta;
 using Prowl.PaperUI;
+using Prowl.PaperUI.LayoutEngine;
 
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private void DrawHeading(Paper p)
+    private void DrawHeading(Paper p, Action<Paper>? actions = null)
     {
         string title = _tab switch
         {
@@ -22,10 +23,22 @@ public sealed partial class Launcher
             _ => "launcher.settings.subtitle"
         };
 
-        using (p.Column("heading").Height(76).Gap(6).Enter())
+        using (p.Row("heading").Height(76).Gap(16).AlignItems(LayoutAlignment.Center).Enter())
         {
-            Label(p, "title", title, 28, Ink, 36, true);
-            Label(p, "subtitle", subtitle, 14, Muted, 23);
+            using (p.Column("heading-text").Height(76).Gap(6).Enter())
+            {
+                Label(p, "title", title, 28, Ink, 36, true);
+                Label(p, "subtitle", subtitle, 14, Muted, 23);
+            }
+
+            if (actions != null)
+            {
+                using (p.Row("heading-actions").Width(UnitValue.Auto).Height(UnitValue.Auto)
+                    .Gap(8).AlignItems(LayoutAlignment.Center).Enter())
+                {
+                    actions(p);
+                }
+            }
         }
     }
 }

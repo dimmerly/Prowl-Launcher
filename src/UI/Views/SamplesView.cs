@@ -17,17 +17,21 @@ public sealed partial class Launcher
     private bool _sampleUpdateAvailable;
     private bool _sampleUpdateChecking;
 
+    private void DrawSamplesHeadingActions(Paper p)
+    {
+        if (_sampleUpdateAvailable && _samples.IsCached
+            && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
+        {
+            Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
+        }
+    }
+
     private void DrawSamples(Paper p)
     {
         if (!offline && screenshot == null && !Busy && _samples.IsCached && !_sampleUpdateChecking
             && _sampleUpdatesCheckedRepository != store.Settings.LauncherRepository)
         {
             _ = CheckSamplesInBackgroundAsync();
-        }
-
-        if (_sampleUpdateAvailable && _samples.IsCached && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
-        {
-            Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
         }
 
         IReadOnlyList<Sample> samples = _samples.Catalog;
