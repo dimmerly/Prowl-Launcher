@@ -75,6 +75,20 @@ public sealed partial class Launcher
             owner._paper?.SetPointerState(PaperMouseBtn.Unknown, point.X, point.Y, false, true);
         }
 
+        protected override void OnMouseEnter()
+        {
+            base.OnMouseEnter();
+            owner._mouseOverWindow = true;
+            owner.UpdateFrameRate();
+        }
+
+        protected override void OnMouseLeave()
+        {
+            base.OnMouseLeave();
+            owner._mouseOverWindow = false;
+            owner.UpdateFrameRate();
+        }
+
         protected override void OnMouseDown(MouseButtonEventArgs args)
         {
             base.OnMouseDown(args);

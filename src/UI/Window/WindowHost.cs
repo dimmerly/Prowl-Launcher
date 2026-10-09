@@ -22,6 +22,7 @@ public sealed partial class Launcher
     private float _deltaTime;
     private bool _forceClose;
     private bool _windowResizing;
+    private bool _mouseOverWindow;
     private long _lastScroll;
 
     public void Run(string title, int width, int height)
@@ -80,7 +81,7 @@ public sealed partial class Launcher
         }
 
         bool scrolling = _lastScroll != 0 && Stopwatch.GetElapsedTime(_lastScroll).TotalSeconds < 1;
-        _window.UpdateFrequency = _window.IsFocused || _windowResizing || scrolling || screenshot != null ? 0 : 5;
+        _window.UpdateFrequency = _window.IsFocused || _mouseOverWindow || _windowResizing || scrolling || screenshot != null ? 0 : 5;
     }
 
     private void RenderWindow(float delta)
