@@ -32,10 +32,10 @@ public sealed partial class Launcher
             "Noto Sans CJK",
             "Noto Sans"
         ];
-        foreach (FontFile font in PaperInstance.EnumerateSystemFonts()
+        foreach (FontFile font in _paper.EnumerateSystemFonts()
             .Where(f => families.Contains(f.FamilyName, StringComparer.OrdinalIgnoreCase) && f.Style == FontStyle.Regular))
         {
-            PaperInstance.AddFallbackFont(font);
+            _paper.AddFallbackFont(font);
         }
     }
 }

@@ -14,7 +14,8 @@ public sealed partial class Launcher(
     bool alertPreview = false,
     bool notesPreview = false,
     bool newProjectPreview = false,
-    bool uninstallPreview = false
+    bool uninstallPreview = false,
+    bool installationPreview = false
 )
 {
     private readonly HttpClient _http = new()
@@ -22,43 +23,23 @@ public sealed partial class Launcher(
         Timeout = TimeSpan.FromMinutes(30)
     };
     private readonly CancellationTokenSource _backgroundCancellation = new();
+
     private GitHubReleasesService _github = null!;
     private EditorInstallerService _installer = null!;
     private LauncherAppearance _appearance = null!;
 
     private void Initialize()
     {
-
-        _font = LoadFont("Geist-Regular.ttf");
-        _bold = LoadFont("Geist-Bold.ttf");
-        _appearance = new LauncherAppearance(store.Home, _font, _bold);
-
-        string locale = store.Settings.Locale ?? EditorPreferences.Locale() ?? "en";
-        if (!LocaleHelper.Codes.Contains(locale))
-        {
-            locale = "en";
-        }
-
-        store.Settings.Locale = locale;
-        Loc.Configure(config => config
-            .SetFallbackLocale("en")
-            .SetLocale(locale)
-            .AddProvider(new EmbeddedResourceProvider(Assembly.GetExecutingAssembly(), "Prowl.Launcher.Locale")));
-        _newProjectName = Loc.Get("launcher.projects.untitled");
-        LoadLanguageFonts();
+        InitializeAppearance();
+        InitializeLocalization();
 
         CenterWindow();
         _window.IsVisible = screenshot == null;
 
-        _github = new GitHubReleasesService(_http, store);
-        _installer = new EditorInstallerService(_http, store);
-        store.ImportRecentProjects();
-        ReloadInstalled();
-        string cachePath = GitHubReleasesService.CachePath(store, store.Settings.ProwlRepository);
-        _releases = LauncherStore.ReadJson<List<EditorRelease>>(cachePath) ?? [];
-
+        InitializeServices();
         ShowPreviewChangelog();
-        
+        _showInstallationPrompt = installationPreview || (screenshot == null && LauncherInstallationService.ShouldOffer(store));
+
         if (StartPreviewOperation())
         {
             return;
@@ -74,6 +55,42 @@ public sealed partial class Launcher(
         }
     }
 
+    private void InitializeAppearance()
+    {
+        _font = LoadFont("Geist-Regular.ttf");
+        _bold = LoadFont("Geist-Bold.ttf");
+        _appearance = new LauncherAppearance(store.Home, _font, _bold);
+    }
+
+    private void InitializeLocalization()
+    {
+        string locale = store.Settings.Locale ?? EditorPreferences.Locale() ?? "en";
+        if (!LocaleHelper.Codes.Contains(locale))
+        {
+            locale = "en";
+        }
+
+        store.Settings.Locale = locale;
+        Loc.Configure(config => config
+            .SetFallbackLocale("en")
+            .SetLocale(locale)
+            .AddProvider(new EmbeddedResourceProvider(Assembly.GetExecutingAssembly(), "Prowl.Launcher.Locale")));
+        _newProjectName = Loc.Get("launcher.projects.untitled");
+        LoadLanguageFonts();
+    }
+
+    private void InitializeServices()
+    {
+        _github = new GitHubReleasesService(_http, store);
+        _installer = new EditorInstallerService(_http, store);
+
+        store.ImportRecentProjects();
+        ReloadInstalled();
+
+        string cachePath = GitHubReleasesService.CachePath(store, store.Settings.ProwlRepository);
+        _releases = LauncherStore.ReadJson<List<EditorRelease>>(cachePath) ?? [];
+    }
+
     private void Closing()
     {
         _sampleThumbnails.Dispose();
@@ -81,6 +98,5 @@ public sealed partial class Launcher(
         _operation?.Dispose();
         _http.Dispose();
         _backgroundCancellation.Dispose();
-        
     }
 }

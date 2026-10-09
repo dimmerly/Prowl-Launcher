@@ -156,7 +156,9 @@ public sealed class LauncherStore
             .FirstOrDefault(e => NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
         Project project = new()
         {
-            Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
+            Name = name,
+            Path = root,
+            EditorKey = matching?.Key ?? Settings.DefaultEditorKey
         };
         Settings.Projects.Add(project);
         Save();

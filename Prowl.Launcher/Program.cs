@@ -38,14 +38,15 @@ static class Program
 
             Launcher launcher = new(
                 store,
-                screenshot,
-                tab,
-                args.Contains("--offline"),
-                args.Contains("--progress-preview"),
-                args.Contains("--alert-preview"),
-                args.Contains("--notes-preview"),
-                args.Contains("--new-project"),
-                args.Contains("--uninstall-preview") );
+                screenshot: screenshot,
+                initialTab: tab,
+                offline: args.Contains("--offline"),
+                progressPreview: args.Contains("--progress-preview"),
+                alertPreview: args.Contains("--alert-preview"),
+                notesPreview: args.Contains("--notes-preview"),
+                newProjectPreview: args.Contains("--new-project"),
+                uninstallPreview: args.Contains("--uninstall-preview"),
+                installationPreview: args.Contains("--installation-preview"));
             launcher.Run("Prowl Launcher", 1200, 840);
         }
         catch (Exception exception)
@@ -69,7 +70,7 @@ static class Program
 
         string versions = Path.Combine(store.Home, "LauncherVersions");
         LauncherStore.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
-        ProcessStartInfo info = new( updated )
+        ProcessStartInfo info = new(updated)
         {
             UseShellExecute = false
         };
@@ -81,5 +82,4 @@ static class Program
         Process.Start(info);
         return true;
     }
-
 }

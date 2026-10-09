@@ -17,6 +17,11 @@ public sealed partial class Launcher
 
         ShowPendingNotifications();
         Origami.BeginFrame(p, _deltaTime);
+        if (_showInstallationPrompt)
+        {
+            _showInstallationPrompt = false;
+            ShowInstallationDialog();
+        }
 
         using (p.Column("window").Size(width, height).Enter())
         {

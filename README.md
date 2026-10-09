@@ -12,6 +12,22 @@ dotnet run --project Prowl.Launcher/Prowl.Launcher.csproj
 
 Windows, Linux, and macOS release packages include .NET. End users do not need an SDK.
 
+## Install
+
+Download the file for your operating system:
+
+- Windows: `.exe` — open the downloaded launcher.
+- Linux: `.AppImage` — allow the file to run as a program, then open it.
+- macOS: `.dmg` — open the disk image, then open **Prowl Launcher**.
+
+On first launch, choose **Install** to copy the app into your user applications folder and optionally create a desktop shortcut. No administrator access is required. The launcher restarts from its installed copy; the original download stays intact. Windows also gets a Start menu entry, and Linux gets an application menu entry. **Keep portable** skips installation and remembers your choice. Source builds and screenshot captures skip this prompt.
+
+Windows uses `%LOCALAPPDATA%/Programs/Prowl Launcher`, Linux uses the launcher's data folder under `Application`, and macOS uses `~/Applications/Prowl Launcher.app`. The DMG also provides the usual Applications shortcut for manual installation.
+
+Windows downloads are unsigned. macOS apps use local ad-hoc signatures, without a Developer ID certificate or notarization. These do not establish publisher trust: Windows may show SmartScreen, and macOS may require allowing the app in Privacy & Security. AppImage support depends on the Linux desktop and its FUSE support.
+
+Release ZIPs are kept for automatic updates. They are not needed for the initial install.
+
 ## Versions and releases
 
 `VERSION.txt` is the launcher version. Bump it on `main` to publish a new version. CI builds Windows x64, Linux x64/ARM64, and macOS x64/ARM64 packages, then creates the corresponding `v<version>` tag and GitHub release. Existing releases and tags are never replaced. Commits with an already released version produce build artifacts without another release. Prerelease versions create prereleases.

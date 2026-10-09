@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Prowl.Launcher.Test" />
+    <AssemblyMetadata Include="SelfInstall" Value="$(SelfInstall)" />
     <PackageReference Include="OpenTK" Version="4.9.4" />
     <PackageReference Include="Prowl.Paper" Version="$(ProwlPackageVersion)" />
     <PackageReference Include="Prowl.Origami" Version="$(ProwlPackageVersion)" />
@@ -26,6 +27,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources/*.ttf" />
+    <EmbeddedResource Include="Resources/prowl.png" LogicalName="Prowl.Launcher.prowl.png" />
     <EmbeddedResource Include="Resources/Locale/*.json" LogicalName="Prowl.Launcher.Locale.%(Filename).json" />
     <EmbeddedResource Include="Resources/Icons/*.svg" LogicalName="Prowl.Launcher.Icons.%(Filename).svg" />
     <EmbeddedResource Include="Resources/Samples/*.png" LogicalName="Prowl.Launcher.Samples.%(Filename).png" />

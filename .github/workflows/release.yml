@@ -54,9 +54,9 @@ jobs:
           - platform: linux-arm64
             runner: ubuntu-24.04-arm
           - platform: osx-x64
-            runner: ubuntu-latest
+            runner: macos-15-intel
           - platform: osx-arm64
-            runner: ubuntu-latest
+            runner: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -84,6 +84,8 @@ jobs:
         run: >
           dotnet publish Prowl.Launcher/Prowl.Launcher.csproj
           -c Release -r ${{ matrix.platform }} --self-contained true
+          -p:SelfInstall=true -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false
           -p:SampleBundleDirectory=${{ github.workspace }}/artifacts/samples/Bundles
           -o "publish/Prowl Launcher"
 
@@ -93,6 +95,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libglfw3
           cp -L /usr/lib/aarch64-linux-gnu/libglfw.so.3 "publish/Prowl Launcher/libglfw.so.3"
+
+      - name: Prepare AppImage tool
+        if: startsWith(matrix.platform, 'linux-')
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          if [ "$PLATFORM" = linux-arm64 ]; then
+            arch=aarch64
+            digest=f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158
+          else
+            arch=x86_64
+            digest=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
+          fi
+          tool="$RUNNER_TEMP/appimagetool.AppImage"
+          curl --fail --location --retry 3 \
+            "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-$arch.AppImage" -o "$tool"
+          echo "$digest  $tool" | sha256sum --check
+          chmod +x "$tool"
+          echo "APPIMAGETOOL=$tool" >> "$GITHUB_ENV"
 
       - name: Package launcher
         env:
@@ -106,7 +127,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: launcher-${{ matrix.platform }}
-          path: artifacts/Prowl Launcher-*.zip
+          path: artifacts/Prowl Launcher-*
           if-no-files-found: error
 
   release:
@@ -145,5 +166,5 @@ jobs:
 
           flags=()
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$tag" artifacts/*.zip --verify-tag \
+          gh release create "$tag" artifacts/* --verify-tag \
             --title "Prowl Launcher $VERSION" --generate-notes "${flags[@]}"
