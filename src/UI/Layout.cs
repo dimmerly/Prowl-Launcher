@@ -49,19 +49,14 @@ public sealed partial class Launcher
                 {
                     DrawHeading(p, _tab == 3 ? DrawSamplesHeadingActions : null);
 
-                    if (progressVisible)
-                    {
-                        DrawOperation(p);
-                    }
-
                     bool showToolbar = _tab == 0 && !_newProjectPage;
                     if (showToolbar)
                     {
                         DrawToolbar(p, width);
                     }
 
-                    // Reserve the operation panel and toolbar before sizing the list.
-                    float operationSpace = progressVisible ? Constants.Layout.OperationHeight + 14 : 0;
+                    // Keep the list and news above the fixed bottom progress bar.
+                    float operationSpace = progressVisible ? Constants.Layout.OperationHeight : 0;
                     float toolbarSpace = showToolbar ? 0 : 58;
                     float listWidth = Math.Max(1, width - Constants.Layout.SidebarWidth - 56);
                     float listHeight = Math.Max(0, height - (showToolbar ? 190 : 202) - operationSpace + toolbarSpace);
@@ -81,10 +76,16 @@ public sealed partial class Launcher
                             DrawNewsSection(p);
                     }
                 }
+
+                if (progressVisible)
+                {
+                    DrawOperation(p);
+                }
             }
             DrawTitleBar(p);
         }
 
+        DrawNotifications(p, progressVisible);
         Origami.EndFrame(p);
     }
 

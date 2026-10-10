@@ -161,11 +161,27 @@ public sealed partial class Launcher
                         .Gap(2)
                         .Enter())
                     {
-                        Label(p, id + "name", release.Tag, 18, Ink, 28, true);
+                        using (p.Row(id + "title").Height(28).Gap(8).AlignItems(LayoutAlignment.Center).Enter())
+                        {
+                            p.Box(id + "name")
+                                .Width(UnitValue.Auto).Height(28)
+                                .IsNotInteractable()
+                                .Text(release.Tag, _bold).FontSize(19.8f)
+                                .TextColor(Ink).Alignment(TextAlignment.MiddleLeft);
+                            var tagColor = release.Preview ? _appearance.Theme.Amber.C500 : Muted;
+                            p.Box(id + "channel")
+                                .Width(UnitValue.Auto).Height(24).Padding(8, 0)
+                                .Rounded(_appearance.Theme.Metrics.Rounding)
+                                .BackgroundColor(OrigamiTheme.WithAlpha(tagColor, 24))
+                                .IsNotInteractable()
+                                .Text(Loc.Get(release.Preview ? "launcher.versions.preview" : "launcher.versions.stable"), _font)
+                                .FontSize(14).TextColor(tagColor)
+                                .Alignment(TextAlignment.MiddleCenter);
+                        }
                         Label(
                             p,
                             id + "meta",
-                            $"{Loc.Get(release.Preview ? "launcher.versions.preview" : "launcher.versions.stable")} · {release.Published.LocalDateTime:d} · {release.AssetFor(Platform.Identifier)!.Size / 1048576d:F0} MB",
+                            $"{release.Published.LocalDateTime:d} · {release.AssetFor(Platform.Identifier)!.Size / 1048576d:F0} MB",
                             12,
                             Muted,
                             22

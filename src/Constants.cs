@@ -68,7 +68,7 @@ public static class Constants
         public const float TitleBarHeight = 34;
         public const float LanguagePickerWidth = 86;
         public const float FpsWidth = 84;
-        public const float OperationHeight = 148;
+        public const float OperationHeight = 86;
         public const float SampleGap = 12;
         public const int ProgressDelayMilliseconds = 650;
     }

@@ -127,6 +127,40 @@ static class LauncherScenarios
         await ui.Frame(3);
         switch (scenario)
         {
+            case "ToastsAboveProgress":
+                using (CancellationTokenSource operation = new())
+                {
+                    SetField(ui.Launcher, "_operation", operation);
+                    SetField(ui.Launcher, "_immediateProgress", true);
+                    var progressNotifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                    progressNotifications.Enqueue(("Toast above progress", "Cancel remains accessible", ToastType.Error));
+                    await ui.Frame(2);
+                    ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
+                    float toastTop = progressToast.Data.Y;
+                    Check(toastTop + progressToast.Data.LayoutHeight < ui.Paper.Height - Constants.Layout.OperationHeight,
+                        "Toasts must stay above the entire progress panel.");
+                    await ui.ClickText("Cancel");
+                    Check(operation.IsCancellationRequested, "Cancel must remain clickable while a toast is visible.");
+                    SetField(ui.Launcher, "_operation", null!);
+                    await ui.Frame(2);
+                    progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
+                    Check(Math.Abs(progressToast.Data.Y - toastTop - Constants.Layout.OperationHeight) < 1,
+                        "Toasts must return to the bottom when the progress panel closes.");
+                }
+                break;
+            case "DismissToasts":
+                var notifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                notifications.Enqueue(("Dismiss this toast", "First notification", ToastType.Success));
+                notifications.Enqueue(("Keep this toast", "Second notification", ToastType.Error));
+                await ui.Frame(2);
+                ElementHandle toastCard = ui.Text("Dismiss this toast").GetParentHandle().GetParentHandle().GetParentHandle();
+                ElementHandle closeToast = ui.Nodes().Single(n => n.GetParentHandle() == toastCard && n.Data.OnClick != null);
+                await ui.Click(closeToast);
+                await ui.Frame(2);
+                Check(!ui.HasText("Dismiss this toast"), "Clicking the close target must dismiss its toast immediately.");
+                Check(ui.HasText("Keep this toast"), "Dismissing one toast must preserve the other toast.");
+                await ui.Wait(() => !ui.HasText("Keep this toast"), "Undismissed toasts must still expire automatically.");
+                break;
             case "ReadLocalNews":
                 GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.ContainerRounding = 12;
                 string newsFixture = Path.Combine(AppContext.BaseDirectory, "NewsFixture");

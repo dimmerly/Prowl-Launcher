@@ -14,6 +14,8 @@ public sealed class UserWorkflowTests
     public static IEnumerable<object[]> Scenarios() => new[]
     {
         "EmptyProjects",
+        "DismissToasts",
+        "ToastsAboveProgress",
         "NavigatePages",
         "ReadLocalNews",
         "CancelNewProject",
