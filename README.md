@@ -20,6 +20,40 @@ The launcher checks for updates at startup and shows the changelog before instal
 
 Enable prereleases in Settings to check for preview updates immediately. Disable them to switch back to the latest stable release. Editor and launcher release repositories can also be changed in Settings.
 
+## Data folder
+
+On Windows, launcher data lives in `%APPDATA%\Prowl\Launcher` (usually `C:\Users\<user>\AppData\Roaming\Prowl\Launcher`). **Open data folder** in Settings opens the location currently in use. `PROWL_LAUNCHER_HOME` overrides this location, including for portable runs.
+
+Files and folders appear as the launcher needs them:
+
+| Path | Purpose |
+| --- | --- |
+| `settings.json` | Preferences, project paths and editor pins, release repositories, dismissed updates, and the active launcher executable. Projects themselves stay in their chosen folders. |
+| `settings.json.bak` | A copy of the last saved settings, used when the main file cannot be read. |
+| `settings.json.corrupt-<id>` / `settings.json.bak.corrupt-<id>` | Damaged settings preserved during recovery. |
+| `theme.json` | Launcher theme, colors, and roundness. |
+| `releases.json` | The current editor repository's release list for offline use. Launcher update checks use the network. |
+| `Versions/` | Installed editor versions and their dependencies. Each installation has an `installation.json` recording its repository, release, platform, executable, and installation date. These versions remain until uninstalled. |
+| `Updates/<repository-hash>/<version>-<platform>/` | Downloaded launcher updates. Each contains the app and `launcher-installation.json`, which records its download digest, executable, and file hashes. Cleanup keeps the selected update, running copies, and original installed launcher; unused copies are removed after activation and at startup. |
+| `Samples/<repository-hash>/<platform>/` | Cached sample bundle. `installed.json` records its source release and digest. `content/samples.json` lists sample IDs; `content/Host/` contains their shared runtime, and `content/Samples/<id>/` contains each sample's assembly and assets. |
+| `Work/<id>/` | Temporary editor or launcher downloads and extraction. May contain `editor.zip` or `launcher.zip`, `extracted/`, and an editor repair's `repair.json` and `previous/` backup. Completed work is removed; interrupted repairs retain what is needed for recovery. |
+| `Work/samples-download-<id>/` | Temporary sample download, including `samples.zip`, extracted `content/`, and `installed.json`. |
+| `Work/sample-<id>/` | A running sample's copy of its runtime and assets, plus `stdout.log` and `stderr.log`. Successful runs remove it; failed runs retain it for diagnosis. |
+| `settings.lock` | Prevents simultaneous settings writes from different launcher instances. |
+| `operations.lock` | Coordinates editor installation, launcher installation, repair, and cleanup. |
+| `launcher-update.lock` | Protects the launcher download, startup check, and activation from cleanup by another instance. |
+| `samples-<repository-hash>-<platform>.lock` | Coordinates sample downloads and recovery. Lock files can remain when no operation is running. |
+| `launcher.log` | Operation errors, recovery messages, and launcher update fallback errors. |
+| `startup-error.log` | Errors that prevent launcher startup. |
+| `*.previous` | Temporary rollback folders beside launcher updates or sample bundles during replacement and recovery. |
+| `*.tmp` | Temporary files used to write JSON before replacing the destination file. |
+| `LauncherVersions/` | The former launcher update folder. Cleanup removes unused copies from it too. |
+| `releases-<repository-hash>.json` | Release caches left by older launchers; these files are no longer produced or read. |
+
+Repository hashes distinguish downloads from different repositories; they are not Git commit IDs. Version folders also distinguish platforms such as `win-x64` and `win-arm64`.
+
+The editor keeps `EditorSettings.json` and `RecentProjects.json` one level up, in `%APPDATA%\Prowl`. The launcher reads editor settings for its initial language, theme, and project location, and imports recent projects once. The original Windows launcher installed through **Install** lives separately under `%LOCALAPPDATA%\Programs\Prowl Launcher`.
+
 ## Development
 
 Install the .NET 10 SDK, then run:
