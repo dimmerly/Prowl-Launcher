@@ -35,14 +35,14 @@ Files and folders appear as the launcher needs them:
 | `releases.json` | The current editor repository's release list for offline use. Launcher update checks use the network. |
 | `Versions/` | Installed editor versions and their dependencies. Each installation has an `installation.json` recording its repository, release, platform, executable, and installation date. These versions remain until uninstalled. |
 | `Updates/<repository-hash>/<version>-<platform>/` | Downloaded launcher updates. Each contains the app and `launcher-installation.json`, which records its download digest, executable, and file hashes. Cleanup keeps the selected update, running copies, and original installed launcher; unused copies are removed after activation and at startup. |
-| `Samples/<repository-hash>/<platform>/` | Cached sample bundle. `installed.json` records its source release and digest. `content/samples.json` lists sample IDs; `content/Host/` contains their shared runtime, and `content/Samples/<id>/` contains each sample's assembly and assets. |
+| `Samples/` | Downloaded sample bundle. Updates replace its contents. `installed.json` records its source release and digest. `content/samples.json` lists sample IDs; `content/Host/` contains their shared runtime, and `content/Samples/<id>/` contains each sample's assembly and assets. |
 | `Work/<id>/` | Temporary editor or launcher downloads and extraction. May contain `editor.zip` or `launcher.zip`, `extracted/`, and an editor repair's `repair.json` and `previous/` backup. Completed work is removed; interrupted repairs retain what is needed for recovery. |
 | `Work/samples-download-<id>/` | Temporary sample download, including `samples.zip`, extracted `content/`, and `installed.json`. |
 | `Work/sample-<id>/` | A running sample's copy of its runtime and assets, plus `stdout.log` and `stderr.log`. Successful runs remove it; failed runs retain it for diagnosis. |
 | `settings.lock` | Prevents simultaneous settings writes from different launcher instances. |
 | `operations.lock` | Coordinates editor installation, launcher installation, repair, and cleanup. |
 | `launcher-update.lock` | Protects the launcher download, startup check, and activation from cleanup by another instance. |
-| `samples-<repository-hash>-<platform>.lock` | Coordinates sample downloads and recovery. Lock files can remain when no operation is running. |
+| `samples.lock` | Coordinates sample downloads and recovery. Lock files can remain when no operation is running. |
 | `launcher.log` | Operation errors, recovery messages, and launcher update fallback errors. |
 | `startup-error.log` | Errors that prevent launcher startup. |
 | `*.previous` | Temporary rollback folders beside launcher updates or sample bundles during replacement and recovery. |

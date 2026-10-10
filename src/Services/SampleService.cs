@@ -33,11 +33,11 @@ sealed class SampleService
     }
 
     private sealed record InstalledBundle(string Repository, string Platform, long ReleaseId, string Tag, string Digest);
-    private string? _loadedCache;
+    private string? _loadedRepository;
     private DateTime _loadedStamp;
     private IReadOnlyList<Sample>? _loadedCatalog;
     private string Repository => GitHubRepositoryHelper.Normalize(_store.Settings.LauncherRepository);
-    private string CacheRoot => Path.Combine(_store.Home, "Samples", GitHubRepositoryHelper.CacheKey(Repository), Platform.Identifier);
+    private string CacheRoot => Path.Combine(_store.Home, "Samples");
     private string ContentPath => Path.Combine(CacheRoot, "content");
     public bool IsCached => InstalledCatalog() != null;
     public IReadOnlyList<Sample> Catalog => InstalledCatalog() ?? Samples;
@@ -115,8 +115,8 @@ sealed class SampleService
             throw new InvalidOperationException(Loc.Get("launcher.samples.unavailable"));
         }
         await EnsureDownloadedAsync(progress, token, allowNetwork);
-        await using FileStream copyLock = await AcquireDownloadLockAsync(Repository, token);
-        RecoverCache(Repository, CacheRoot);
+        await using FileStream copyLock = await AcquireDownloadLockAsync(token);
+        RecoverCache(CacheRoot);
         if (!IsAvailable(sample))
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.unavailable"));
@@ -145,7 +145,7 @@ sealed class SampleService
     private IReadOnlyList<Sample>? InstalledCatalog()
     {
         string metadata = Path.Combine(CacheRoot, "installed.json");
-        if (_loadedCache == CacheRoot && File.GetLastWriteTimeUtc(metadata) == _loadedStamp)
+        if (_loadedRepository == Repository && File.GetLastWriteTimeUtc(metadata) == _loadedStamp)
         {
             return _loadedCatalog;
         }
@@ -157,7 +157,7 @@ sealed class SampleService
         try
         {
             _loadedCatalog = ValidateContent(ContentPath);
-            _loadedCache = CacheRoot;
+            _loadedRepository = Repository;
             _loadedStamp = File.GetLastWriteTimeUtc(metadata);
             return _loadedCatalog;
         }
@@ -234,8 +234,8 @@ sealed class SampleService
         string repository = Repository;
         string cacheRoot = CacheRoot;
         Directory.CreateDirectory(_store.Home);
-        await using FileStream downloadLock = await AcquireDownloadLockAsync(repository, token);
-        RecoverCache(repository, cacheRoot);
+        await using FileStream downloadLock = await AcquireDownloadLockAsync(token);
+        RecoverCache(cacheRoot);
         if (IsCached && !checkForUpdates)
         {
             return;
@@ -280,7 +280,7 @@ sealed class SampleService
             token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.GetDirectoryName(cacheRoot)!);
             DirectoryReplacementService.Replace(staging, cacheRoot);
-            _loadedCache = null;
+            _loadedRepository = null;
         }
         finally
         {
@@ -293,7 +293,6 @@ sealed class SampleService
 
     internal void RecoverInterruptedOperations()
     {
-        string repository = Repository;
         string cacheRoot = CacheRoot;
         if (!Directory.Exists(Path.GetDirectoryName(cacheRoot)))
         {
@@ -303,7 +302,7 @@ sealed class SampleService
         // Startup must not wait for another launcher that is downloading a bundle.
         try
         {
-            operation = new FileStream(DownloadLockPath(repository), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            operation = new FileStream(DownloadLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
         {
@@ -311,11 +310,11 @@ sealed class SampleService
         }
         using (operation)
         {
-            RecoverCache(repository, cacheRoot);
+            RecoverCache(cacheRoot);
         }
     }
 
-    private void RecoverCache(string repository, string cacheRoot)
+    private void RecoverCache(string cacheRoot)
     {
         string parent = Path.GetDirectoryName(cacheRoot)!;
         if (!Directory.Exists(parent))
@@ -323,33 +322,15 @@ sealed class SampleService
             return;
         }
         DirectoryReplacementService.RejectLink(_store.Home);
-        DirectoryReplacementService.RejectLink(Path.Combine(_store.Home, "Samples"));
-        DirectoryReplacementService.RejectLink(parent);
-        DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
-
-        // Restore backups made by older launcher versions as well.
-        string prefix = Platform.Identifier + ".backup-";
-        foreach (string backup in Directory.EnumerateDirectories(parent, prefix + "*").OrderByDescending(Directory.GetLastWriteTimeUtc))
+        if (Directory.Exists(cacheRoot))
         {
-            if (!Guid.TryParseExact(Path.GetFileName(backup)[prefix.Length..], "N", out _)
-                || !IsValidCache(backup, repository))
-            {
-                continue;
-            }
-            if (!IsValidCache(cacheRoot, repository))
-            {
-                Directory.Move(backup, cacheRoot + ".previous");
-                DirectoryReplacementService.Recover(cacheRoot, path => IsValidCache(path, repository));
-            }
-            else
-            {
-                Directory.Delete(backup, true);
-            }
+            DirectoryReplacementService.RejectLink(cacheRoot);
         }
-        _loadedCache = null;
+        DirectoryReplacementService.Recover(cacheRoot, IsValidCache);
+        _loadedRepository = null;
     }
 
-    private static bool IsValidCache(string root, string repository)
+    private static bool IsValidCache(string root)
     {
         if (!Directory.Exists(root))
         {
@@ -359,7 +340,7 @@ sealed class SampleService
         {
             DirectoryReplacementService.RejectLinks(root);
             InstalledBundle? installed = LauncherStore.ReadJson<InstalledBundle>(Path.Combine(root, "installed.json"));
-            if (installed == null || installed.Repository != repository || installed.Platform != Platform.Identifier)
+            if (installed == null || installed.Platform != Platform.Identifier)
             {
                 return false;
             }
@@ -372,12 +353,11 @@ sealed class SampleService
         }
     }
 
-    private string DownloadLockPath(string repository) => Path.Combine(_store.Home,
-        "samples-" + GitHubRepositoryHelper.CacheKey(repository) + "-" + Platform.Identifier + ".lock");
+    private string DownloadLockPath => Path.Combine(_store.Home, "samples.lock");
 
-    private async Task<FileStream> AcquireDownloadLockAsync(string repository, CancellationToken token)
+    private async Task<FileStream> AcquireDownloadLockAsync(CancellationToken token)
     {
-        string path = DownloadLockPath(repository);
+        string path = DownloadLockPath;
         while (true)
         {
             token.ThrowIfCancellationRequested();

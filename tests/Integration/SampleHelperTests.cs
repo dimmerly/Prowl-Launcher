@@ -76,6 +76,40 @@ public sealed class SampleHelperTests : IDisposable
         await samples.EnsureDownloadedAsync(checkForUpdates: true);
         Assert.False(await samples.HasUpdateAsync());
         Assert.Equal(2, fixture.Downloads);
+        string cache = Path.Combine(_home, "Samples");
+        Assert.Equal("second", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
+        Assert.Equal(["content"], Directory.EnumerateDirectories(cache).Select(Path.GetFileName));
+        Assert.False(Directory.Exists(cache + ".previous"));
+    }
+
+    [Fact]
+    public async Task SwitchingRepositoriesReplacesTheSingleBundle()
+    {
+        using BundleFixture fixture = new( _home );
+        SampleService samples = new( fixture.Http, fixture.Store );
+        await samples.EnsureDownloadedAsync();
+        Assert.True(samples.IsCached);
+        string previousRepository = fixture.Store.Settings.LauncherRepository;
+        fixture.Store.Settings.LauncherRepository = "Other/Samples";
+        Assert.False(samples.IsCached);
+        fixture.PublishUpdate();
+        EditorRelease release = fixture.Releases[0];
+        fixture.Releases[0] = release with
+        {
+            Assets = [release.Assets[0] with
+            {
+                DownloadUrl = release.Assets[0].DownloadUrl.Replace(previousRepository, "Other/Samples")
+            }]
+        };
+        string cache = Path.Combine(_home, "Samples");
+        Directory.Move(cache, cache + ".previous");
+        Directory.CreateDirectory(cache);
+        File.WriteAllText(Path.Combine(cache, "partial"), "interrupted");
+        await samples.EnsureDownloadedAsync();
+        Assert.True(samples.IsCached);
+        Assert.Equal(2, fixture.Downloads);
+        Assert.Equal("second", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
+        Assert.False(Directory.Exists(cache + ".previous"));
     }
 
     [Fact]
@@ -93,15 +127,13 @@ public sealed class SampleHelperTests : IDisposable
         Assert.Empty(Directory.EnumerateDirectories(fixture.Store.WorkPath));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task RestartRestoresABundleMovedAsideBeforeACrash(bool legacy)
+    [Fact]
+    public async Task RestartRestoresABundleMovedAsideBeforeACrash()
     {
         using BundleFixture fixture = new( _home );
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
-        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
-        string backup = cache + (legacy ? ".backup-" + Guid.NewGuid().ToString("N") : ".previous");
+        string cache = Path.Combine(_home, "Samples");
+        string backup = cache + ".previous";
         Directory.Move(cache, backup);
         SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
         Assert.True(restarted.IsCached);
@@ -117,7 +149,7 @@ public sealed class SampleHelperTests : IDisposable
         using BundleFixture fixture = new( _home );
         SampleService samples = new( fixture.Http, fixture.Store );
         await samples.EnsureDownloadedAsync();
-        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        string cache = Path.Combine(_home, "Samples");
         string retained = Path.Combine(_home, "retained");
         Directory.Move(cache, retained);
         fixture.PublishUpdate();
@@ -135,7 +167,7 @@ public sealed class SampleHelperTests : IDisposable
     {
         using BundleFixture fixture = new( _home );
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
-        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
+        string cache = Path.Combine(_home, "Samples");
         Directory.Move(cache, cache + ".previous");
         Directory.CreateDirectory(cache);
         File.WriteAllText(Path.Combine(cache, "partial"), "interrupted");
@@ -151,8 +183,8 @@ public sealed class SampleHelperTests : IDisposable
     {
         using BundleFixture fixture = new( _home );
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
-        string cache = Path.Combine(_home, "Samples", GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository), Platform.Identifier);
-        string lockPath = Path.Combine(_home, "samples-" + GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository) + "-" + Platform.Identifier + ".lock");
+        string cache = Path.Combine(_home, "Samples");
+        string lockPath = Path.Combine(_home, "samples.lock");
         SampleService restarted;
         using (FileStream operation = new( lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None ))
         {
