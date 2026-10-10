@@ -8,6 +8,21 @@ public sealed class LauncherInstallationTests : IDisposable
     private readonly string _work = Path.Combine(Path.GetTempPath(), "ProwlInstallTests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void DefaultEditorsInstallAlongsideTheLauncherFolder()
+    {
+        string prowl = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Prowl");
+        Assert.Equal(Path.Combine(prowl, "Versions"), Platform.DefaultVersionsPath);
+        Assert.Equal(Path.Combine(prowl, "Launcher"), Platform.DefaultHome);
+    }
+
+    [Fact]
+    public void CustomHomeKeepsEditorInstallationsIsolated()
+    {
+        LauncherStore store = new(Path.Combine(_work, "Portable"));
+        Assert.Equal(Path.Combine(store.Home, "Versions"), store.VersionsPath);
+    }
+
+    [Fact]
     public void WindowsInstallationUsesTheLauncherHomeFolder()
     {
         if (!OperatingSystem.IsWindows()) return;

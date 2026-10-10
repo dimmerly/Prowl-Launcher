@@ -21,6 +21,11 @@ public static class Platform
         }
     }
 
+    public static string DefaultVersionsPath => Path.Combine(
+        Environment.GetFolderPath(Constants.Storage.HomeBaseFolder),
+        Constants.Storage.ApplicationFolderName,
+        "Versions");
+
     public static string DefaultHome => Path.Combine(
         Environment.GetFolderPath(Constants.Storage.HomeBaseFolder),
         Constants.Storage.ApplicationFolderName,

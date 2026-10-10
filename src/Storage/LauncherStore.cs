@@ -19,7 +19,10 @@ public sealed class LauncherStore
     {
         get;
     }
-    public string VersionsPath => Path.Combine(Home, "Versions");
+    public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome),
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
+        ? Platform.DefaultVersionsPath
+        : Path.Combine(Home, "Versions");
     public string WorkPath => Path.Combine(Home, "Work");
     public Settings Settings
     {

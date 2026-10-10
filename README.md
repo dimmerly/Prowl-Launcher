@@ -53,7 +53,7 @@ offline. Index edits appear automatically; reopen a post after editing its text 
 
 ## Data folder
 
-On Windows, launcher data lives in `%APPDATA%\Prowl\Launcher` (usually `C:\Users\<user>\AppData\Roaming\Prowl\Launcher`). **Open data folder** in Settings opens the location currently in use. `PROWL_LAUNCHER_HOME` overrides this location, including for portable runs.
+On Windows, launcher data lives in `%APPDATA%\Prowl\Launcher` (usually `C:\Users\<user>\AppData\Roaming\Prowl\Launcher`). Editors install separately in `%APPDATA%\Prowl\Versions`; **Open install folder** on the Versions page opens that location. Existing editors under `Launcher\Versions` are not migrated or discovered. **Open data folder** in Settings opens the launcher data location currently in use. `PROWL_LAUNCHER_HOME` overrides this location, including for portable runs; a custom home keeps editors in its own `Versions` folder.
 
 Files and folders appear as the launcher needs them:
 
@@ -65,7 +65,6 @@ Files and folders appear as the launcher needs them:
 | `theme.json` | Launcher theme, colors, and roundness. |
 | `releases.json` | The current editor repository's release list for offline use. Launcher update checks use the network. |
 | `News/<repository>/` | Cached news index and previously opened Markdown articles for offline reading. |
-| `Versions/` | Installed editor versions and their dependencies. Each installation has an `installation.json` recording its repository, release, platform, executable, and installation date. These versions remain until uninstalled. |
 | `Updates/<repository-hash>/<version>-<platform>/` | Downloaded launcher updates. Each contains the app and `launcher-installation.json`, which records its download digest, executable, and file hashes. Cleanup keeps the selected update, running copies, and original installed launcher; unused copies are removed after activation and at startup. |
 | `Samples/` | Downloaded sample bundle. Updates replace its contents. `installed.json` records its source release and digest. `content/samples.json` lists sample IDs; `content/Host/` contains their shared runtime, and `content/Samples/<id>/` contains each sample's assembly and assets. |
 | `Work/<id>/` | Temporary editor or launcher downloads and extraction. May contain `editor.zip` or `launcher.zip`, `extracted/`, and an editor repair's `repair.json` and `previous/` backup. Completed work is removed; interrupted repairs retain what is needed for recovery. |
@@ -80,7 +79,7 @@ Files and folders appear as the launcher needs them:
 | `*.previous` | Temporary rollback folders beside launcher updates or sample bundles during replacement and recovery. |
 | `*.tmp` | Temporary files used to write JSON before replacing the destination file. |
 
-Repository hashes distinguish downloads from different repositories; they are not Git commit IDs. Version folders also distinguish platforms such as `win-x64` and `win-arm64`.
+Each editor installation in `Versions/` has an `installation.json` recording its repository, release, platform, executable, and installation date. These versions remain until uninstalled. Repository hashes distinguish downloads from different repositories; they are not Git commit IDs. Version folders also distinguish platforms such as `win-x64` and `win-arm64`.
 
 The editor keeps `EditorSettings.json` and `RecentProjects.json` one level up, in `%APPDATA%\Prowl`. The launcher reads editor settings for its initial language, theme, and project location, and imports recent projects once. The Windows launcher installed through **Install** lives at `%APPDATA%\Prowl\Launcher\Prowl.Launcher.exe`, which is also the target of its Desktop and Start menu shortcuts.
 
