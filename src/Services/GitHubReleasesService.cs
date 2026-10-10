@@ -8,10 +8,15 @@ namespace Prowl.Launcher;
 
 public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, string? sourceRepository = null)
 {
-    public static string CachePath(LauncherStore store, string repository) => Path.Combine(
-        store.Home,
-        repository.Equals(Constants.Defaults.ProwlRepository, StringComparison.OrdinalIgnoreCase) ? "releases.json" : "releases-" + GitHubRepositoryHelper.CacheKey(repository) + ".json"
-    );
+    internal sealed record EditorCache(string Repository, List<EditorRelease> Releases);
+    public static string CachePath(LauncherStore store) => Path.Combine(store.Home, "releases.json");
+
+    internal static List<EditorRelease>? ReadCache(LauncherStore store, string repository)
+    {
+        EditorCache? cache = LauncherStore.ReadJson<EditorCache>(CachePath(store));
+        return cache != null && string.Equals(cache.Repository, GitHubRepositoryHelper.Normalize(repository), StringComparison.OrdinalIgnoreCase)
+            ? cache.Releases : null;
+    }
     public bool UsedCache
     {
         get;
@@ -22,7 +27,6 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
     {
         UsedCache = false;
         string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
-        string cachePath = CachePath(store, repository);
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(timeout ?? Constants.Network.ReleaseCheckTimeout);
         try
@@ -50,12 +54,15 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             }
 
             EditorRelease[] sorted = releases.OrderByDescending(r => r.Published).ToArray();
-            LauncherStore.WriteJson(cachePath, sorted);
+            if (sourceRepository == null)
+            {
+                LauncherStore.WriteJson(CachePath(store), new EditorCache(repository, sorted.ToList()));
+            }
             return sorted;
         }
         catch (Exception e) when (e is HttpRequestException or JsonException || e is OperationCanceledException && !token.IsCancellationRequested)
         {
-            List<EditorRelease>? cached = LauncherStore.ReadJson<List<EditorRelease>>(cachePath);
+            List<EditorRelease>? cached = sourceRepository == null ? ReadCache(store, repository) : null;
             if (cached == null)
             {
                 if (e is OperationCanceledException)

@@ -103,8 +103,7 @@ public sealed partial class Launcher(
         store.ImportRecentProjects();
         ReloadInstalled();
 
-        string cachePath = GitHubReleasesService.CachePath(store, store.Settings.ProwlRepository);
-        _releases = LauncherStore.ReadJson<List<EditorRelease>>(cachePath) ?? [];
+        _releases = GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository) ?? [];
     }
 
     private void Closing()

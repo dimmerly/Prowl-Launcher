@@ -229,6 +229,41 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public async Task LauncherReleaseChecksDoNotWriteOrUseTheEditorCache()
+    {
+        LauncherStore store = Store();
+        EditorRelease editor = Release([]);
+        EditorRelease launcher = Release([], 2, tag: "v2.0.0");
+        using HttpClient editorHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { editor }));
+        using HttpClient launcherHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { launcher }));
+        await new GitHubReleasesService(editorHttp, store).GetAsync();
+        string editorCache = File.ReadAllText(GitHubReleasesService.CachePath(store));
+        await new GitHubReleasesService(launcherHttp, store, store.Settings.LauncherRepository).GetAsync();
+        Assert.Equal(editorCache, File.ReadAllText(GitHubReleasesService.CachePath(store)));
+
+        Assert.Equal(Path.Combine(_home, "releases.json"), Assert.Single(Directory.EnumerateFiles(_home, "releases*.json")));
+        using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
+        Assert.Equal(editor.Id, (await new GitHubReleasesService(offline, store).GetAsync()).Single().Id);
+        await Assert.ThrowsAsync<HttpRequestException>(() => new GitHubReleasesService(offline, store, store.Settings.LauncherRepository).GetAsync());
+    }
+
+    [Fact]
+    public async Task ChangingRepositoryDropsTheOldReleaseListAndNeverUsesItOffline()
+    {
+        LauncherStore store = Store();
+        string originalRepository = store.Settings.ProwlRepository;
+        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { Release([]) }));
+        await new GitHubReleasesService(http, store).GetAsync();
+        store.Settings.ProwlRepository = "someone/custom-editor";
+        using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
+        await Assert.ThrowsAsync<HttpRequestException>(() => new GitHubReleasesService(offline, store).GetAsync());
+
+        await new GitHubReleasesService(http, store).GetAsync();
+        Assert.Null(GitHubReleasesService.ReadCache(store, originalRepository));
+        Assert.Single(GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository)!);
+    }
+
+    [Fact]
     public void ProjectVersionPinSurvivesReload_AndDoesNotChangeProjectFiles()
     {
         LauncherStore store = Store();

@@ -1,6 +1,6 @@
 namespace Prowl.Launcher;
 
-sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release, bool UsedCache)
+sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release)
 {
     internal bool Matches(Settings settings) => Prereleases == settings.LauncherPrereleases
                                                 && Repository.Equals(settings.LauncherRepository, StringComparison.OrdinalIgnoreCase);
@@ -15,7 +15,7 @@ sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
         bool prereleases = store.Settings.LauncherPrereleases;
         if (automatic && !store.Settings.LauncherAutoUpdate)
         {
-            return new LauncherUpdateCheck(repository, prereleases, null, false);
+            return new LauncherUpdateCheck(repository, prereleases, null);
         }
         GitHubReleasesService github = new( http, store, repository );
         IReadOnlyList<EditorRelease> releases = await github.GetAsync(token, timeout);
@@ -25,7 +25,7 @@ sealed class LauncherUpdateCheckService(HttpClient http, LauncherStore store)
         {
             release = null;
         }
-        return new LauncherUpdateCheck(repository, prereleases, release, github.UsedCache);
+        return new LauncherUpdateCheck(repository, prereleases, release);
     }
 
     internal static bool IsDismissed(Settings settings, string repository, long releaseId) =>

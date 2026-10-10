@@ -129,11 +129,9 @@ public sealed partial class Launcher
         if (release == null)
         {
             Notify(
-                check.UsedCache ? "launcher.updates.check_failed"
-                : switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
-                check.UsedCache ? "launcher.updates.cached_releases"
-                : switchToStable ? "" : "launcher.updates.no_updates",
-                check.UsedCache ? ToastType.Warning : ToastType.Success
+                switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
+                switchToStable ? "" : "launcher.updates.no_updates",
+                ToastType.Success
             );
             return;
         }

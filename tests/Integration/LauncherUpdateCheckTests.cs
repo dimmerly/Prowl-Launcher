@@ -149,18 +149,16 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     }
 
     [Fact]
-    public async Task ADeadlineUsesCachedReleasesAndReportsThatTheyWereCached()
+    public async Task ADeadlineDoesNotUseCachedLauncherReleases()
     {
         LauncherStore store = new( _home );
-        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[]
+        LauncherStore.WriteJson(Path.Combine(_home, "releases-" + GitHubRepositoryHelper.CacheKey(store.Settings.LauncherRepository) + ".json"), new[]
         {
             Release(1, "1.1.0")
         });
         using HttpClient http = new( new StalledHandler() );
-        LauncherUpdateCheck check = await new LauncherUpdateCheckService(http, store)
-            .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50));
-        Assert.True(check.UsedCache);
-        Assert.Equal(1, check.Release!.Id);
+        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdateCheckService(http, store)
+            .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50)));
     }
 
     [Fact]
@@ -173,13 +171,9 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     }
 
     [Fact]
-    public async Task ExplicitCancellationDoesNotReturnCachedReleases()
+    public async Task ExplicitCancellationRemainsUserCancellation()
     {
         LauncherStore store = new( _home );
-        LauncherStore.WriteJson(GitHubReleasesService.CachePath(store, store.Settings.LauncherRepository), new[]
-        {
-            Release(1, "1.1.0")
-        });
         using HttpClient http = new( new StalledHandler() );
         using CancellationTokenSource cancellation = new();
         Task<LauncherUpdateCheck> check = new LauncherUpdateCheckService(http, store)
