@@ -3,7 +3,7 @@ using Prowl.Aperture;
 namespace Prowl.Launcher;
 
 // Downloads happen asynchronously; textures are uploaded by Get on the render thread.
-internal sealed class NewsImages : IDisposable
+sealed class NewsImages : IDisposable
 {
     private readonly Dictionary<string, Task<byte[]>> _downloads = [];
     private readonly Dictionary<string, TextureTK?> _textures = [];
@@ -29,8 +29,11 @@ internal sealed class NewsImages : IDisposable
                 return null;
             }
 
-            using MemoryStream stream = new(download.GetAwaiter().GetResult());
-            using Image decoded = Image.Load(stream, new DecodeOptions { TargetPixelFormat = PixelFormat.Rgba8 });
+            using MemoryStream stream = new( download.GetAwaiter().GetResult() );
+            using Image decoded = Image.Load(stream, new DecodeOptions
+            {
+                TargetPixelFormat = PixelFormat.Rgba8
+            });
             texture = TextureTK.FromImage(decoded);
             _textures.Add(key, texture);
             return texture;

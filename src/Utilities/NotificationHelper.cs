@@ -46,9 +46,12 @@ public sealed partial class Launcher
 
     private void DrawNotifications(Paper p, bool progressVisible)
     {
-        var metrics = _appearance.Theme.Metrics;
+        OrigamiMetrics metrics = _appearance.Theme.Metrics;
         float bottom = (float)p.ScreenRect.Size.Y - metrics.PaddingLarge;
-        if (progressVisible) bottom -= Constants.Layout.OperationHeight;
+        if (progressVisible)
+        {
+            bottom -= Constants.Layout.OperationHeight;
+        }
         for (int i = _activeToasts.Count - 1; i >= 0; i--)
         {
             NotificationToast toast = _activeToasts[i];

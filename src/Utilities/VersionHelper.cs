@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Prowl.Launcher;
 
 /// <summary>Shared release precedence, with support for historical Prowl editor tags and preview-N releases.</summary>
-internal static class VersionHelper
+static class VersionHelper
 {
     internal const string Pattern = @"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?";
 
@@ -45,17 +45,17 @@ internal static class VersionHelper
     }
 
     internal static bool IsNewer(string candidate, string current) => TryParse(candidate, out ReleaseVersion next)
-        && TryParse(current, out ReleaseVersion installed) && next.CompareTo(installed) > 0;
+                                                                      && TryParse(current, out ReleaseVersion installed) && next.CompareTo(installed) > 0;
 
     internal static bool IsPreview(string value) => TryParse(value, out ReleaseVersion version) && version.IsPrerelease;
 
     internal static bool EquivalentEditorTags(string? left, string? right) => TryParse(left, out ReleaseVersion a, true)
-        && TryParse(right, out ReleaseVersion b, true) && a.CompareTo(b) == 0;
+                                                                              && TryParse(right, out ReleaseVersion b, true) && a.CompareTo(b) == 0;
 
     internal static bool IsNumeric(string value) => value.All(character => character is >= '0' and <= '9');
 }
 
-internal sealed class ReleaseVersion(string[] core, string[] prerelease) : IComparable<ReleaseVersion>
+sealed class ReleaseVersion(string[] core, string[] prerelease) : IComparable<ReleaseVersion>
 {
     internal bool IsPrerelease => prerelease.Length != 0;
 

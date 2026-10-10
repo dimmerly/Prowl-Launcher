@@ -76,9 +76,11 @@ public sealed partial class Launcher
                         .Rounded(_appearance.Theme.Metrics.Rounding).Clip().Enter())
                     {
                         if (session.Lines.Count == 0)
+                        {
                             p.Box("launch-output-empty").Height(26).IsNotInteractable()
                                 .Text(Loc.Get("launcher.console.no_output"), _font).FontSize(18)
                                 .TextColor(Muted);
+                        }
                         for (int i = Math.Max(0, session.Lines.Count - 6); i < session.Lines.Count; i++)
                         {
                             EditorConsoleLine line = session.Lines[i];
@@ -91,17 +93,28 @@ public sealed partial class Launcher
                         }
                     }
                 }
-                CenteredLabel("console-elapsed", Loc.Get("launcher.console.elapsed", new { seconds = $"{session.Elapsed:F1}" }), 14, Muted, 24);
+                CenteredLabel("console-elapsed", Loc.Get("launcher.console.elapsed", new
+                {
+                    seconds = $"{session.Elapsed:F1}"
+                }), 14, Muted, 24);
                 if (session.State.Ended != null)
-                    CenteredLabel("console-exit", session.State.Error ?? Loc.Get("launcher.console.exit_code", new { code = session.State.ExitCode }),
+                {
+                    CenteredLabel("console-exit", session.State.Error ?? Loc.Get("launcher.console.exit_code", new
+                        {
+                            code = session.State.ExitCode
+                        }),
                         14, Muted, 26);
+                }
             }
-            else CenteredLabel("console-empty-description", Loc.Get("launcher.console.empty_description"), 14, Muted, 30);
+            else
+            {
+                CenteredLabel("console-empty-description", Loc.Get("launcher.console.empty_description"), 14, Muted, 30);
+            }
         }
 
         void CenteredLabel(string id, string text, float size, System.Drawing.Color color, float rowHeight, bool bold = false)
             => p.Box(id).Height(rowHeight).IsNotInteractable().Text(text, bold ? _bold : _font).FontSize(size)
-                .TextColor(color).Alignment(Prowl.PaperUI.TextAlignment.MiddleCenter);
+                .TextColor(color).Alignment(TextAlignment.MiddleCenter);
     }
 
     private void RefreshEditorConsoles()
@@ -109,7 +122,10 @@ public sealed partial class Launcher
         foreach (EditorConsoleSession session in _editorSessions)
         {
             session.Refresh();
-            if (session.State.Ready == null || session.ReadyHandled || Busy) continue;
+            if (session.State.Ready == null || session.ReadyHandled || Busy)
+            {
+                continue;
+            }
             session.ReadyHandled = true;
             if (session.CloseWhenReady && session.Active)
             {
@@ -119,7 +135,10 @@ public sealed partial class Launcher
             }
             if (_tab == 4 && _selectedEditorSession == session)
             {
-                if (Modal.IsOpen) Modal.Pop();
+                if (Modal.IsOpen)
+                {
+                    Modal.Pop();
+                }
                 _tab = 0;
             }
         }

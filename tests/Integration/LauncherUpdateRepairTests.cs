@@ -63,10 +63,16 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupRemovesUnusedUpdatesAndPreservesTheActiveAndInstalledCopies()
     {
-        using Fixture fixture = new(_home);
+        using Fixture fixture = new( _home );
         async Task<string> Install(string version) => await fixture.Updater.InstallAsync(fixture.Release with
         {
-            Assets = [fixture.Release.Assets[0] with { Name = $"Prowl-Launcher-{version}-win-x64.zip" }]
+            Assets =
+            [
+                fixture.Release.Assets[0] with
+                {
+                    Name = $"Prowl-Launcher-{version}-win-x64.zip"
+                }
+            ]
         }, "win-x64");
         string old = await Install("1.0.0");
         string original = await Install("1.1.0");
@@ -87,9 +93,9 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupReadsTheSavedActiveVersionAndRemovesUnusedLegacyDirectories()
     {
-        using Fixture fixture = new(_home);
+        using Fixture fixture = new( _home );
         string active = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
-        LauncherStore other = new(_home);
+        LauncherStore other = new( _home );
         other.Settings.LauncherExecutable = active;
         other.Save();
         string legacy = Path.Combine(_home, "LauncherVersions", "repository", "old-version");
@@ -105,7 +111,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupCannotRemoveAnUpdateWhileItsActivationIsInProgress()
     {
-        using Fixture fixture = new(_home);
+        using Fixture fixture = new( _home );
         string pending = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         using FileStream update = LauncherUpdaterService.LockUpdates(fixture.Store);
         Assert.Throws<IOException>(() => LauncherUpdaterService.Cleanup(fixture.Store));
@@ -115,7 +121,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public void CleanupRejectsLinksAndCannotDeleteAnOutsideDirectory()
     {
-        using Fixture fixture = new(_home);
+        using Fixture fixture = new( _home );
         string outside = Path.Combine(_home, "UnrelatedData");
         Directory.CreateDirectory(outside);
         string keep = Path.Combine(outside, "keep.txt");

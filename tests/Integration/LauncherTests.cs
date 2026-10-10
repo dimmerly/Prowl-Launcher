@@ -234,8 +234,14 @@ public sealed class LauncherTests : IDisposable
         LauncherStore store = Store();
         EditorRelease editor = Release([]);
         EditorRelease launcher = Release([], 2, tag: "v2.0.0");
-        using HttpClient editorHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { editor }));
-        using HttpClient launcherHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { launcher }));
+        using HttpClient editorHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            editor
+        }));
+        using HttpClient launcherHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            launcher
+        }));
         await new GitHubReleasesService(editorHttp, store).GetAsync();
         string editorCache = File.ReadAllText(GitHubReleasesService.CachePath(store));
         await new GitHubReleasesService(launcherHttp, store, store.Settings.LauncherRepository).GetAsync();
@@ -252,7 +258,10 @@ public sealed class LauncherTests : IDisposable
     {
         LauncherStore store = Store();
         string originalRepository = store.Settings.ProwlRepository;
-        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { Release([]) }));
+        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            Release([])
+        }));
         await new GitHubReleasesService(http, store).GetAsync();
         store.Settings.ProwlRepository = "someone/custom-editor";
         using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
@@ -333,8 +342,7 @@ public sealed class LauncherTests : IDisposable
     {
         EditorRelease Preview(int number) => Release([], number) with
         {
-            Tag = $"v1.0.0-preview-{number}", Preview = true,
-            Assets = [new ReleaseAsset($"Prowl Launcher-1.0.0-preview-{number}-win-x64.zip", "", 0, null)]
+            Tag = $"v1.0.0-preview-{number}", Preview = true, Assets = [new ReleaseAsset($"Prowl Launcher-1.0.0-preview-{number}-win-x64.zip", "", 0, null)]
         };
 
         EditorRelease nine = Preview(9), ten = Preview(10), eleven = Preview(11);

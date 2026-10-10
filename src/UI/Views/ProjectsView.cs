@@ -101,7 +101,7 @@ public sealed partial class Launcher
                             .Text(project.Path, _font)
                             .FontSize(16)
                             .TextColor(Muted)
-                            .Alignment(Prowl.PaperUI.TextAlignment.MiddleLeft);
+                            .Alignment(TextAlignment.MiddleLeft);
                         if (folderExists)
                         {
                             path.Cursor(PaperCursor.Pointer)

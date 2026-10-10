@@ -24,7 +24,7 @@ public sealed partial class Launcher
     private const double NewsSlideDuration = 0.24;
 
     private bool NewsSliding => _newsSlideStarted != 0
-        && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
+                                && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
 
     private void ChangeNewsPage(int page)
     {
@@ -187,7 +187,13 @@ public sealed partial class Launcher
                     .Padding(0).Gap(0).AlignItems(LayoutAlignment.Center)
                     .BackgroundColor(_appearance.Card).BorderColor(_appearance.Theme.BorderSoft).BorderWidth(1)
                     .Rounded(_appearance.Theme.Metrics.ContainerRounding).Clip().Cursor(PaperCursor.Pointer)
-                    .OnClick(click => { if (!_newsLoading && !NewsSliding) { _ = OpenNewsAsync(post); } });
+                    .OnClick(click =>
+                    {
+                        if (!_newsLoading && !NewsSliding)
+                        {
+                            _ = OpenNewsAsync(post);
+                        }
+                    });
                 if (sliding)
                 {
                     card.IsNotInteractable();
@@ -277,7 +283,9 @@ public sealed partial class Launcher
                 _newsThumbnails.Dispose();
             }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        {
+        }
         catch (Exception error)
         {
             if (_news == service)
@@ -287,7 +295,10 @@ public sealed partial class Launcher
             }
             LogError(error);
         }
-        finally { _newsLoading = false; }
+        finally
+        {
+            _newsLoading = false;
+        }
     }
 
     private async Task OpenNewsAsync(NewsPost post)
@@ -327,9 +338,21 @@ public sealed partial class Launcher
                 ShowNewsArticle(post, _newsMarkdown);
             }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested) { }
-        catch (Exception error) { if (_news == service && _newsSelected == post) { _newsFailed = true; } LogError(error); }
-        finally { _newsLoading = false; }
+        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception error)
+        {
+            if (_news == service && _newsSelected == post)
+            {
+                _newsFailed = true;
+            }
+            LogError(error);
+        }
+        finally
+        {
+            _newsLoading = false;
+        }
     }
 
     private void ShowNewsArticle(NewsPost post, MarkdownBuilder markdown)

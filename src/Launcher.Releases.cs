@@ -18,7 +18,7 @@ public sealed partial class Launcher
         foreach (InstalledEditor editor in installed.Where(editor => editor.Platform == platform
                                                                      && editor.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)))
         {
-            if (VersionHelper.TryParse(editor.Tag, out ReleaseVersion version, editorTag: true)
+            if (VersionHelper.TryParse(editor.Tag, out ReleaseVersion version, true)
                 && (current == null || version.CompareTo(current) > 0))
             {
                 current = version;
@@ -33,7 +33,7 @@ public sealed partial class Launcher
         foreach (EditorRelease release in releases.Where(release => !release.Draft
                                                                     && (includePrereleases || !release.Preview) && release.AssetFor(platform) != null))
         {
-            if (!VersionHelper.TryParse(release.Tag, out ReleaseVersion version, editorTag: true)
+            if (!VersionHelper.TryParse(release.Tag, out ReleaseVersion version, true)
                 || !includePrereleases && version.IsPrerelease
                 || version.CompareTo(current) <= 0)
             {

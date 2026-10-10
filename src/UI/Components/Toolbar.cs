@@ -16,8 +16,10 @@ public sealed partial class Launcher
 
             bool hasLogs = _editorSessions.Any(session => session.Lines.Count > 0);
             if (hasLogs)
+            {
                 Origami.Button(p, "project-logs", Loc.Get("launcher.console.logs"))
                     .Width(76).Height(40).Variant(OrigamiVariant.Subtle).OnClick(ShowLogsDialog).Show();
+            }
             float searchWidth = Math.Clamp(width - Constants.Layout.SidebarWidth - 56 - 380 - (hasLogs ? 86 : 0), 140, 240);
             Origami.TextField(p, "search", _search, value => _search = value)
                 .Width(searchWidth)

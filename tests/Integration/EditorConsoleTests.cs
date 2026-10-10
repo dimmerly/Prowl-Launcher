@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+
 using Xunit;
 
 namespace Prowl.Launcher.Test;
@@ -11,13 +12,16 @@ public sealed class EditorConsoleTests : IDisposable
 
     private EditorConsoleSession Start(params string[] args)
     {
-        ProcessStartInfo info = new(Path.Combine(AppContext.BaseDirectory,
-            "Prowl.Launcher.Test" + (OperatingSystem.IsWindows() ? ".exe" : "")))
+        ProcessStartInfo info = new( Path.Combine(AppContext.BaseDirectory,
+            "Prowl.Launcher.Test" + (OperatingSystem.IsWindows() ? ".exe" : "")) )
         {
             WorkingDirectory = AppContext.BaseDirectory
         };
         info.ArgumentList.Add("--console-probe");
-        foreach (string argument in args) info.ArgumentList.Add(argument);
+        foreach (string argument in args)
+        {
+            info.ArgumentList.Add(argument);
+        }
         return EditorConsoleService.Start(info, _root, "Large project", "v1.0.0");
     }
 
@@ -28,11 +32,19 @@ public sealed class EditorConsoleTests : IDisposable
         await session.WaitForStartAsync(CancellationToken.None);
         Assert.NotNull(session.State.ProcessId);
         Assert.Null(session.State.Ready);
-        await Wait(() => { session.Refresh(); return session.State.Ready != null; });
+        await Wait(() =>
+        {
+            session.Refresh();
+            return session.State.Ready != null;
+        });
         Assert.True(session.Active);
         Assert.Contains(session.Lines, line => line.StandardError && line.Text.Contains("missing material"));
         Assert.Contains(session.Lines, line => line.Text == "Loading models");
-        await Wait(() => { session.Refresh(); return !session.Active && session.Lines.Any(l => l.Text == "Final editor output"); });
+        await Wait(() =>
+        {
+            session.Refresh();
+            return !session.Active && session.Lines.Any(l => l.Text == "Final editor output");
+        });
         Assert.Equal(0, session.State.ExitCode);
         Assert.InRange(session.Lines.Count, 1, 1000);
         Assert.Equal("Final editor output", session.Lines.Last().Text);
@@ -44,8 +56,11 @@ public sealed class EditorConsoleTests : IDisposable
     public async Task ClosingTheViewLeavesTheCollectorAndEditorRunning()
     {
         string pipeName = "prowl-console-finished-" + Guid.NewGuid().ToString("N");
-        if (!OperatingSystem.IsWindows()) pipeName = Path.Combine("/tmp", pipeName);
-        using NamedPipeServerStream completion = new(pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        if (!OperatingSystem.IsWindows())
+        {
+            pipeName = Path.Combine("/tmp", pipeName);
+        }
+        using NamedPipeServerStream completion = new( pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous );
         EditorConsoleSession session = Start("completed-pipe=" + pipeName);
         await session.WaitForStartAsync(CancellationToken.None);
         session.Dispose();
@@ -71,7 +86,11 @@ public sealed class EditorConsoleTests : IDisposable
     public async Task EarlyCrashRetainsDiagnosticsAndDoesNotReportReady()
     {
         using EditorConsoleSession session = Start("fail");
-        await Wait(() => { session.Refresh(); return !session.Active; });
+        await Wait(() =>
+        {
+            session.Refresh();
+            return !session.Active;
+        });
         Assert.Equal(7, session.State.ExitCode);
         Assert.Null(session.State.Ready);
         Assert.Contains(session.Lines, line => line.StandardError);
@@ -95,6 +114,9 @@ public sealed class EditorConsoleTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_root)) Directory.Delete(_root, true);
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, true);
+        }
     }
 }

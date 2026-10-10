@@ -18,15 +18,18 @@ public sealed class LauncherInstallationTests : IDisposable
     [Fact]
     public void CustomHomeKeepsEditorInstallationsIsolated()
     {
-        LauncherStore store = new(Path.Combine(_work, "Portable"));
+        LauncherStore store = new( Path.Combine(_work, "Portable") );
         Assert.Equal(Path.Combine(store.Home, "Versions"), store.VersionsPath);
     }
 
     [Fact]
     public void WindowsInstallationUsesTheLauncherHomeFolder()
     {
-        if (!OperatingSystem.IsWindows()) return;
-        LauncherStore store = new(Path.Combine(_work, "Roaming", "Prowl", "Launcher"));
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+        LauncherStore store = new( Path.Combine(_work, "Roaming", "Prowl", "Launcher") );
         Assert.Equal(store.Home, LauncherInstallationService.InstallRoot(store));
         Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Prowl", "Launcher"),
             Platform.DefaultHome);

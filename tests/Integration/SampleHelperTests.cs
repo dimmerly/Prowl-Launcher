@@ -96,10 +96,13 @@ public sealed class SampleHelperTests : IDisposable
         EditorRelease release = fixture.Releases[0];
         fixture.Releases[0] = release with
         {
-            Assets = [release.Assets[0] with
-            {
-                DownloadUrl = release.Assets[0].DownloadUrl.Replace(previousRepository, "Other/Samples")
-            }]
+            Assets =
+            [
+                release.Assets[0] with
+                {
+                    DownloadUrl = release.Assets[0].DownloadUrl.Replace(previousRepository, "Other/Samples")
+                }
+            ]
         };
         string cache = Path.Combine(_home, "Samples");
         Directory.Move(cache, cache + ".previous");

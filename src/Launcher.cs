@@ -107,7 +107,7 @@ public sealed partial class Launcher(
         // can clean up immediately, even though it also uses a startup health check.
         if (LauncherStartupService.ReadyPipe == null
             || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
-                && LauncherStore.PathsEqual(active, current))
+                                                              && LauncherStore.PathsEqual(active, current))
         {
             CleanupLauncherUpdates();
         }
@@ -117,7 +117,10 @@ public sealed partial class Launcher(
 
     private void Closing()
     {
-        foreach (EditorConsoleSession session in _editorSessions) session.Dispose();
+        foreach (EditorConsoleSession session in _editorSessions)
+        {
+            session.Dispose();
+        }
         _sampleThumbnails.Dispose();
         _newsImages.Dispose();
         _newsThumbnails.Dispose();

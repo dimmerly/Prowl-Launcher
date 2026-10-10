@@ -1,6 +1,7 @@
 using Prowl.Rosetta;
 
 using System.Diagnostics;
+using System.Drawing;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
@@ -127,7 +128,10 @@ public sealed partial class Launcher
                     .Cursor(Busy ? PaperCursor.Default : PaperCursor.Pointer)
                     .OnClick(_ =>
                     {
-                        if (!Busy) _includeEditorPrereleases = !_includeEditorPrereleases;
+                        if (!Busy)
+                        {
+                            _includeEditorPrereleases = !_includeEditorPrereleases;
+                        }
                     });
                 Origami.Toggle(p, "include-editor-prereleases", _includeEditorPrereleases, value => _includeEditorPrereleases = value)
                     .NoLabel()
@@ -168,7 +172,7 @@ public sealed partial class Launcher
                                 .IsNotInteractable()
                                 .Text(release.Tag, _bold).FontSize(19.8f)
                                 .TextColor(Ink).Alignment(TextAlignment.MiddleLeft);
-                            var tagColor = release.Preview ? _appearance.Theme.Amber.C500 : Muted;
+                            Color tagColor = release.Preview ? _appearance.Theme.Amber.C500 : Muted;
                             p.Box(id + "channel")
                                 .Width(UnitValue.Auto).Height(24).Padding(8, 0)
                                 .Rounded(_appearance.Theme.Metrics.Rounding)

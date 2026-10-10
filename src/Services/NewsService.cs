@@ -9,7 +9,7 @@ namespace Prowl.Launcher;
 
 sealed class NewsService(HttpClient http, LauncherStore store, string repository, string? localDirectory = null)
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Options = new( JsonSerializerDefaults.Web );
     private const string ArticlePathPattern = @"\A(?:[a-zA-Z0-9][a-zA-Z0-9_-]*/)*[a-zA-Z0-9][a-zA-Z0-9_-]*\.md\z";
     private readonly string _repository = GitHubRepositoryHelper.Normalize(repository);
     private readonly string? _localDirectory = localDirectory == null ? null : Path.GetFullPath(localDirectory);
@@ -20,18 +20,18 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
     internal bool IsLocal => _localDirectory != null;
     internal DateTime? LocalIndexStamp => IsLocal ? File.GetLastWriteTimeUtc(IndexPath) : null;
 
-    internal static string? DevelopmentDirectory() => typeof(NewsService).Assembly
+    internal static string? DevelopmentDirectory() => typeof( NewsService ).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(attribute => attribute.Key == "DevelopmentNewsDirectory")?.Value;
 
-    internal Uri Source(string file) => new($"https://raw.githubusercontent.com/{_repository}/main/news/{file}");
-    internal Uri Page(string file) => new($"https://github.com/{_repository}/blob/main/news/{file}");
+    internal Uri Source(string file) => new( $"https://raw.githubusercontent.com/{_repository}/main/news/{file}" );
+    internal Uri Page(string file) => new( $"https://github.com/{_repository}/blob/main/news/{file}" );
 
     internal static IReadOnlyList<NewsPost> ParseIndex(string json)
     {
         NewsPost[] posts = JsonSerializer.Deserialize<NewsPost[]>(json, Options)
                            ?? throw new InvalidDataException("The news index must be an array.");
-        HashSet<string> files = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> files = new( StringComparer.OrdinalIgnoreCase );
         foreach (NewsPost? post in posts)
         {
             ValidatePost(post);
@@ -80,7 +80,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         if (!allowNetwork)
         {
             return LauncherStore.ReadJson<string>(cachePath)
-                ?? throw new IOException("This news article has not been cached for offline reading.");
+                   ?? throw new IOException("This news article has not been cached for offline reading.");
         }
 
         try
@@ -90,9 +90,9 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
             return markdown;
         }
         catch (Exception error) when (error is HttpRequestException
-            || error is OperationCanceledException && !token.IsCancellationRequested)
+                                      || error is OperationCanceledException && !token.IsCancellationRequested)
         {
-            if (LauncherStore.ReadJson<string>(cachePath) is { } cached)
+            if (LauncherStore.ReadJson<string>(cachePath) is {} cached)
             {
                 return cached;
             }
@@ -103,7 +103,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
     internal Uri ImageSource(NewsPost post, string href)
     {
         Uri article = IsLocal ? new Uri(Path.Combine(_localDirectory!, post.File)) : Source(post.File);
-        Uri source = new(article, href);
+        Uri source = new( article, href );
         if (IsLocal && source.IsFile)
         {
             LocalImagePath(source);
@@ -128,7 +128,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
             throw new InvalidDataException("News images must use HTTPS.");
         }
         string cachePath = ImageCachePath(source);
-        if (LauncherStore.ReadJson<byte[]>(cachePath) is { } cached)
+        if (LauncherStore.ReadJson<byte[]>(cachePath) is {} cached)
         {
             return cached;
         }

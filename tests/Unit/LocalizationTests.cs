@@ -41,8 +41,8 @@ public sealed class LocalizationTests
     public void NewsDatesAreRelativeToTheLocalCalendarDay()
     {
         Loc.Configure(config => config.SetFallbackLocale("en").SetLocale("en")
-            .AddProvider(new EmbeddedResourceProvider(typeof(Launcher).Assembly, "Prowl.Launcher.Locale")));
-        DateOnly today = new(2026, 10, 10);
+            .AddProvider(new EmbeddedResourceProvider(typeof( Launcher ).Assembly, "Prowl.Launcher.Locale")));
+        DateOnly today = new( 2026, 10, 10 );
         Assert.Equal("Today", RelativeDate.Format(today, today));
         Assert.Equal("Yesterday", RelativeDate.Format(today.AddDays(-1), today));
         Assert.Equal("3 days ago", RelativeDate.Format(today.AddDays(-3), today));

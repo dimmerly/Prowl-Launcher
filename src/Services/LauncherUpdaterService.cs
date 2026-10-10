@@ -11,8 +11,8 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 {
     private sealed record Installation(string Digest, string Executable, Dictionary<string, string> Files);
     public static string UpdatesPath(LauncherStore store) => Path.Combine(store.Home, "Updates");
-    internal static FileStream LockUpdates(LauncherStore store) => new(Path.Combine(store.Home, "launcher-update.lock"),
-        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+    internal static FileStream LockUpdates(LauncherStore store) => new( Path.Combine(store.Home, "launcher-update.lock"),
+        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None );
 
     public static bool IsNewer(string version, string currentVersion) => VersionHelper.IsNewer(version, currentVersion);
 
@@ -38,7 +38,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             ReleaseAsset? asset = AssetFor(release, platform);
             string? version = asset == null ? null : VersionFor(asset, platform);
             if (!VersionHelper.TryParse(version, out ReleaseVersion candidate) || !includePrereleases && candidate.IsPrerelease
-                                || newestVersion != null && candidate.CompareTo(newestVersion) <= 0)
+                                                                               || newestVersion != null && candidate.CompareTo(newestVersion) <= 0)
             {
                 continue;
             }
@@ -142,12 +142,16 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     {
         // Protect the complete download/start/save handoff, including gaps between those steps.
         using FileStream update = LockUpdates(store);
-        using FileStream operation = new(Path.Combine(store.Home, "operations.lock"),
-            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        using FileStream operation = new( Path.Combine(store.Home, "operations.lock"),
+            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None );
         Settings saved = LauncherStore.ReadJson<Settings>(Path.Combine(store.Home, "settings.json")) ?? store.Settings;
         DirectoryReplacementService.RejectLink(store.Home);
         // Also remove unused copies from the former storage directory.
-        foreach (string root in new[] { UpdatesPath(store), Path.Combine(store.Home, "LauncherVersions") })
+        foreach (string root in new[]
+            {
+                UpdatesPath(store),
+                Path.Combine(store.Home, "LauncherVersions")
+            })
         {
             if (!Directory.Exists(root))
             {
@@ -161,7 +165,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
                 {
                     string target = LauncherStore.SafeChildPath(repository, Path.GetFileName(version));
                     if (Contains(target, saved.LauncherExecutable) || Contains(target, saved.InstalledLauncherExecutable)
-                        || Contains(target, Environment.ProcessPath) || IsRunning(target))
+                                                                   || Contains(target, Environment.ProcessPath) || IsRunning(target))
                     {
                         continue;
                     }
@@ -181,8 +185,8 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     }
 
     private static bool Contains(string root, string? executable) => executable != null
-        && Path.GetFullPath(executable).StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar,
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+                                                                     && Path.GetFullPath(executable).StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar,
+                                                                         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     private static void WriteInstallation(string root, string executable, string digest, CancellationToken token)
     {

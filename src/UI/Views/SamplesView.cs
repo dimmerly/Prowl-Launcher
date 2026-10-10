@@ -20,7 +20,7 @@ public sealed partial class Launcher
     private void DrawSamplesHeadingActions(Paper p)
     {
         if (_sampleUpdateAvailable && _samples.IsCached
-            && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
+                                   && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
         {
             Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
         }

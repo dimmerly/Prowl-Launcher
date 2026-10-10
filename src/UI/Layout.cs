@@ -81,7 +81,9 @@ public sealed partial class Launcher
                     {
                         using (p.Column("projects-footer").Height(UnitValue.Auto).Gap(12)
                             .OnPostLayout((_, rect) => _newsFooterHeight = (float)rect.Size.Y).Enter())
+                        {
                             DrawNewsSection(p);
+                        }
                     }
                 }
 

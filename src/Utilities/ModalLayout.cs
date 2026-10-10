@@ -4,7 +4,7 @@ using Prowl.PaperUI.LayoutEngine;
 
 namespace Prowl.Launcher;
 
-internal static class ModalLayout
+static class ModalLayout
 {
     internal static ModalBuilder CenteredContent(this ModalBuilder builder, Action<Paper> draw) =>
         builder.Content(p =>

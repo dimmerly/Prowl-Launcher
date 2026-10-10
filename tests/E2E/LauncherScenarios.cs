@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 using Prowl.OrigamiUI;
@@ -25,7 +26,10 @@ static class LauncherScenarios
 
     internal static async Task Prepare(string scenario, LauncherFixture fixture)
     {
-        if (scenario == "ReadLocalNews") fixture.AddProject("News placement project");
+        if (scenario == "ReadLocalNews")
+        {
+            fixture.AddProject("News placement project");
+        }
         if (scenario == "EditorUpdateIndicator")
         {
             _editor = await fixture.InstallEditor();
@@ -147,7 +151,7 @@ static class LauncherScenarios
                 {
                     SetField(ui.Launcher, "_operation", operation);
                     SetField(ui.Launcher, "_immediateProgress", true);
-                    var progressNotifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                    ConcurrentQueue<(string Title, string Message, ToastType Type)> progressNotifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
                     progressNotifications.Enqueue(("Toast above progress", "Cancel remains accessible", ToastType.Error));
                     await ui.Frame(2);
                     ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
@@ -164,7 +168,7 @@ static class LauncherScenarios
                 }
                 break;
             case "DismissToasts":
-                var notifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                ConcurrentQueue<(string Title, string Message, ToastType Type)> notifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
                 notifications.Enqueue(("Dismiss this toast", "First notification", ToastType.Success));
                 notifications.Enqueue(("Keep this toast", "Second notification", ToastType.Error));
                 await ui.Frame(2);
@@ -186,8 +190,8 @@ static class LauncherScenarios
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     File.Copy(file, destination);
                 }
-                NewsService localNews = new(f.Http, f.Store, f.Store.Settings.LauncherRepository,
-                    localNewsRoot);
+                NewsService localNews = new( f.Http, f.Store, f.Store.Settings.LauncherRepository,
+                    localNewsRoot );
                 SetField(ui.Launcher, "_newsRepository", f.Store.Settings.LauncherRepository);
                 SetField(ui.Launcher, "_news", localNews);
                 SetField(ui.Launcher, "_newsPosts", localNews.ReadCache());
@@ -204,7 +208,7 @@ static class LauncherScenarios
                 ElementHandle previewThumbnail = ui.Nodes().First(node => node.Data.LayoutWidth == 96 && node.Data.LayoutHeight == 88);
                 ElementHandle previewCard = previewThumbnail.GetParentHandle();
                 Check(Math.Abs(previewThumbnail.Data.X - previewCard.Data.X) <= 1
-                    && Math.Abs(previewThumbnail.Data.Y - previewCard.Data.Y) <= 1,
+                      && Math.Abs(previewThumbnail.Data.Y - previewCard.Data.Y) <= 1,
                     "Thumbnails should be flush with the preview card's left and top edges.");
                 Check(ui.Text("Rendering notes (test post)").Data.X < ui.Text("Physics playground (test post)").Data.X
                     + previewCard.Data.LayoutWidth + 40,
@@ -228,11 +232,11 @@ static class LauncherScenarios
                     "The author must appear below the title.");
                 ElementHandle bylineAuthor = ui.Text("Prowl team");
                 Check(Math.Abs(bylineAuthor.Data.Y + bylineAuthor.Data.LayoutHeight
-                    - (lastPreview.Data.Y + lastPreview.Data.LayoutHeight - 12)) <= 1,
+                               - (lastPreview.Data.Y + lastPreview.Data.LayoutHeight - 12)) <= 1,
                     "The byline should use the bottom of the card's text area.");
                 ElementHandle bylineDate = ui.Nodes().First(node => node.Data.Paragraph == RelativeDate.Format(localNews.ReadCache()[2].Date));
                 Check(bylineDate.Data.X > bylineAuthor.Data.X
-                    && Math.Abs(bylineDate.Data.Y - bylineAuthor.Data.Y) <= 1,
+                      && Math.Abs(bylineDate.Data.Y - bylineAuthor.Data.Y) <= 1,
                     "Author and date must share a line with the date on the right.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-news.png"));
                 Check(!ui.Text("Refresh").IsValid && !ui.Text("News").IsValid, "The footer must not need a heading or refresh control.");
@@ -248,10 +252,10 @@ static class LauncherScenarios
                 AssertNewsDialogCentered(ui);
                 Check(!ui.HasText("A little README fanciness"), "The article must omit its leading title.");
                 Check(!ui.Nodes().Any(node => node.Data.Layer > Layer.Overlay
-                    && node.Data.Paragraph == "Prowl team"),
+                                              && node.Data.Paragraph == "Prowl team"),
                     "The dialog body must not repeat the author.");
                 Check(ui.Nodes().Count(node => node.Data.Paragraph == "Markdown showcase (test post)"
-                    && node.GetParentHandle().GetParentHandle().Data.Layer > Layer.Overlay) == 1,
+                                               && node.GetParentHandle().GetParentHandle().Data.Layer > Layer.Overlay) == 1,
                     "The title must appear once in the dialog header.");
                 await ui.Resize(1000, 850);
                 AssertNewsDialogCentered(ui);
@@ -264,7 +268,7 @@ static class LauncherScenarios
                 List<NewsPost> archivePosts = [latest];
                 for (int i = 1; i <= 4; i++)
                 {
-                    NewsPost archived = new($"archive-{i}.md", $"Archived update {i}", latest.Date.AddDays(-i));
+                    NewsPost archived = new( $"archive-{i}.md", $"Archived update {i}", latest.Date.AddDays(-i) );
                     archivePosts.Add(archived);
                     await File.WriteAllTextAsync(Path.Combine(localNewsRoot, archived.File), "# Archived showcase " + i + "\n\nArchived content " + i);
                 }
@@ -301,7 +305,10 @@ static class LauncherScenarios
                 await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The previous arrow must restore the latest posts.");
                 await ui.Wait(() => !ui.HasText("Archived update 4"), "The reverse slide must finish on the latest page.");
                 float footerY = ui.Text("Markdown showcase (test post)").Data.Y;
-                for (int i = 0; i < 10; i++) f.AddProject("Overflow project " + i);
+                for (int i = 0; i < 10; i++)
+                {
+                    f.AddProject("Overflow project " + i);
+                }
                 await ui.Frame(3);
                 Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
                     "Adding projects must not move the news footer.");
@@ -312,7 +319,10 @@ static class LauncherScenarios
                 Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
                     "Scrolling projects must leave news in place.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-scrolled-news.png"));
-                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), new[] { latest });
+                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), new[]
+                {
+                    latest
+                });
                 await ui.Wait(() => !ui.HasText("Archived update 1"), "The local index should update to a single post.");
                 await ui.Frame(3);
                 Check(!ui.Text("Older posts").IsValid && !ui.Text("Newer posts").IsValid,
@@ -484,7 +494,7 @@ static class LauncherScenarios
                 await ui.ClickText("Back");
                 await ui.ClickText("Open");
                 await ui.Wait(() => GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions").Count == 2
-                    && ui.HasText("Exit code: 7"), "A second launch should retain both failed sessions.");
+                                    && ui.HasText("Exit code: 7"), "A second launch should retain both failed sessions.");
                 await ui.ClickText("Show logs");
                 List<EditorConsoleSession> sessions = GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions");
                 string SessionLabel(EditorConsoleSession item) =>
@@ -494,10 +504,14 @@ static class LauncherScenarios
                 ElementHandle firstOption = ui.Text(SessionLabel(sessions[0]));
                 int menuLayer = 0;
                 for (ElementHandle parent = firstOption; parent.IsValid; parent = parent.GetParentHandle())
+                {
                     menuLayer = Math.Max(menuLayer, parent.Data.Layer);
+                }
                 int dialogLayer = 0;
                 for (ElementHandle parent = ui.Text("Search output…"); parent.IsValid; parent = parent.GetParentHandle())
+                {
                     dialogLayer = Math.Max(dialogLayer, parent.Data.Layer);
+                }
                 Check(menuLayer > dialogLayer, "The session menu must render above the dialog and search field.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-session-menu.png"));
                 await ui.Click(firstOption);
@@ -686,8 +700,8 @@ static class LauncherScenarios
     private static void AssertNewsDialogCentered(UiDriver ui)
     {
         ElementHandle dialog = ui.Nodes().First(node => node.Data.Layer > Layer.Overlay
-            && node.Data.LayoutWidth > 500 && node.Data.LayoutWidth < ui.Paper.Width
-            && node.GetParentHandle().IsValid && node.GetParentHandle().Data.LayoutWidth >= ui.Paper.Width - 1);
+                                                        && node.Data.LayoutWidth > 500 && node.Data.LayoutWidth < ui.Paper.Width
+                                                        && node.GetParentHandle().IsValid && node.GetParentHandle().Data.LayoutWidth >= ui.Paper.Width - 1);
         Check(Math.Abs(dialog.Data.Y + dialog.Data.LayoutHeight / 2 - ui.Paper.Height / 2) <= 1,
             "The article dialog must remain vertically centered.");
     }
@@ -724,7 +738,7 @@ static class LauncherScenarios
     {
         if (scenario == "AcceptHealthyUpdate")
         {
-            Check(fixture.Saved().LauncherExecutable is { } path && File.Exists(path), "Only a healthy update may be activated before closing.");
+            Check(fixture.Saved().LauncherExecutable is {} path && File.Exists(path), "Only a healthy update may be activated before closing.");
         }
         if (scenario == "CloseDuringDownload")
         {
