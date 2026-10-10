@@ -14,13 +14,12 @@ public sealed partial class Launcher
     internal static EditorRelease? FindEditorUpdate(IEnumerable<EditorRelease> releases,
         IEnumerable<InstalledEditor> installed, string repository, string platform, bool includePrereleases)
     {
-        string? current = null;
+        ReleaseVersion? current = null;
         foreach (InstalledEditor editor in installed.Where(editor => editor.Platform == platform
                                                                      && editor.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)))
         {
-            string version = EditorVersion(editor.Tag);
-            if (LauncherUpdaterService.IsNewer(version, "0.0.0")
-                && (current == null || LauncherUpdaterService.IsNewer(version, current)))
+            if (VersionHelper.TryParse(editor.Tag, out ReleaseVersion version, editorTag: true)
+                && (current == null || version.CompareTo(current) > 0))
             {
                 current = version;
             }
@@ -34,9 +33,9 @@ public sealed partial class Launcher
         foreach (EditorRelease release in releases.Where(release => !release.Draft
                                                                     && (includePrereleases || !release.Preview) && release.AssetFor(platform) != null))
         {
-            string version = EditorVersion(release.Tag);
-            if (!includePrereleases && version.Split('+')[0].Contains('-')
-                || !LauncherUpdaterService.IsNewer(version, current))
+            if (!VersionHelper.TryParse(release.Tag, out ReleaseVersion version, editorTag: true)
+                || !includePrereleases && version.IsPrerelease
+                || version.CompareTo(current) <= 0)
             {
                 continue;
             }
@@ -44,18 +43,6 @@ public sealed partial class Launcher
             current = version;
         }
         return update;
-    }
-
-    private static string EditorVersion(string tag)
-    {
-        string version = tag.TrimStart('v')
-            .Replace("-preview-", "-preview.").Replace("-alpha-", "-alpha.")
-            .Replace("-beta-", "-beta.").Replace("-rc-", "-rc.");
-        // Historical editor tags used major.minor instead of major.minor.patch.
-        int suffix = version.IndexOfAny(['-', '+']);
-        string core = suffix < 0 ? version : version[..suffix];
-        return core.Count(character => character == '.') == 1
-            ? core + ".0" + (suffix < 0 ? "" : version[suffix..]) : version;
     }
 
     private void ReloadInstalled() => _installed = store.InstalledEditors()

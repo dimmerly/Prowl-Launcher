@@ -124,7 +124,7 @@ public sealed partial class Launcher
             return;
         }
         string current = LauncherVersion;
-        bool switchToStable = !store.Settings.LauncherPrereleases && current.Split('+')[0].Contains('-');
+        bool switchToStable = !store.Settings.LauncherPrereleases && VersionHelper.IsPreview(current);
         EditorRelease? release = check.Release;
         if (release == null)
         {

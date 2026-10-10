@@ -250,7 +250,7 @@ public sealed partial class Launcher
                     {
                         _ = CheckLauncherInBackgroundAsync();
                     }
-                    else if (LauncherVersion.Split('+')[0].Contains('-'))
+                    else if (VersionHelper.IsPreview(LauncherVersion))
                     {
                         Start(UpdateLauncherAsync, "launcher.updates.checking");
                     }

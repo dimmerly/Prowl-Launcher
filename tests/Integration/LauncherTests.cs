@@ -317,10 +317,32 @@ public sealed class LauncherTests : IDisposable
     [InlineData("1.0.0-preview.1", "1.0.0", false)]
     [InlineData("1.0.0-preview.10", "1.0.0-preview.9", true)]
     [InlineData("1.0.0-preview.9", "1.0.0-preview.10", false)]
+    [InlineData("1.0.0-preview-10", "1.0.0-preview-9", true)]
+    [InlineData("1.0.0-preview-9", "1.0.0-preview-10", false)]
+    [InlineData("1.0.0-preview-11", "1.0.0-preview-10", true)]
+    [InlineData("1.0.0-preview-10", "1.0.0-preview-10", false)]
     [InlineData("1.0.0-preview.1", "1.0.0-preview.1", false)]
     [InlineData("v1.1.0", "1.0.0", false)]
     public void LauncherUpdates_OnlyOfferNewerVersions(string tag, string current, bool expected)
         => Assert.Equal(expected, LauncherUpdaterService.IsNewer(tag, current));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LauncherUpdates_HyphenatedPreviewNumbersNeverOfferADowngrade(bool reverseOrder)
+    {
+        EditorRelease Preview(int number) => Release([], number) with
+        {
+            Tag = $"v1.0.0-preview-{number}", Preview = true,
+            Assets = [new ReleaseAsset($"Prowl Launcher-1.0.0-preview-{number}-win-x64.zip", "", 0, null)]
+        };
+
+        EditorRelease nine = Preview(9), ten = Preview(10), eleven = Preview(11);
+        EditorRelease[] releases = reverseOrder ? [ten, nine] : [nine, ten];
+        Assert.Null(LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.0.0-preview-10", true));
+        Assert.Same(ten, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.0.0-preview-9", true));
+        Assert.Same(eleven, LauncherUpdaterService.FindUpdate([.. releases, eleven], "win-x64", "1.0.0-preview-10", true));
+    }
 
     [Fact]
     public void LauncherUpdates_CompareAssetVersionsAcrossEditorReleases()
@@ -480,8 +502,24 @@ public sealed class LauncherTests : IDisposable
     [InlineData("Prowl Launcher-1.2.3-win-x64.zip", "linux-x64", null)]
     [InlineData("Prowl-v9.0.0-win-x64.zip", "win-x64", null)]
     [InlineData("Prowl Launcher-not-a-version-win-x64.zip", "win-x64", null)]
+    [InlineData("Prowl Launcher-1.2.3-win-x64.zip\n", "win-x64", null)]
+    [InlineData("Prowl Launcher-1.2.3-preview.01-win-x64.zip", "win-x64", null)]
+    [InlineData("Prowl Launcher-01.2.3-win-x64.zip", "win-x64", null)]
     public void LauncherAssetVersion_IsIndependentOfEditorTag(string name, string platform, string? expected)
         => Assert.Equal(expected, LauncherUpdaterService.VersionFor(new ReleaseAsset(name, "", 0, null), platform));
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("unknown-preview")]
+    public void LauncherUpdates_InvalidCurrentVersionsDoNotOfferStableSwitches(string current)
+    {
+        EditorRelease release = Release([]) with
+        {
+            Preview = false, Assets = [new ReleaseAsset("Prowl Launcher-1.0.0-win-x64.zip", "", 0, null)]
+        };
+        Assert.Null(LauncherUpdaterService.FindUpdate([release], "win-x64", current));
+        Assert.Null(LauncherUpdaterService.FindUpdate([release], "win-x64", current, true));
+    }
 
     [Fact]
     public async Task LauncherUpdate_IsInstalledSideBySide_WithoutActivatingUnverifiedStartup()

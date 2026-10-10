@@ -370,7 +370,7 @@ public sealed class LauncherStore
         // Match both historical preview-4 tags and the editor's newer preview.4 version format.
         InstalledEditor? matching = InstalledEditors()
             .FirstOrDefault(e => e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
-                                 && NormalizeVersion(e.Tag) == NormalizeVersion(version ?? ""));
+                                 && VersionHelper.EquivalentEditorTags(e.Tag, version));
         Project project = new()
         {
             Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
@@ -419,11 +419,6 @@ public sealed class LauncherStore
         Save();
     }
 
-    private static string NormalizeVersion(string value) => value.TrimStart('v')
-        .Replace("-preview-", "-preview.")
-        .Replace("-alpha-", "-alpha.")
-        .Replace("-beta-", "-beta.")
-        .Replace("-rc-", "-rc.");
     public static bool PathsEqual(string a, string b) => string.Equals(
         Path.GetFullPath(a),
         Path.GetFullPath(b),

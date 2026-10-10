@@ -14,50 +14,12 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     internal static FileStream LockUpdates(LauncherStore store) => new(Path.Combine(store.Home, "launcher-update.lock"),
         FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
-    public static bool IsNewer(string version, string currentVersion)
-    {
-        if (!Regex.IsMatch(version, $"^{Constants.Startup.VersionPattern}$") || !Regex.IsMatch(currentVersion, $"^{Constants.Startup.VersionPattern}$"))
-        {
-            return false;
-        }
-
-        string[] candidate = version.Split('+')[0].Split('-', 2);
-        string[] current = currentVersion.Split('+')[0].Split('-', 2);
-        if (!Version.TryParse(candidate[0], out Version? next) || !Version.TryParse(current[0], out Version? installed))
-        {
-            return false;
-        }
-
-        int comparison = next.CompareTo(installed);
-        if (comparison != 0)
-        {
-            return comparison > 0;
-        }
-
-        if (candidate.Length == 1 || current.Length == 1)
-        {
-            return candidate.Length < current.Length;
-        }
-
-        string[] nextPreview = candidate[1].Split('.'), currentPreview = current[1].Split('.');
-        for (int i = 0; i < Math.Min(nextPreview.Length, currentPreview.Length); i++)
-        {
-            bool nextNumeric = long.TryParse(nextPreview[i], out long nextNumber);
-            bool currentNumeric = long.TryParse(currentPreview[i], out long currentNumber);
-            comparison = nextNumeric && currentNumeric ? nextNumber.CompareTo(currentNumber) : nextNumeric != currentNumeric ? nextNumeric ? -1 : 1 : string.CompareOrdinal(nextPreview[i], currentPreview[i]);
-            if (comparison != 0)
-            {
-                return comparison > 0;
-            }
-        }
-
-        return nextPreview.Length > currentPreview.Length;
-    }
+    public static bool IsNewer(string version, string currentVersion) => VersionHelper.IsNewer(version, currentVersion);
 
     public static string? VersionFor(ReleaseAsset asset, string platform)
     {
-        Match match = Regex.Match(asset.Name, $"^Prowl[- .]Launcher-({Constants.Startup.VersionPattern})-{Regex.Escape(platform)}\\.zip$");
-        return match.Success ? match.Groups[1].Value : null;
+        Match match = Regex.Match(asset.Name, $"\\AProwl[- .]Launcher-({Constants.Startup.VersionPattern})-{Regex.Escape(platform)}\\.zip\\z");
+        return match.Success && VersionHelper.TryParse(match.Groups[1].Value, out _) ? match.Groups[1].Value : null;
     }
 
     public static ReleaseAsset? AssetFor(EditorRelease release, string platform) => release.Assets
@@ -65,20 +27,24 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
     public static EditorRelease? FindUpdate(IEnumerable<EditorRelease> releases, string platform, string currentVersion, bool includePrereleases = false)
     {
+        if (!VersionHelper.TryParse(currentVersion, out ReleaseVersion installed))
+        {
+            return null;
+        }
         EditorRelease? newest = null;
-        string? newestVersion = !includePrereleases && currentVersion.Split('+')[0].Contains('-') ? null : currentVersion;
+        ReleaseVersion? newestVersion = !includePrereleases && installed.IsPrerelease ? null : installed;
         foreach (EditorRelease release in releases.Where(release => !release.Draft && (includePrereleases || !release.Preview)))
         {
             ReleaseAsset? asset = AssetFor(release, platform);
             string? version = asset == null ? null : VersionFor(asset, platform);
-            if (version == null || !includePrereleases && version.Split('+')[0].Contains('-')
-                                || newestVersion != null && !IsNewer(version, newestVersion))
+            if (!VersionHelper.TryParse(version, out ReleaseVersion candidate) || !includePrereleases && candidate.IsPrerelease
+                                || newestVersion != null && candidate.CompareTo(newestVersion) <= 0)
             {
                 continue;
             }
 
             newest = release;
-            newestVersion = version;
+            newestVersion = candidate;
         }
         return newest;
     }
@@ -106,7 +72,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         }
 
         string version = VersionFor(asset, platform)!;
-        if (!store.Settings.LauncherPrereleases && version.Split('+')[0].Contains('-'))
+        if (!store.Settings.LauncherPrereleases && VersionHelper.IsPreview(version))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }

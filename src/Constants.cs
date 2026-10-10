@@ -50,7 +50,7 @@ public static class Constants
     public static class Startup
     {
         public const string ReadyEnvironment = "PROWL_LAUNCHER_READY_PIPE";
-        public const string VersionPattern = @"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?";
+        public const string VersionPattern = VersionHelper.Pattern;
         public static readonly TimeSpan ReadyPipeTimeout = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan LauncherTimeout = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan StabilityDelay = TimeSpan.FromSeconds(1);

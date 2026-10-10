@@ -30,6 +30,8 @@ public sealed class EditorUpdateIndicatorTests
     [Theory]
     [InlineData("v1.0-preview-4", "v1.0-preview-5")]
     [InlineData("v1.0.0-preview.9", "v1.0.0-preview.10")]
+    [InlineData("v1.0.0-preview-9", "v1.0.0-preview-10")]
+    [InlineData("v0.0.0", "v0.0.1")]
     [InlineData("v1.0.0-preview.10", "v1.0.0")]
     public void HistoricalTagsAndPrereleaseNumbersCompareCorrectly(string installed, string available) => Assert.NotNull(Launcher.FindEditorUpdate([Release(available, available.Contains('-'))], [Installed(installed)], Repository, Platform, true));
 
@@ -38,6 +40,7 @@ public sealed class EditorUpdateIndicatorTests
     {
         Assert.Null(Launcher.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.0.0"), Installed("v1.2.0")], Repository, Platform, true));
         Assert.Null(Launcher.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.2.0-preview.1")], Repository, Platform, false));
+        Assert.Null(Launcher.FindEditorUpdate([Release("v1.0.0-preview-9", true)], [Installed("v1.0.0-preview-10")], Repository, Platform, true));
     }
 
     [Fact]
