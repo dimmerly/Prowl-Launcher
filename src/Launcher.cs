@@ -117,6 +117,7 @@ public sealed partial class Launcher(
 
     private void Closing()
     {
+        foreach (EditorConsoleSession session in _editorSessions) session.Dispose();
         _sampleThumbnails.Dispose();
         _newsImages.Dispose();
         _newsThumbnails.Dispose();

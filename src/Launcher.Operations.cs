@@ -20,6 +20,7 @@ public sealed partial class Launcher
 
     private bool Busy => _operation != null;
     private bool ShowProgress => Busy
+                                 && _tab != 4
                                  && (_launchingSampleId == null || _immediateProgress)
                                  && !_filePickerOpen
                                  && !_confirmationOpen

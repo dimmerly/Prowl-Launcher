@@ -45,6 +45,8 @@ public sealed class UserWorkflowTests
         "AcceptHealthyUpdate",
         "FailedUpdateStartup",
         "CloseOnEditorLaunch",
+        "EditorConsoleLoading",
+        "EditorConsoleFailure",
         "SampleDownloadOnce",
         "SampleUpdateAvailable",
         "SampleAlreadyLatest",
@@ -99,6 +101,8 @@ public sealed class UserWorkflowTests
         info.ArgumentList.Add(root);
         info.Environment["PROWL_LAUNCHER_HOME"] = Path.Combine(root, "home");
         info.Environment["PROWL_E2E_UPDATE_FAIL"] = scenario == "FailedUpdateStartup" ? "1" : "0";
+        info.Environment["PROWL_E2E_EDITOR_FAIL"] = scenario == "EditorConsoleFailure" ? "1" : "0";
+        info.Environment["PROWL_E2E_EDITOR_SLOW"] = scenario == "EditorConsoleLoading" ? "1" : "0";
         using Process child = Process.Start(info)!;
         Task<string> stdout = child.StandardOutput.ReadToEndAsync();
         Task<string> stderr = child.StandardError.ReadToEndAsync();

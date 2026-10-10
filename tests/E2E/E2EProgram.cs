@@ -11,6 +11,10 @@ static class E2EProgram
     {
         string? home = Environment.GetEnvironmentVariable("PROWL_LAUNCHER_HOME");
         string? executable = Path.GetFileNameWithoutExtension(Environment.ProcessPath);
+        if (args.FirstOrDefault() == "--console-probe")
+        {
+            return ConsoleProbe(args.Skip(1).ToArray()).GetAwaiter().GetResult();
+        }
         if (executable == "Prowl.SampleHost")
         {
             File.AppendAllText(Path.Combine(home!, "sample-launch.log"), JsonSerializer.Serialize(args) + "\n");
@@ -23,7 +27,7 @@ static class E2EProgram
                 {
                     Arguments = args, WorkingDirectory = Environment.CurrentDirectory
                 }));
-            return 0;
+            return ConsoleProbe([]).GetAwaiter().GetResult();
         }
         if (executable == "Prowl.Launcher")
         {
@@ -51,7 +55,7 @@ static class E2EProgram
                 throw driver.Failure;
             }
             UiDriver.Check(driver.Completed || driver.ExpectsClose, "The launcher closed before the scenario completed.");
-            LauncherScenarios.AfterClose(args[1], fixture);
+            LauncherScenarios.AfterClose(args[1], fixture, launcher);
             Console.WriteLine("PASS " + args[1]);
             return 0;
         }
@@ -60,6 +64,35 @@ static class E2EProgram
             Console.Error.WriteLine(error);
             return 1;
         }
+    }
+
+    private static async Task<int> ConsoleProbe(string[] args)
+    {
+        if (OperatingSystem.IsWindows()) Console.Title = "Editor console probe";
+        Console.WriteLine("\u001b[32mLoading models\u001b[0m");
+        Console.Error.WriteLine("Warning: missing material");
+        if (args.Contains("fail") || Environment.GetEnvironmentVariable("PROWL_E2E_EDITOR_FAIL") == "1") return 7;
+        await Task.Delay(Environment.GetEnvironmentVariable("PROWL_E2E_EDITOR_SLOW") == "1" ? 3000 : 750);
+        string? pipeName = Environment.GetEnvironmentVariable("PROWL_EDITOR_READY_PIPE");
+        if (pipeName != null)
+        {
+            await using NamedPipeClientStream pipe = new(".", pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
+            await pipe.ConnectAsync(10000);
+            await pipe.WriteAsync(new byte[] { 1 });
+            await pipe.FlushAsync();
+        }
+        Console.WriteLine("Project ready");
+        await Task.Delay(1000);
+        for (int i = 0; i < 1500; i++) Console.WriteLine("Model " + i);
+        Console.WriteLine("Final editor output");
+        if (args.FirstOrDefault(arg => arg.StartsWith("completed-pipe=", StringComparison.Ordinal)) is {} completion)
+        {
+            await using NamedPipeClientStream pipe = new(".", completion["completed-pipe=".Length..], PipeDirection.Out, PipeOptions.Asynchronous);
+            await pipe.ConnectAsync(10000);
+            await pipe.WriteAsync(new byte[] { 1 });
+            await pipe.FlushAsync();
+        }
+        return 0;
     }
 
     private static async Task<int> UpdateProbe(string home)

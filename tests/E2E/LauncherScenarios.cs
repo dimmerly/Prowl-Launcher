@@ -61,7 +61,7 @@ static class LauncherScenarios
         [
             "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
             "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
-            "CorruptDownload", "CloseOnEditorLaunch"
+            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (installedScenarios.Contains(scenario))
         {
@@ -70,7 +70,7 @@ static class LauncherScenarios
         string[] projectScenarios =
         [
             "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor",
-            "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch"
+            "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (projectScenarios.Contains(scenario))
         {
@@ -377,6 +377,7 @@ static class LauncherScenarios
             case "EmptyProjects":
                 Check(ui.HasText("Start something new"), "An empty launcher must explain how to start.");
                 Check(ui.HasText("Add project") && ui.HasText("New project"), "Project actions must be available.");
+                Check(!ui.HasText("Logs"), "The Logs button must stay hidden until output has been captured.");
                 break;
             case "NavigatePages":
                 await ui.Navigate("Versions");
@@ -436,6 +437,74 @@ static class LauncherScenarios
                 await ui.Wait(() => File.Exists(f.LaunchRecord), "Opening a project should start its pinned editor.");
                 AssertLaunch(f, _project!.Path);
                 Check(f.Saved().Projects.Single().LastOpened != default, "Opening must persist its timestamp.");
+                break;
+            case "EditorConsoleLoading":
+                await ui.ClickText("Open");
+                await ui.Wait(() => ui.HasText("Opening project…") && ui.HasText("Show logs"),
+                    "Launching a project should focus the full window on loading with optional logs.");
+                Check(!ui.HasText("Search output…"), "The full console controls must stay in the logs dialog.");
+                await ui.Wait(() => ui.HasText("Loading models") && ui.HasText("missing material"),
+                    "The loading view should show a compact live readout of editor output.");
+                await ui.Frame(2);
+                ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-loading.png"));
+                Check(!ui.HasText("Search projects…") && !ui.HasText("Working"),
+                    "The loading view must occupy the window without the project sidebar or progress panel.");
+                await ui.ClickText("Show logs");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Loading models"), "Show logs should open a live console dialog.");
+                await ui.Frame(2);
+                ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-dialog.png"));
+                await ui.ClickText("Close");
+                await ui.Wait(() => !Modal.IsOpen && !ui.HasText("Search output…") && ui.HasText("Loading models"),
+                    "Closing the dialog should restore the loading screen with its live readout.");
+                await ui.Wait(() => ui.HasText("Search projects…") && ui.HasText("Logs") && !ui.HasText("Opening project…"),
+                    "Readiness should close the loading view and return to Projects with a Logs button.");
+                Check(ui.Text("Logs").Data.X < ui.Text("Search projects…").Data.X,
+                    "The Logs button must appear to the left of project search.");
+                await ui.Frame(2);
+                ui.SaveScreenshot(Path.Combine(f.Root, "projects-with-logs.png"));
+                Check(!Directory.Exists(Path.Combine(f.Home, "EditorLogs")), "Capturing logs must not create an EditorLogs folder.");
+                await ui.ClickText("Logs");
+                await ui.ClickText("Warnings and errors");
+                Check(!ui.HasText("Loading models"), "The problem filter must hide regular output.");
+                Check(ui.HasText("missing material"), "The problem filter must retain stderr warnings.");
+                await ui.ClickText("All output");
+                await ui.Wait(() => ui.HasText("Final editor output"), "Exit should retain the final output in memory.");
+                await ui.ClickText("Close");
+                await ui.ClickText("Logs");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Final editor output"), "The console dialog should retain its session after leaving it.");
+                break;
+            case "EditorConsoleFailure":
+                await ui.ClickText("Open");
+                await ui.Wait(() => ui.HasText("Editor failed") && ui.HasText("Exit code: 7"),
+                    "An early editor crash must keep the loading view open with its exit code.");
+                await ui.ClickText("Show logs");
+                Check(ui.HasText("missing material"), "Startup failures must retain diagnostic output.");
+                Check(!ui.HasText("Editor window ready"), "A crashed editor must not report readiness.");
+                await ui.ClickText("Close");
+                await ui.ClickText("Back");
+                await ui.ClickText("Open");
+                await ui.Wait(() => GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions").Count == 2
+                    && ui.HasText("Exit code: 7"), "A second launch should retain both failed sessions.");
+                await ui.ClickText("Show logs");
+                List<EditorConsoleSession> sessions = GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions");
+                string SessionLabel(EditorConsoleSession item) =>
+                    $"{sessions.IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+                await ui.ClickText(SessionLabel(sessions[1]));
+                await ui.Frame(2);
+                ElementHandle firstOption = ui.Text(SessionLabel(sessions[0]));
+                int menuLayer = 0;
+                for (ElementHandle parent = firstOption; parent.IsValid; parent = parent.GetParentHandle())
+                    menuLayer = Math.Max(menuLayer, parent.Data.Layer);
+                int dialogLayer = 0;
+                for (ElementHandle parent = ui.Text("Search output…"); parent.IsValid; parent = parent.GetParentHandle())
+                    dialogLayer = Math.Max(dialogLayer, parent.Data.Layer);
+                Check(menuLayer > dialogLayer, "The session menu must render above the dialog and search field.");
+                ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-session-menu.png"));
+                await ui.Click(firstOption);
+                await ui.Wait(() => GetField<EditorConsoleSession>(ui.Launcher, "_selectedLogSession") == sessions[0],
+                    "Session menu choices must receive clicks above the search field.");
+                Check(GetField<EditorConsoleSession>(ui.Launcher, "_selectedEditorSession") == sessions[1],
+                    "Browsing older logs must preserve the current launch session.");
                 break;
             case "RemoveProject":
                 await ui.ClickText("Remove");
@@ -651,7 +720,7 @@ static class LauncherScenarios
         Check(record.RootElement.GetProperty("WorkingDirectory").GetString()!.Contains("Probe"), "The editor must start from its installation directory.");
     }
 
-    internal static void AfterClose(string scenario, LauncherFixture fixture)
+    internal static void AfterClose(string scenario, LauncherFixture fixture, Launcher launcher)
     {
         if (scenario == "AcceptHealthyUpdate")
         {
@@ -665,6 +734,8 @@ static class LauncherScenarios
         if (scenario == "CloseOnEditorLaunch")
         {
             Check(fixture.Saved().Projects.Single().LastOpened != default, "Close-on-launch must still persist project history.");
+            Check(GetField<List<EditorConsoleSession>>(launcher, "_editorSessions").Any(session => session.State.Ready != null),
+                "Close-on-launch must wait for readiness rather than just starting the process.");
         }
     }
 }

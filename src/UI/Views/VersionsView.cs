@@ -234,18 +234,21 @@ public sealed partial class Launcher
             }
         }
 
-        using Process process = Process.Start(_installer.LaunchInfo(editor, project?.Path)) ?? throw new InvalidOperationException(Loc.Get("launcher.errors.editor_start_failed"));
+        EditorConsoleSession session = EditorConsoleService.Start(_installer.LaunchInfo(editor, project?.Path),
+            store.Home, project?.Name ?? editor.Tag, editor.Tag);
+        _editorSessions.Add(session);
+        _selectedEditorSession = session;
+        _logsSearch = "";
+        _logsProblemsOnly = false;
+        _tab = 4;
+        await session.WaitForStartAsync(token);
         if (project != null)
         {
             project.LastOpened = DateTimeOffset.UtcNow;
             store.Save();
         }
 
-        Notify("launcher.projects.opened", project?.Name ?? editor.Tag);
-        if (store.Settings.CloseOnEditorLaunch)
-        {
-            _closeAfterCancel = true;
-        }
+        session.CloseWhenReady = store.Settings.CloseOnEditorLaunch;
     }
     private async Task UninstallEditorAsync(InstalledEditor editor, CancellationToken token)
     {

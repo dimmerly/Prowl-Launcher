@@ -9,6 +9,12 @@ static class Program
     {
         try
         {
+            if (args.Length == 2 && args[0] == "--editor-console-host")
+            {
+                try { Environment.ExitCode = EditorConsoleService.CollectAsync(args[1]).GetAwaiter().GetResult(); }
+                catch (Exception error) { Console.Error.WriteLine(error.Message); Environment.ExitCode = 1; }
+                return;
+            }
             LauncherStartupService.CaptureReadyPipe();
             LauncherStore store = new();
             if (ForwardToUpdatedLauncher(store, args))

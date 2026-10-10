@@ -24,6 +24,14 @@ public sealed partial class Launcher
             ShowInstallationDialog();
         }
 
+        if (_tab == 4)
+        {
+            DrawLaunchView(p, width, height);
+            DrawNotifications(p, false);
+            Origami.EndFrame(p);
+            return;
+        }
+
         using (p.Column("window").Size(width, height).Enter())
         {
             using (p.Row("launcher")
