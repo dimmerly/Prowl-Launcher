@@ -47,8 +47,6 @@ Files and folders appear as the launcher needs them:
 | `startup-error.log` | Errors that prevent launcher startup. |
 | `*.previous` | Temporary rollback folders beside launcher updates or sample bundles during replacement and recovery. |
 | `*.tmp` | Temporary files used to write JSON before replacing the destination file. |
-| `LauncherVersions/` | The former launcher update folder. Cleanup removes unused copies from it too. |
-| `releases-<repository-hash>.json` | Release caches left by older launchers; these files are no longer produced or read. |
 
 Repository hashes distinguish downloads from different repositories; they are not Git commit IDs. Version folders also distinguish platforms such as `win-x64` and `win-arm64`.
 
