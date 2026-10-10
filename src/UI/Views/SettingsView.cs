@@ -200,7 +200,7 @@ public sealed partial class Launcher
 
         using (Card(p, "launch-settings"))
         {
-            Label(p, "launch-settings-title", "launcher.settings.title", 19, Ink, 28, true);
+            Label(p, "launch-settings-title", "launcher.settings.preferences", 19, Ink, 28, true);
             Origami.Switch(p, "close-on-editor-launch", store.Settings.CloseOnEditorLaunch, value =>
                 {
                     store.Settings.CloseOnEditorLaunch = value;
