@@ -14,7 +14,7 @@ public sealed class LauncherStartupTests : IDisposable
     public void InvalidUpdateFallsBackAndClearsTheSavedTarget()
     {
         LauncherStore store = new( _home );
-        string executable = Path.Combine(_home, "LauncherVersions", "broken", "Prowl.Launcher.exe");
+        string executable = Path.Combine(LauncherUpdaterService.UpdatesPath(store), "broken", "Prowl.Launcher.exe");
         Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
         File.WriteAllText(executable, "invalid executable");
         store.Settings.LauncherExecutable = executable;

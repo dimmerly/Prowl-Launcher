@@ -103,6 +103,15 @@ public sealed partial class Launcher(
         store.ImportRecentProjects();
         ReloadInstalled();
 
+        // A newly downloaded child starts before activation. A forwarded active copy
+        // can clean up immediately, even though it also uses a startup health check.
+        if (LauncherStartupService.ReadyPipe == null
+            || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
+                && LauncherStore.PathsEqual(active, current))
+        {
+            CleanupLauncherUpdates();
+        }
+
         _releases = GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository) ?? [];
     }
 

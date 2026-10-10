@@ -10,6 +10,9 @@ namespace Prowl.Launcher;
 public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 {
     private sealed record Installation(string Digest, string Executable, Dictionary<string, string> Files);
+    public static string UpdatesPath(LauncherStore store) => Path.Combine(store.Home, "Updates");
+    internal static FileStream LockUpdates(LauncherStore store) => new(Path.Combine(store.Home, "launcher-update.lock"),
+        FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
     public static bool IsNewer(string version, string currentVersion)
     {
@@ -108,12 +111,12 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }
 
-        string versions = Path.Combine(store.Home, "LauncherVersions", GitHubRepositoryHelper.CacheKey(repository));
+        string versions = Path.Combine(UpdatesPath(store), GitHubRepositoryHelper.CacheKey(repository));
         string target = LauncherStore.SafeChildPath(versions, $"{version}-{platform}");
         string name = platform.StartsWith("win-", StringComparison.Ordinal) ? "Prowl.Launcher.exe" : "Prowl.Launcher";
         Directory.CreateDirectory(versions);
         DirectoryReplacementService.RejectLink(store.Home);
-        DirectoryReplacementService.RejectLink(Path.Combine(store.Home, "LauncherVersions"));
+        DirectoryReplacementService.RejectLink(UpdatesPath(store));
         DirectoryReplacementService.RejectLink(versions);
         using FileStream operation = new(
             Path.Combine(store.Home, "operations.lock"),
@@ -168,6 +171,52 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
         return executable;
     }
+
+    internal static void Cleanup(LauncherStore store)
+    {
+        // Protect the complete download/start/save handoff, including gaps between those steps.
+        using FileStream update = LockUpdates(store);
+        using FileStream operation = new(Path.Combine(store.Home, "operations.lock"),
+            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        Settings saved = LauncherStore.ReadJson<Settings>(Path.Combine(store.Home, "settings.json")) ?? store.Settings;
+        DirectoryReplacementService.RejectLink(store.Home);
+        // Also remove unused copies from the former storage directory.
+        foreach (string root in new[] { UpdatesPath(store), Path.Combine(store.Home, "LauncherVersions") })
+        {
+            if (!Directory.Exists(root))
+            {
+                continue;
+            }
+            DirectoryReplacementService.RejectLink(root);
+            foreach (string repository in Directory.EnumerateDirectories(root))
+            {
+                DirectoryReplacementService.RejectLink(repository);
+                foreach (string version in Directory.EnumerateDirectories(repository))
+                {
+                    string target = LauncherStore.SafeChildPath(repository, Path.GetFileName(version));
+                    if (Contains(target, saved.LauncherExecutable) || Contains(target, saved.InstalledLauncherExecutable)
+                        || Contains(target, Environment.ProcessPath) || IsRunning(target))
+                    {
+                        continue;
+                    }
+                    DirectoryReplacementService.RejectLinks(target);
+                    Directory.Delete(target, true);
+                }
+                if (!Directory.EnumerateFileSystemEntries(repository).Any())
+                {
+                    Directory.Delete(repository);
+                }
+            }
+            if (!Directory.EnumerateFileSystemEntries(root).Any())
+            {
+                Directory.Delete(root);
+            }
+        }
+    }
+
+    private static bool Contains(string root, string? executable) => executable != null
+        && Path.GetFullPath(executable).StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     private static void WriteInstallation(string root, string executable, string digest, CancellationToken token)
     {

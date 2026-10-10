@@ -61,6 +61,92 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     }
 
     [Fact]
+    public async Task CleanupRemovesUnusedUpdatesAndPreservesTheActiveAndInstalledCopies()
+    {
+        using Fixture fixture = new(_home);
+        async Task<string> Install(string version) => await fixture.Updater.InstallAsync(fixture.Release with
+        {
+            Assets = [fixture.Release.Assets[0] with { Name = $"Prowl-Launcher-{version}-win-x64.zip" }]
+        }, "win-x64");
+        string old = await Install("1.0.0");
+        string original = await Install("1.1.0");
+        string active = await Install("1.2.0");
+        fixture.Store.Settings.LauncherExecutable = active;
+        fixture.Store.Settings.InstalledLauncherExecutable = original;
+        fixture.Store.Save();
+
+        LauncherUpdaterService.Cleanup(fixture.Store);
+
+        Assert.False(File.Exists(old));
+        Assert.True(File.Exists(original));
+        Assert.True(File.Exists(active));
+        Assert.Equal(2, Directory.EnumerateDirectories(Path.Combine(LauncherUpdaterService.UpdatesPath(fixture.Store),
+            GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository))).Count());
+    }
+
+    [Fact]
+    public async Task CleanupReadsTheSavedActiveVersionAndRemovesUnusedLegacyDirectories()
+    {
+        using Fixture fixture = new(_home);
+        string active = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
+        LauncherStore other = new(_home);
+        other.Settings.LauncherExecutable = active;
+        other.Save();
+        string legacy = Path.Combine(_home, "LauncherVersions", "repository", "old-version");
+        Directory.CreateDirectory(legacy);
+        File.WriteAllText(Path.Combine(legacy, "Prowl.Launcher.exe"), "old");
+
+        LauncherUpdaterService.Cleanup(fixture.Store);
+
+        Assert.True(File.Exists(active));
+        Assert.False(Directory.Exists(Path.Combine(_home, "LauncherVersions")));
+    }
+
+    [Fact]
+    public async Task CleanupCannotRemoveAnUpdateWhileItsActivationIsInProgress()
+    {
+        using Fixture fixture = new(_home);
+        string pending = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
+        using FileStream update = LauncherUpdaterService.LockUpdates(fixture.Store);
+        Assert.Throws<IOException>(() => LauncherUpdaterService.Cleanup(fixture.Store));
+        Assert.True(File.Exists(pending));
+    }
+
+    [Fact]
+    public void CleanupRejectsLinksAndCannotDeleteAnOutsideDirectory()
+    {
+        using Fixture fixture = new(_home);
+        string outside = Path.Combine(_home, "UnrelatedData");
+        Directory.CreateDirectory(outside);
+        string keep = Path.Combine(outside, "keep.txt");
+        File.WriteAllText(keep, "keep");
+        string updates = LauncherUpdaterService.UpdatesPath(fixture.Store);
+        Directory.CreateDirectory(updates);
+        string linked = Path.Combine(updates, "repository");
+        try
+        {
+            Directory.CreateSymbolicLink(linked, outside);
+        }
+        catch (UnauthorizedAccessException) when (OperatingSystem.IsWindows())
+        {
+            return; // Creating symlinks requires Developer Mode or elevation on Windows.
+        }
+        catch (IOException error) when (OperatingSystem.IsWindows() && (error.HResult & 0xffff) == 1314)
+        {
+            return; // ERROR_PRIVILEGE_NOT_HELD on Windows without Developer Mode.
+        }
+        try
+        {
+            Assert.Throws<IOException>(() => LauncherUpdaterService.Cleanup(fixture.Store));
+            Assert.Equal("keep", File.ReadAllText(keep));
+        }
+        finally
+        {
+            Directory.Delete(linked);
+        }
+    }
+
+    [Fact]
     public async Task RetryRecoversAnInstallationMovedAsideBeforeACrash()
     {
         using Fixture fixture = new( _home );

@@ -71,7 +71,7 @@ static class Program
 
         try
         {
-            string versions = Path.Combine(store.Home, "LauncherVersions");
+            string versions = LauncherUpdaterService.UpdatesPath(store);
             LauncherStore.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
             LauncherStartupService.StartAsync(updated, store.Home, args).GetAwaiter().GetResult();
             return true;

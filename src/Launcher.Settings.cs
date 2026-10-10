@@ -158,11 +158,28 @@ public sealed partial class Launcher
             version
         });
         _immediateProgress = true;
-        string executable = await new LauncherUpdaterService(_http, store).InstallAsync(release, Platform.Identifier, Transfer(), token);
-        await LauncherStartupService.StartAsync(executable, store.Home, [], token);
-        store.Settings.LauncherExecutable = executable;
-        store.Save();
+        using (FileStream update = LauncherUpdaterService.LockUpdates(store))
+        {
+            string executable = await new LauncherUpdaterService(_http, store).InstallAsync(release, Platform.Identifier, Transfer(), token);
+            await LauncherStartupService.StartAsync(executable, store.Home, [], token);
+            store.Settings.LauncherExecutable = executable;
+            store.Save();
+        }
         _closeAfterCancel = true;
+        CleanupLauncherUpdates();
+    }
+
+    private void CleanupLauncherUpdates()
+    {
+        try
+        {
+            LauncherUpdaterService.Cleanup(store);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // Cleanup must not stop startup or a successfully verified update.
+            LogError(error);
+        }
     }
 
     private async Task SaveRepositoriesAsync(CancellationToken token)
