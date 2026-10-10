@@ -19,7 +19,7 @@ public sealed partial class Launcher
         float height = Math.Max(100, Math.Min(480, framebuffer.Y / scale * 0.72f - 150));
         Origami.Modal(Loc.Get("launcher.versions.changelog") + ": " + release.Tag)
             .Width(width)
-            .Content(p => Origami.ScrollView(p, "release-notes-scroll", width - 24, height)
+            .CenteredContent(p => Origami.ScrollView(p, "release-notes-scroll", width - 24, height)
                 .SmoothScroll(true)
                 .WheelStep(72)
                 .Body(() => DrawReleaseNotes(markdown, p)))

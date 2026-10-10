@@ -20,6 +20,37 @@ The launcher checks for updates at startup and shows the changelog before instal
 
 Enable prereleases in Settings to check for preview updates immediately. Disable them to switch back to the latest stable release. Editor and launcher release repositories can also be changed in Settings.
 
+## News
+
+News appears below your projects, with arrows to browse three posts at a time.
+The feed updates automatically, and previously opened posts and images work offline.
+
+To add a post, create `news/<post-name>/README.md` with an `images/` folder beside it,
+then add an entry to [`news/index.json`](news/index.json):
+
+```json
+{
+  "file": "rendering-showcase/README.md",
+  "title": "Rendering showcase",
+  "date": "2026-10-10",
+  "author": "Wulferis",
+  "thumbnail": "images/thumbnail.png"
+}
+```
+
+`file`, `title`, and `date` are required; `author`, `summary`, and `thumbnail` are optional.
+Use letters, digits, underscores or hyphens in folder and file names. Dates use
+`YYYY-MM-DD`; newest posts appear first. Keep archived posts at their original dates.
+
+Use ordinary Markdown. Image paths are relative to the post, for example
+`![Screenshot](images/screenshot.png)`. Thumbnails use the same paths; HTTPS image
+URLs also work. Use HTTPS links for external pages and videos.
+
+Commit the post, images, and index to `main` in the configured launcher repository
+to publish; no launcher release is needed. Release builds check every fifteen minutes.
+Debug builds (`dotnet run --project src`) read your local `news/` folder, including
+offline. Index edits appear automatically; reopen a post after editing its text or images.
+
 ## Data folder
 
 On Windows, launcher data lives in `%APPDATA%\Prowl\Launcher` (usually `C:\Users\<user>\AppData\Roaming\Prowl\Launcher`). **Open data folder** in Settings opens the location currently in use. `PROWL_LAUNCHER_HOME` overrides this location, including for portable runs.
@@ -33,6 +64,7 @@ Files and folders appear as the launcher needs them:
 | `settings.json.corrupt-<id>` / `settings.json.bak.corrupt-<id>` | Damaged settings preserved during recovery. |
 | `theme.json` | Launcher theme, colors, and roundness. |
 | `releases.json` | The current editor repository's release list for offline use. Launcher update checks use the network. |
+| `News/<repository>/` | Cached news index and previously opened Markdown articles for offline reading. |
 | `Versions/` | Installed editor versions and their dependencies. Each installation has an `installation.json` recording its repository, release, platform, executable, and installation date. These versions remain until uninstalled. |
 | `Updates/<repository-hash>/<version>-<platform>/` | Downloaded launcher updates. Each contains the app and `launcher-installation.json`, which records its download digest, executable, and file hashes. Cleanup keeps the selected update, running copies, and original installed launcher; unused copies are removed after activation and at startup. |
 | `Samples/` | Downloaded sample bundle. Updates replace its contents. `installed.json` records its source release and digest. `content/samples.json` lists sample IDs; `content/Host/` contains their shared runtime, and `content/Samples/<id>/` contains each sample's assembly and assets. |

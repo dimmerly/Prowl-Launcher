@@ -7,6 +7,7 @@ namespace Prowl.Launcher;
 public sealed partial class Launcher
 {
     private int _tab = initialTab;
+    private float _newsFooterHeight = 101;
 
     private void OnGui(Paper p)
     {
@@ -63,15 +64,22 @@ public sealed partial class Launcher
                     float operationSpace = progressVisible ? Constants.Layout.OperationHeight + 14 : 0;
                     float toolbarSpace = showToolbar ? 0 : 58;
                     float listWidth = Math.Max(1, width - Constants.Layout.SidebarWidth - 56);
-                    float listHeight = Math.Max(0, height - 202 - operationSpace + toolbarSpace);
+                    float listHeight = Math.Max(0, height - (showToolbar ? 190 : 202) - operationSpace + toolbarSpace);
+                    float scrollHeight = showToolbar ? Math.Max(0, listHeight - _newsFooterHeight - 14) : listHeight;
 
-                    Origami.ScrollView(p, "list-" + _tab, listWidth, listHeight)
+                    Origami.ScrollView(p, "list-" + _tab, listWidth, scrollHeight)
                         .OverlayScrollbars(false)
                         .Padding(_tab == 3 ? 8 : 0, 8, _tab == 3 ? 8 : 0, _tab == 3 ? 8 : 0)
                         .SmoothScroll(true)
                         .WheelStep(72)
                         .ColSpacing(12)
                         .Body(() => DrawSelectedPage(p));
+                    if (showToolbar)
+                    {
+                        using (p.Column("projects-footer").Height(UnitValue.Auto).Gap(12)
+                            .OnPostLayout((_, rect) => _newsFooterHeight = (float)rect.Size.Y).Enter())
+                            DrawNewsSection(p);
+                    }
                 }
             }
             DrawTitleBar(p);

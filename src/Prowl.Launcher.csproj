@@ -17,6 +17,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Prowl.Launcher.Test"/>
     <AssemblyMetadata Include="SelfInstall" Value="$(SelfInstall)"/>
+    <AssemblyMetadata Include="DevelopmentNewsDirectory" Value="$(MSBuildProjectDirectory)/../news" Condition="'$(Configuration)' == 'Debug'"/>
     <PackageReference Include="OpenTK" Version="4.9.4"/>
     <PackageReference Include="Prowl.Paper" Version="$(ProwlPackageVersion)"/>
     <PackageReference Include="Prowl.Origami" Version="$(ProwlPackageVersion)"/>

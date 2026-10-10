@@ -15,6 +15,7 @@ public sealed class UserWorkflowTests
     {
         "EmptyProjects",
         "NavigatePages",
+        "ReadLocalNews",
         "CancelNewProject",
         "CreateProjectAndOpenIt",
         "RejectInvalidProjectName",

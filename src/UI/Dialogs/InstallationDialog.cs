@@ -12,7 +12,7 @@ public sealed partial class Launcher
 
     private void ShowInstallationDialog() => Origami.Modal(Loc.Get("launcher.installation.title"))
         .Width(Math.Min(520, _window.FramebufferSize.X / DisplayScale - 48))
-        .Content(p =>
+        .CenteredContent(p =>
         {
             using (p.Column("installation-options").Gap(18).Height(UnitValue.Auto).Enter())
             {

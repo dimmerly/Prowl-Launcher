@@ -118,6 +118,8 @@ public sealed partial class Launcher(
     private void Closing()
     {
         _sampleThumbnails.Dispose();
+        _newsImages.Dispose();
+        _newsThumbnails.Dispose();
         _backgroundCancellation.Cancel();
         _launcherUpdateCancellation.Cancel();
         _operation?.Dispose();

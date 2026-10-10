@@ -27,7 +27,7 @@ public sealed partial class Launcher
         MarkdownBuilder? markdown = changelog == null ? null : ReleaseNotesMarkdown(changelog);
         ModalBuilder dialog = Origami.Modal(Loc.Get(title))
             .Width(width)
-            .Content(p =>
+            .CenteredContent(p =>
             {
                 using (p.Column("confirmation-content").Height(UnitValue.Auto).Gap(16).Enter())
                 {

@@ -16,6 +16,7 @@ static class LauncherScenarios
 
     internal static async Task Prepare(string scenario, LauncherFixture fixture)
     {
+        if (scenario == "ReadLocalNews") fixture.AddProject("News placement project");
         if (scenario == "EditorUpdateIndicator")
         {
             _editor = await fixture.InstallEditor();
@@ -126,6 +127,154 @@ static class LauncherScenarios
         await ui.Frame(3);
         switch (scenario)
         {
+            case "ReadLocalNews":
+                GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.ContainerRounding = 12;
+                string newsFixture = Path.Combine(AppContext.BaseDirectory, "NewsFixture");
+                string localNewsRoot = Path.Combine(f.Root, "news");
+                foreach (string file in Directory.EnumerateFiles(newsFixture, "*", SearchOption.AllDirectories))
+                {
+                    string destination = Path.Combine(localNewsRoot, Path.GetRelativePath(newsFixture, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(file, destination);
+                }
+                NewsService localNews = new(f.Http, f.Store, f.Store.Settings.LauncherRepository,
+                    localNewsRoot);
+                SetField(ui.Launcher, "_newsRepository", f.Store.Settings.LauncherRepository);
+                SetField(ui.Launcher, "_news", localNews);
+                SetField(ui.Launcher, "_newsPosts", localNews.ReadCache());
+                await ui.Navigate("Projects");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The local index should be readable while offline.");
+                Check(ui.Text("Markdown showcase (test post)").Data.Y > ui.Text("News placement project").Data.Y,
+                    "News must appear below the project list.");
+                NewsImages thumbnails = GetField<NewsImages>(ui.Launcher, "_newsThumbnails");
+                await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(thumbnails, "_textures").Values.Any(texture => texture != null),
+                    "The optional thumbnail should load from the local news directory.");
+                await ui.Frame(3);
+                Check(ui.Text("Rendering notes (test post)").Data.Y > ui.Paper.Height - 220,
+                    "The latest updates must remain at the bottom of the viewport.");
+                ElementHandle previewThumbnail = ui.Nodes().First(node => node.Data.LayoutWidth == 96 && node.Data.LayoutHeight == 88);
+                ElementHandle previewCard = previewThumbnail.GetParentHandle();
+                Check(Math.Abs(previewThumbnail.Data.X - previewCard.Data.X) <= 1
+                    && Math.Abs(previewThumbnail.Data.Y - previewCard.Data.Y) <= 1,
+                    "Thumbnails should be flush with the preview card's left and top edges.");
+                Check(ui.Text("Rendering notes (test post)").Data.X < ui.Text("Physics playground (test post)").Data.X
+                    + previewCard.Data.LayoutWidth + 40,
+                    "Text-only previews should use the space otherwise occupied by a thumbnail.");
+                Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - ui.Text("Physics playground (test post)").Data.Y) < 10,
+                    "Latest updates should share a horizontal row.");
+                Check(GetField<float>(ui.Launcher, "_newsFooterHeight") <= 112,
+                    "The footer must leave most of the page available for projects.");
+                ElementHandle firstPreview = ui.Text("Markdown showcase (test post)").GetParentHandle().GetParentHandle();
+                ElementHandle lastPreview = ui.Text("Rendering notes (test post)").GetParentHandle().GetParentHandle();
+                ElementHandle previewRow = firstPreview.GetParentHandle();
+                float groupCenter = (firstPreview.Data.X + lastPreview.Data.X + lastPreview.Data.LayoutWidth) / 2;
+                Check(Math.Abs(groupCenter - (previewRow.Data.X + previewRow.Data.LayoutWidth / 2)) <= 1,
+                    "The paging arrows must not shift the cards away from the row's center.");
+                ElementHandle moreButton = ui.Text("Older posts");
+                Check(!ui.Text("Newer posts").IsValid, "The first page must hide the newer arrow.");
+                Check(moreButton.Data.X - (lastPreview.Data.X + lastPreview.Data.LayoutWidth) >= 7,
+                    "The paging arrows must have a visible gap from the rightmost news card.");
+                Check(ui.HasText(RelativeDate.Format(localNews.ReadCache()[0].Date)), "The preview must show a relative date.");
+                Check(ui.Text("Prowl team").Data.Y > ui.Text("Rendering notes (test post)").Data.Y,
+                    "The author must appear below the title.");
+                ElementHandle bylineAuthor = ui.Text("Prowl team");
+                Check(Math.Abs(bylineAuthor.Data.Y + bylineAuthor.Data.LayoutHeight
+                    - (lastPreview.Data.Y + lastPreview.Data.LayoutHeight - 12)) <= 1,
+                    "The byline should use the bottom of the card's text area.");
+                ElementHandle bylineDate = ui.Nodes().First(node => node.Data.Paragraph == RelativeDate.Format(localNews.ReadCache()[2].Date));
+                Check(bylineDate.Data.X > bylineAuthor.Data.X
+                    && Math.Abs(bylineDate.Data.Y - bylineAuthor.Data.Y) <= 1,
+                    "Author and date must share a line with the date on the right.");
+                ui.SaveScreenshot(Path.Combine(f.Root, "projects-news.png"));
+                Check(!ui.Text("Refresh").IsValid && !ui.Text("News").IsValid, "The footer must not need a heading or refresh control.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher, "_newsLoading"), "Local refresh should finish without a network request.");
+                await ui.ClickText("Markdown showcase (test post)");
+                await ui.Wait(() => ui.HasText("This is a test post"), "The local Markdown article should render.");
+                NewsImages images = GetField<NewsImages>(ui.Launcher, "_newsImages");
+                await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Count(texture => texture != null) == 2,
+                    "Both relative local screenshots should become real textures.");
+                Check(GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Where(texture => texture != null)
+                    .All(texture => texture!.Width > 0 && texture.Height > 0), "Decoded screenshots must have valid dimensions.");
+                await ui.Frame(3);
+                AssertNewsDialogCentered(ui);
+                Check(!ui.HasText("A little README fanciness"), "The article must omit its leading title.");
+                Check(!ui.Nodes().Any(node => node.Data.Layer > Layer.Overlay
+                    && node.Data.Paragraph == "Prowl team"),
+                    "The dialog body must not repeat the author.");
+                Check(ui.Nodes().Count(node => node.Data.Paragraph == "Markdown showcase (test post)"
+                    && node.GetParentHandle().GetParentHandle().Data.Layer > Layer.Overlay) == 1,
+                    "The title must appear once in the dialog header.");
+                await ui.Resize(1000, 850);
+                AssertNewsDialogCentered(ui);
+                await ui.Resize(1200, 1100);
+                ui.SaveScreenshot(Path.Combine(f.Root, "news-article.png"));
+                await ui.ClickText("Close");
+                Check(!Modal.IsOpen && ui.HasText("News placement project"), "Closing an article must leave the project list available.");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "Back should return to the news cards.");
+                NewsPost latest = localNews.ReadCache()[0];
+                List<NewsPost> archivePosts = [latest];
+                for (int i = 1; i <= 4; i++)
+                {
+                    NewsPost archived = new($"archive-{i}.md", $"Archived update {i}", latest.Date.AddDays(-i));
+                    archivePosts.Add(archived);
+                    await File.WriteAllTextAsync(Path.Combine(localNewsRoot, archived.File), "# Archived showcase " + i + "\n\nArchived content " + i);
+                }
+                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), archivePosts);
+                await ui.Wait(() => ui.HasText("Archived update 2"), "Local index edits should appear automatically.");
+                await ui.Frame(3);
+                Check(!ui.HasText("Archived update 3") && !ui.HasText("Archived update 4"),
+                    "The footer should show only the three latest posts.");
+                await ui.Wait(() => !ui.Text("Offline").IsValid, "The startup toast must clear the archive link before clicking.");
+                await ui.ClickText("Older posts");
+                Check(GetField<long>(ui.Launcher, "_newsSlideStarted") != 0,
+                    "Paging must start a slide transition.");
+                await ui.Wait(() => ui.HasText("Archived update 4"), "The next page must show older posts.");
+                await ui.Frame();
+                ui.SaveScreenshot(Path.Combine(f.Root, "news-sliding.png"));
+                await ui.Wait(() => !ui.HasText("Markdown showcase (test post)"), "The outgoing page must leave after the slide.");
+                Check(!ui.Text("Older posts").IsValid && ui.Text("Newer posts").IsValid,
+                    "The last page must show only the newer arrow.");
+                ElementHandle olderPreview = ui.Text("Archived update 4").GetParentHandle().GetParentHandle();
+                ElementHandle olderFirstPreview = ui.Text("Archived update 3").GetParentHandle().GetParentHandle();
+                Check(Math.Abs(olderFirstPreview.Data.X - olderFirstPreview.GetParentHandle().Data.X) <= 1,
+                    "An incomplete page must align its cards to the left.");
+                Check(Math.Abs(olderPreview.Data.LayoutWidth - firstPreview.Data.LayoutWidth) <= 1,
+                    "An incomplete page must keep the same card width.");
+                Check(!Modal.IsOpen && !ui.HasText("Markdown showcase (test post)") && !ui.HasText("Archived update 2"),
+                    "Paging must replace the three previews without opening a modal.");
+                await ui.ClickText("Archived update 4");
+                await ui.Wait(() => ui.HasText("Archived content 4"), "An older post should open from its preview.");
+                await ui.Frame(3);
+                AssertNewsDialogCentered(ui);
+                await ui.ClickText("Close");
+                Check(!Modal.IsOpen && ui.HasText("Archived update 4"), "Closing an article must preserve the current page.");
+                await ui.ClickText("Newer posts");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The previous arrow must restore the latest posts.");
+                await ui.Wait(() => !ui.HasText("Archived update 4"), "The reverse slide must finish on the latest page.");
+                float footerY = ui.Text("Markdown showcase (test post)").Data.Y;
+                for (int i = 0; i < 10; i++) f.AddProject("Overflow project " + i);
+                await ui.Frame(3);
+                Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
+                    "Adding projects must not move the news footer.");
+                float projectY = ui.Text("News placement project").Data.Y;
+                await ui.Scroll();
+                Check(ui.Text("News placement project").Data.Y < projectY,
+                    "A long project list must scroll independently.");
+                Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
+                    "Scrolling projects must leave news in place.");
+                ui.SaveScreenshot(Path.Combine(f.Root, "projects-scrolled-news.png"));
+                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), new[] { latest });
+                await ui.Wait(() => !ui.HasText("Archived update 1"), "The local index should update to a single post.");
+                await ui.Frame(3);
+                Check(!ui.Text("Older posts").IsValid && !ui.Text("Newer posts").IsValid,
+                    "A single post must show no paging arrows.");
+                ElementHandle singlePreview = ui.Text(latest.Title).GetParentHandle().GetParentHandle();
+                Check(singlePreview.Data.LayoutWidth <= singlePreview.GetParentHandle().Data.LayoutWidth / 3,
+                    "A single post must not stretch across the row.");
+                Check(Math.Abs(singlePreview.Data.X - singlePreview.GetParentHandle().Data.X) <= 1,
+                    "A single post must stay left-aligned.");
+                ui.SaveScreenshot(Path.Combine(f.Root, "news-single-post.png"));
+                break;
             case "EditorUpdateIndicator":
                 bool HasVersionIndicator() => ui.Nodes().Any(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10
                                                                                                  && node.GetParentHandle().IsValid && node.GetParentHandle().Data.X == 8
@@ -322,6 +471,8 @@ static class LauncherScenarios
                 await ui.HoverText("v1.0.0");
                 await ui.ClickText("Uninstall");
                 await ui.Wait(() => Modal.IsOpen, "Uninstall should require confirmation.");
+                await ui.Frame(3);
+                AssertDialogCentered(ui, "Uninstall v1.0.0?");
                 await ui.ClickText(scenario == "CancelUninstall" ? "Cancel" : "Uninstall");
                 if (scenario == "CancelUninstall")
                 {
@@ -414,12 +565,33 @@ static class LauncherScenarios
         }
     }
 
+    private static void AssertNewsDialogCentered(UiDriver ui)
+    {
+        ElementHandle dialog = ui.Nodes().First(node => node.Data.Layer > Layer.Overlay
+            && node.Data.LayoutWidth > 500 && node.Data.LayoutWidth < ui.Paper.Width
+            && node.GetParentHandle().IsValid && node.GetParentHandle().Data.LayoutWidth >= ui.Paper.Width - 1);
+        Check(Math.Abs(dialog.Data.Y + dialog.Data.LayoutHeight / 2 - ui.Paper.Height / 2) <= 1,
+            "The article dialog must remain vertically centered.");
+    }
+
+    private static void AssertDialogCentered(UiDriver ui, string title)
+    {
+        ElementHandle dialog = ui.Nodes().Where(node => node.Data.Paragraph == title)
+            .Select(node => node.GetParentHandle().GetParentHandle())
+            .First(node => node.IsValid && node.Data.Layer > Layer.Overlay);
+        Check(Math.Abs(dialog.Data.Y + dialog.Data.LayoutHeight / 2 - ui.Paper.Height / 2) <= 1,
+            "The dialog must be vertically centered: " + title);
+    }
+
     private static async Task OpenManualUpdate(UiDriver ui)
     {
         await ui.Navigate("Settings");
         await ui.Scroll();
         await ui.ClickText("Check for updates");
         await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"), "Manual check should show the update dialog and changelog.");
+        await ui.Frame(3);
+        AssertDialogCentered(ui, ui.Text("Switch to stable Prowl Launcher?").IsValid
+            ? "Switch to stable Prowl Launcher?" : "Update Prowl Launcher?");
     }
 
     private static void AssertLaunch(LauncherFixture fixture, string project)
@@ -434,7 +606,7 @@ static class LauncherScenarios
     {
         if (scenario == "AcceptHealthyUpdate")
         {
-            Check(fixture.Saved().LauncherExecutable is {} path && File.Exists(path), "Only a healthy update may be activated before closing.");
+            Check(fixture.Saved().LauncherExecutable is { } path && File.Exists(path), "Only a healthy update may be activated before closing.");
         }
         if (scenario == "CloseDuringDownload")
         {

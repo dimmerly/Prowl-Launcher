@@ -10,6 +10,8 @@
     <VSTestTestCaseFilter Condition="'$(VSTestTestCaseFilter)' == ''">Category!=E2E</VSTestTestCaseFilter>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Fixtures/News/**/*"/>
+    <None Include="Fixtures/News/**/*" Link="NewsFixture/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"/>
     <ProjectReference Include="../src/Prowl.Launcher.csproj"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0"/>
     <PackageReference Include="xunit" Version="2.9.0"/>

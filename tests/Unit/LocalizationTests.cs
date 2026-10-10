@@ -38,6 +38,20 @@ public sealed class LocalizationTests
     }
 
     [Fact]
+    public void NewsDatesAreRelativeToTheLocalCalendarDay()
+    {
+        Loc.Configure(config => config.SetFallbackLocale("en").SetLocale("en")
+            .AddProvider(new EmbeddedResourceProvider(typeof(Launcher).Assembly, "Prowl.Launcher.Locale")));
+        DateOnly today = new(2026, 10, 10);
+        Assert.Equal("Today", RelativeDate.Format(today, today));
+        Assert.Equal("Yesterday", RelativeDate.Format(today.AddDays(-1), today));
+        Assert.Equal("3 days ago", RelativeDate.Format(today.AddDays(-3), today));
+        Assert.Equal("Tomorrow", RelativeDate.Format(today.AddDays(1), today));
+        Assert.Equal("In 3 days", RelativeDate.Format(today.AddDays(3), today));
+        Assert.Equal("365 days ago", RelativeDate.Format(today.AddDays(-365), today));
+    }
+
+    [Fact]
     public void AllLocalesHaveMatchingKeysAndPlaceholders()
     {
         Dictionary<string, string> english = Catalog("en");

@@ -1,0 +1,40 @@
+[
+  {
+    "file": "markdown-showcase.md",
+    "title": "Markdown showcase (test post)",
+    "date": "2026-10-10",
+    "author": "Prowl team",
+    "summary": "A test article for rich Markdown, screenshots, links, lists, quotes and code.",
+    "thumbnail": "images/rendering-showcase.png"
+  },
+  {
+    "file": "physics-test.md",
+    "title": "Physics playground (test post)",
+    "date": "2026-10-09",
+    "author": "Prowl team",
+    "summary": "A second test entry with a physics screenshot and a short checklist.",
+    "thumbnail": "images/physics-showcase.png"
+  },
+  {
+    "file": "rendering-test.md",
+    "title": "Rendering notes (test post)",
+    "date": "2026-10-08",
+    "author": "Prowl team",
+    "summary": "A third test entry for text-only cards, longer titles and code snippets."
+  },
+  {
+    "file": "workflow-test.md",
+    "title": "Project workflow (test post)",
+    "date": "2026-10-07",
+    "author": "Prowl team",
+    "summary": "A text-only entry to check how posts without thumbnails look in the archive."
+  },
+  {
+    "file": "archive-test.md",
+    "title": "An older showcase (test post)",
+    "date": "2026-10-06",
+    "author": "Prowl team",
+    "summary": "An older test entry available through the archive button on the right.",
+    "thumbnail": "images/physics-showcase.png"
+  }
+]

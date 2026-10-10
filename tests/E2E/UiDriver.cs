@@ -285,6 +285,12 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         await Frame(20);
     }
 
+    internal async Task Resize(int width, int height)
+    {
+        _window.ClientSize = new OpenTK.Mathematics.Vector2i(width, height);
+        await Frame(5);
+    }
+
     internal async Task HoverText(string text)
     {
         await Wait(() => Text(text).IsValid, "Expected hover target: " + text);
@@ -310,7 +316,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         _window.Close();
     }
 
-    private void SaveScreenshot(string path)
+    internal void SaveScreenshot(string path)
     {
         int width = _window.FramebufferSize.X, height = _window.FramebufferSize.Y;
         byte[] pixels = new byte[width * height * 4], flipped = new byte[width * height * 4];
