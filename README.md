@@ -82,7 +82,7 @@ Files and folders appear as the launcher needs them:
 
 Repository hashes distinguish downloads from different repositories; they are not Git commit IDs. Version folders also distinguish platforms such as `win-x64` and `win-arm64`.
 
-The editor keeps `EditorSettings.json` and `RecentProjects.json` one level up, in `%APPDATA%\Prowl`. The launcher reads editor settings for its initial language, theme, and project location, and imports recent projects once. The original Windows launcher installed through **Install** lives separately under `%LOCALAPPDATA%\Programs\Prowl Launcher`.
+The editor keeps `EditorSettings.json` and `RecentProjects.json` one level up, in `%APPDATA%\Prowl`. The launcher reads editor settings for its initial language, theme, and project location, and imports recent projects once. The Windows launcher installed through **Install** lives at `%APPDATA%\Prowl\Launcher\Prowl.Launcher.exe`, which is also the target of its Desktop and Start menu shortcuts.
 
 ## Development
 
