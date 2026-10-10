@@ -25,7 +25,7 @@ public sealed partial class Launcher
 
         using (p.Row("heading").Height(76).Gap(16).AlignItems(LayoutAlignment.Center).Enter())
         {
-            using (p.Column("heading-text").Height(76).Gap(6).Enter())
+            using (p.Column("heading-text").Height(76).Enter())
             {
                 Label(p, "title", title, 28, Ink, 36, true);
                 Label(p, "subtitle", subtitle, 14, Muted, 23);
