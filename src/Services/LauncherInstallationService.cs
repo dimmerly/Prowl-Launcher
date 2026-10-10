@@ -54,7 +54,8 @@ sealed class LauncherInstallationService(LauncherStore store)
         string version = typeof( Launcher ).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
         string root = InstallRoot(store);
         string fileName = OperatingSystem.IsWindows() ? "Prowl.Launcher.exe" : "Prowl Launcher.AppImage";
-        string relative = OperatingSystem.IsMacOS() ? "Prowl Launcher.app" : Path.Combine(version, fileName);
+        string relative = OperatingSystem.IsMacOS() ? "Prowl Launcher.app"
+            : OperatingSystem.IsWindows() ? fileName : Path.Combine(version, fileName);
         string destination = LauncherStore.SafeChildPath(root, relative);
         string executable = OperatingSystem.IsMacOS() ? Path.Combine(destination, "Contents", "MacOS", "Prowl.Launcher") : destination;
 
@@ -63,7 +64,10 @@ sealed class LauncherInstallationService(LauncherStore store)
             await Task.Run(() =>
             {
                 // A previous attempt may have copied the app before shortcut creation failed.
-                if (!SameApplication(source, destination, OperatingSystem.IsMacOS(), token))
+                // The stable Windows entry point forwards to the selected update;
+                // retain it across reinstalls instead of replacing a potentially running app.
+                if (!(OperatingSystem.IsWindows() && File.Exists(destination))
+                    && !SameApplication(source, destination, OperatingSystem.IsMacOS(), token))
                 {
                     CopyApplication(source, destination, OperatingSystem.IsMacOS(), token);
                 }
@@ -77,6 +81,40 @@ sealed class LauncherInstallationService(LauncherStore store)
         store.Settings.InstallationPromptHandled = true;
         store.Save();
         return executable;
+    }
+
+    internal void MigrateWindowsInstallation(string? installationRoot = null, string[]? shortcutPaths = null)
+    {
+        if (!OperatingSystem.IsWindows() || store.Settings.InstalledLauncherExecutable is not {} previous)
+        {
+            return;
+        }
+        string root = installationRoot ?? InstallRoot(store);
+        string stable = Path.Combine(root, "Prowl.Launcher.exe");
+        if (LauncherStore.PathsEqual(previous, stable) || !File.Exists(previous)
+            || !string.Equals(Path.GetFileName(previous), "Prowl.Launcher.exe", StringComparison.OrdinalIgnoreCase)
+            || Path.GetDirectoryName(Path.GetDirectoryName(previous)) is not {} parent
+            || !LauncherStore.PathsEqual(parent, root))
+        {
+            return;
+        }
+
+        if (!File.Exists(stable))
+        {
+            try { CopyApplication(previous, stable, false, default); }
+            catch (IOException) when (File.Exists(stable)) { } // Another launcher completed the same migration.
+        }
+        string[] shortcuts = shortcutPaths ??
+        [
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Prowl Launcher.lnk"),
+            Path.Combine(DesktopDirectory(), "Prowl Launcher.lnk")
+        ];
+        foreach (string shortcut in shortcuts)
+        {
+            if (File.Exists(shortcut)) CreateWindowsShortcut(shortcut, stable, previous);
+        }
+        store.Settings.InstalledLauncherExecutable = stable;
+        store.Save();
     }
 
     private static void RegisterApplication(string root, string destination, string executable, bool desktopShortcut)
@@ -250,7 +288,7 @@ sealed class LauncherInstallationService(LauncherStore store)
     }
 
     [SupportedOSPlatform("windows")]
-    internal static void CreateWindowsShortcut(string path, string executable)
+    internal static void CreateWindowsShortcut(string path, string executable, string? expectedTarget = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         Type shellType = Type.GetTypeFromProgID("WScript.Shell")
@@ -261,6 +299,10 @@ sealed class LauncherInstallationService(LauncherStore store)
         try
         {
             dynamic link = shortcut = ((dynamic)shell).CreateShortcut(path);
+            if (expectedTarget != null && !LauncherStore.PathsEqual((string)link.TargetPath, expectedTarget))
+            {
+                return;
+            }
             link.TargetPath = executable;
             link.WorkingDirectory = Path.GetDirectoryName(executable);
             link.IconLocation = executable + ",0";

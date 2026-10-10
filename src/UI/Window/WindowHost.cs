@@ -39,6 +39,13 @@ public sealed partial class Launcher
     {
         UpdateWindowScale();
         _window.VSync = VSyncMode.On;
+        using (Stream iconStream = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
+                                   ?? throw new InvalidDataException("The launcher icon is missing."))
+        using (Prowl.Aperture.Image icon = Prowl.Aperture.Image.Load(iconStream,
+                   new Prowl.Aperture.DecodeOptions { TargetPixelFormat = Prowl.Aperture.PixelFormat.Rgba8 }))
+        {
+            _window.Icon = new WindowIcon(new OpenTK.Windowing.Common.Input.Image(icon.Width, icon.Height, icon.Pixels.ToArray()));
+        }
         if (OperatingSystem.IsWindows())
         {
             _windowFrame = new WindowFrame(

@@ -109,6 +109,14 @@ public sealed partial class Launcher(
             || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
                 && LauncherStore.PathsEqual(active, current))
         {
+            if (screenshot == null)
+            {
+                try { new LauncherInstallationService(store).MigrateWindowsInstallation(); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+                {
+                    LogError(error);
+                }
+            }
             CleanupLauncherUpdates();
         }
 

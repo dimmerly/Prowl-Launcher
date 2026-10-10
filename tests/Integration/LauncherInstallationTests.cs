@@ -8,6 +8,49 @@ public sealed class LauncherInstallationTests : IDisposable
     private readonly string _work = Path.Combine(Path.GetTempPath(), "ProwlInstallTests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void MigratingWindowsInstallationRetargetsOwnedShortcutsAndPreservesUpdates()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        LauncherStore store = new(Path.Combine(_work, "Settings"));
+        string root = Path.Combine(_work, "Programs", "Prowl Launcher");
+        string previous = Path.Combine(root, "1.0.0-preview-6", "Prowl.Launcher.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(previous)!);
+        File.WriteAllText(previous, "bootstrap");
+        store.Settings.InstalledLauncherExecutable = previous;
+        store.Settings.LauncherExecutable = Path.Combine(_work, "Updates", "current.exe");
+        string shortcut = Path.Combine(_work, "Desktop", "Prowl Launcher.lnk");
+        string custom = Path.Combine(_work, "Custom", "Prowl Launcher.lnk");
+        string missing = Path.Combine(_work, "Missing.lnk");
+        LauncherInstallationService.CreateWindowsShortcut(shortcut, previous);
+        LauncherInstallationService.CreateWindowsShortcut(custom, Path.Combine(_work, "custom.exe"));
+        byte[] customContents = File.ReadAllBytes(custom);
+
+        new LauncherInstallationService(store).MigrateWindowsInstallation(root, [shortcut, custom, missing]);
+
+        string stable = Path.Combine(root, "Prowl.Launcher.exe");
+        Assert.Equal("bootstrap", File.ReadAllText(stable));
+        Assert.True(File.Exists(previous));
+        Assert.Equal(stable, new LauncherStore(store.Home).Settings.InstalledLauncherExecutable);
+        Assert.Equal(Path.Combine(_work, "Updates", "current.exe"), store.Settings.LauncherExecutable);
+        Assert.Equal(customContents, File.ReadAllBytes(custom));
+        Assert.False(File.Exists(missing));
+        Type shellType = Type.GetTypeFromProgID("WScript.Shell")!;
+        object shell = Activator.CreateInstance(shellType)!;
+        object? link = null;
+        try
+        {
+            dynamic result = link = ((dynamic)shell).CreateShortcut(shortcut);
+            Assert.True(LauncherStore.PathsEqual(stable, (string)result.TargetPath));
+            Assert.Equal(stable + ",0", (string)result.IconLocation);
+        }
+        finally
+        {
+            if (link != null) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(link);
+            System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
+        }
+    }
+
+    [Fact]
     public void InstallingCopiesTheDownloadWithoutRemovingIt()
     {
         Directory.CreateDirectory(_work);

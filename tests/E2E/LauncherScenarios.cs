@@ -14,6 +14,15 @@ static class LauncherScenarios
     private static Project? _project;
     private static string? _secondEditorKey;
 
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static extern nint SendWindowMessage(nint window, uint message, nint wParam, nint lParam);
+
+    private static nint WindowIconHandle(Launcher launcher)
+    {
+        object frame = GetField<object>(launcher, "_windowFrame");
+        return SendWindowMessage(GetField<nint>(frame, "_handle"), 0x007F, 1, 0); // WM_GETICON, ICON_BIG
+    }
+
     internal static async Task Prepare(string scenario, LauncherFixture fixture)
     {
         if (scenario == "ReadLocalNews") fixture.AddProject("News placement project");
@@ -127,6 +136,12 @@ static class LauncherScenarios
         await ui.Frame(3);
         switch (scenario)
         {
+            case "WindowIcon":
+                if (OperatingSystem.IsWindows())
+                {
+                    Check(WindowIconHandle(ui.Launcher) != 0, "The native launcher window must have an icon, including when launched through dotnet.");
+                }
+                break;
             case "ToastsAboveProgress":
                 using (CancellationTokenSource operation = new())
                 {
