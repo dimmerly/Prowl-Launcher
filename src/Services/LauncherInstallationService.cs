@@ -104,11 +104,11 @@ sealed class LauncherInstallationService(LauncherStore store)
     private static void RegisterWindowsApplication(string executable, bool desktopShortcut)
     {
         string programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-        CreateWindowsShortcut(Path.Combine(programs, "Prowl Launcher.lnk"), executable);
+        CreateWindowsShortcut(Path.Combine(programs, "Prowl.lnk"), executable);
 
         if (desktopShortcut)
         {
-            CreateWindowsShortcut(Path.Combine(DesktopDirectory(), "Prowl Launcher.lnk"), executable);
+            CreateWindowsShortcut(Path.Combine(DesktopDirectory(), "Prowl.lnk"), executable);
         }
     }
 
@@ -129,13 +129,13 @@ sealed class LauncherInstallationService(LauncherStore store)
 
         if (desktopShortcut)
         {
-            WriteDesktopEntry(Path.Combine(DesktopDirectory(), "Prowl Launcher.desktop"), entry);
+            WriteDesktopEntry(Path.Combine(DesktopDirectory(), "Prowl.desktop"), entry);
         }
     }
 
     private static void CreateMacShortcut(string destination)
     {
-        string shortcut = Path.Combine(DesktopDirectory(), "Prowl Launcher.app");
+        string shortcut = Path.Combine(DesktopDirectory(), "Prowl.app");
         Directory.CreateDirectory(Path.GetDirectoryName(shortcut)!);
 
         if (!Directory.Exists(shortcut) && !File.Exists(shortcut))
@@ -268,7 +268,7 @@ sealed class LauncherInstallationService(LauncherStore store)
             link.TargetPath = executable;
             link.WorkingDirectory = Path.GetDirectoryName(executable);
             link.IconLocation = executable + ",0";
-            link.Description = "Prowl Launcher";
+            link.Description = "Prowl";
             link.Save();
         }
         finally
@@ -290,7 +290,7 @@ sealed class LauncherInstallationService(LauncherStore store)
     internal static string DesktopEntry(string executable, string icon) => $"""
                                                                             [Desktop Entry]
                                                                             Type=Application
-                                                                            Name=Prowl Launcher
+                                                                            Name=Prowl
                                                                             Exec={QuoteDesktopExecutable(executable)}
                                                                             Icon={icon.Replace("\\", "\\\\")}
                                                                             Terminal=false

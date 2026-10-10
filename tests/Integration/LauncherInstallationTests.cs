@@ -102,6 +102,7 @@ public sealed class LauncherInstallationTests : IDisposable
     {
         string executable = "/home/a $name/100%/Prowl Launcher.AppImage";
         string entry = LauncherInstallationService.DesktopEntry(executable, "/home/a/icons/prowl.png");
+        Assert.Contains("Name=Prowl\n", entry);
         Assert.Contains("Exec=\"/home/a \\\\$name/100%%/Prowl Launcher.AppImage\"\n", entry);
         Assert.Contains("Terminal=false", entry);
         Assert.Contains("Icon=/home/a/icons/prowl.png", entry);
@@ -136,7 +137,7 @@ public sealed class LauncherInstallationTests : IDisposable
             return;
         }
         string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
-        string shortcut = Path.Combine(_work, "Desktop", "Prowl Launcher.lnk");
+        string shortcut = Path.Combine(_work, "Desktop", "Prowl.lnk");
         LauncherInstallationService.CreateWindowsShortcut(shortcut, executable);
         Assert.True(File.Exists(shortcut));
         Type shellType = Type.GetTypeFromProgID("WScript.Shell")
@@ -147,6 +148,7 @@ public sealed class LauncherInstallationTests : IDisposable
         try
         {
             dynamic result = link = ((dynamic)shell).CreateShortcut(shortcut);
+            Assert.Equal("Prowl", (string)result.Description);
             Assert.True(LauncherStore.PathsEqual(executable, (string)result.TargetPath));
             Assert.True(LauncherStore.PathsEqual(Path.GetDirectoryName(executable)!, (string)result.WorkingDirectory));
         }

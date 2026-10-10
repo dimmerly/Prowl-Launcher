@@ -165,7 +165,7 @@ void PackageLinux()
         """
         [Desktop Entry]
         Type=Application
-        Name=Prowl Launcher
+        Name=Prowl
         Exec=Prowl.Launcher
         Icon=prowl
         Terminal=false
