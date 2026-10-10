@@ -1,0 +1,30 @@
+[
+  {
+    "file": "prowl-launcher/README.md",
+    "title": "Introducing the Launcher",
+    "date": "2026-10-11",
+    "author": "Dimmer",
+    "thumbnail": "images/thumbnail.png"
+  },
+  {
+    "file": "prowl-1-0-preview-4/README.md",
+    "title": "Prowl v1.0-preview-4 is out!",
+    "date": "2026-08-30",
+    "author": "Wulferis",
+    "thumbnail": "images/thumbnail.png"
+  },
+  {
+    "file": "prowl-1-0-preview-3/README.md",
+    "title": "Prowl v1.0-preview-3 is out!",
+    "date": "2026-08-07",
+    "author": "Wulferis",
+    "thumbnail": "images/thumbnail.png"
+  },
+  {
+    "file": "prowl-1-0-preview/README.md",
+    "title": "Prowl 1.0-preview",
+    "date": "2026-07-13",
+    "author": "Wulferis",
+    "thumbnail": "images/image_5.png"
+  }
+]
