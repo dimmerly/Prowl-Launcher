@@ -27,8 +27,8 @@ public sealed partial class Launcher
         {
             using (p.Column("heading-text").Height(76).Enter())
             {
-                Label(p, "title", title, 28, Ink, 36, true);
-                Label(p, "subtitle", subtitle, 14, Muted, 23);
+                Label(p, "title", title, 32, Ink, 36, true, Scribe.FontQuality.Ultra);
+                Label(p, "subtitle", subtitle, 16, Muted, 23, quality: Scribe.FontQuality.Ultra);
             }
 
             if (actions != null)

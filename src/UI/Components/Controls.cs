@@ -59,7 +59,7 @@ public sealed partial class Launcher
         }
     }
 
-    private void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false)
+    private void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false, Scribe.FontQuality? quality = null)
     {
         float fontSize = Math.Max(16, size * 1.1f);
         p.Box(id)
@@ -67,7 +67,7 @@ public sealed partial class Launcher
             .IsNotInteractable()
             .Text(Loc.Get(text), bold ? _bold : _font)
             .FontSize(fontSize)
-            .TextQuality(size >= 23 ? Scribe.FontQuality.Ultra : Scribe.FontQuality.Normal)
+            .TextQuality(quality ?? (size >= 23 ? Scribe.FontQuality.Ultra : Scribe.FontQuality.Normal))
             .TextColor(color)
             .Alignment(TextAlignment.MiddleLeft);
     }
