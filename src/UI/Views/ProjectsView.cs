@@ -51,6 +51,7 @@ public sealed partial class Launcher
         foreach (Project project in projects)
         {
             string id = "project-" + project.Path;
+            bool folderExists = Directory.Exists(project.Path);
             bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
             using (VersionCard(p, id))
             {
@@ -59,7 +60,7 @@ public sealed partial class Launcher
                     id + "menu",
                     menu =>
                     {
-                        if (Directory.Exists(project.Path))
+                        if (folderExists)
                         {
                             menu.Item(Loc.Get("launcher.projects.show_in_folder"), () => Open(project.Path));
                         }
@@ -95,13 +96,35 @@ public sealed partial class Launcher
                         .Enter())
                     {
                         Label(p, id + "name", project.Name, 19, Ink, 28, true);
-                        Label(p, id + "path", project.Path, 12, Muted, 22);
+                        ElementBuilder path = p.Box(id + "path")
+                            .Height(24)
+                            .Text(project.Path, _font)
+                            .FontSize(16)
+                            .TextColor(Muted)
+                            .Alignment(Prowl.PaperUI.TextAlignment.MiddleLeft);
+                        if (folderExists)
+                        {
+                            path.Cursor(PaperCursor.Pointer)
+                                .Tooltip(Loc.Get("launcher.projects.show_in_folder"))
+                                .OnClick(_ =>
+                                {
+                                    if (Directory.Exists(project.Path))
+                                    {
+                                        Open(project.Path);
+                                    }
+                                });
+                            path.Hovered.TextColor(_appearance.Accent);
+                        }
+                        else
+                        {
+                            path.IsNotInteractable();
+                        }
                         if (project.LastOpened != default)
                         {
                             Label(p, id + "last-opened", RecentTime(project.LastOpened), 12, Muted, 22);
                         }
 
-                        if (!Directory.Exists(project.Path))
+                        if (!folderExists)
                         {
                             Label(p, id + "missing", "launcher.projects.folder_unavailable", 12, _appearance.Theme.Red.C500, 24);
                         }
