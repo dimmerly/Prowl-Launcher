@@ -16,6 +16,7 @@ public sealed class UserWorkflowTests
         "EmptyProjects",
         "WindowIcon",
         "DismissToasts",
+        "ToastAutoSize",
         "ToastsAboveProgress",
         "NavigatePages",
         "ReadLocalNews",

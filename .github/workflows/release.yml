@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [main]
-    paths: [VERSION.txt]
+    branches: [ main ]
+    paths: [ VERSION.txt ]
   workflow_dispatch:
 
 permissions:
@@ -71,7 +71,7 @@ jobs:
           fi
 
   build:
-    needs: [prepare, test]
+    needs: [ prepare, test ]
     if: github.event_name == 'pull_request' || needs.prepare.outputs.publish == 'true'
     runs-on: ${{ matrix.runner }}
     defaults:
@@ -249,7 +249,7 @@ jobs:
 
   release:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.prepare.outputs.publish == 'true'
-    needs: [prepare, test, build]
+    needs: [ prepare, test, build ]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -20,8 +20,8 @@ We can archive showcases here with **bold highlights**, *emphasis*,
 
 - A short introduction and screenshots.
 - Details about the work:
-  - Rendering and materials.
-  - Physics and interaction.
+    - Rendering and materials.
+    - Physics and interaction.
 - Links to the original showcase and related discussions.
 
 ### Try the samples

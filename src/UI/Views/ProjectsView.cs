@@ -158,7 +158,7 @@ public sealed partial class Launcher
                                 },
                                 keys
                             )
-                            .Display(key => _installed.FirstOrDefault(e => e.Key == key)?.Tag ?? Loc.Get("launcher.projects.choose_editor"))
+                            .Display(key => _installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
                             .Width(UnitValue.Stretch())
                             .IsItemEnabled(_ => !Busy)
                             .Show();

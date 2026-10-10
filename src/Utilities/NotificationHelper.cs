@@ -46,11 +46,11 @@ public sealed partial class Launcher
 
     private void DrawNotifications(Paper p, bool progressVisible)
     {
-        OrigamiMetrics metrics = _appearance.Theme.Metrics;
-        float bottom = (float)p.ScreenRect.Size.Y - metrics.PaddingLarge;
-        if (progressVisible)
+        OrigamiTheme theme = _appearance.Theme;
+        OrigamiMetrics metrics = theme.Metrics;
+        if (theme.Font is not {} font)
         {
-            bottom -= Constants.Layout.OperationHeight;
+            return;
         }
         for (int i = _activeToasts.Count - 1; i >= 0; i--)
         {
@@ -59,28 +59,80 @@ public sealed partial class Launcher
             if (toast.Remaining <= 0)
             {
                 _activeToasts.RemoveAt(i);
-                continue;
             }
+        }
 
-            float textHeight = metrics.FontSize + 2 + (toast.Message.Length > 0 ? 2 + metrics.FontSizeSmall : 0);
-            float height = Math.Max(26, textHeight) + 22;
-            bottom -= height + 9;
-            string id = "notification-" + toast.Id;
-            using (p.Box(id)
-                .PositionType(PositionType.SelfDirected)
-                .Left((float)p.ScreenRect.Size.X - 300 - metrics.PaddingLarge)
-                .Top(bottom).Size(300, height)
-                .Layer(Layer.Overlay + 100000)
-                .StopEventPropagation()
-                .Enter())
+        float availableWidth = Math.Max(0, (float)p.ScreenRect.Size.X - metrics.PaddingLarge * 2);
+        float textWidth = Math.Max(0, availableWidth - metrics.PaddingLarge * 2
+            - metrics.CompactHeight * 2 - metrics.SpacingLarge * 2);
+        using (p.Column("notifications")
+            .PositionType(PositionType.SelfDirected)
+            .AnchorRight(metrics.PaddingLarge)
+            .AnchorBottom(metrics.PaddingLarge + (progressVisible ? Constants.Layout.OperationHeight : 0))
+            .Size(UnitValue.Auto)
+            .MaxWidth(availableWidth)
+            .AlignItems(LayoutAlignment.End)
+            .Gap(metrics.SpacingLarge)
+            .Layer(Layer.Overlay + 100000)
+            .Enter())
+        {
+            foreach (NotificationToast toast in _activeToasts)
             {
-                Toasts.Preview(p, id + "-card", toast.Count > 1 ? $"{toast.Title} (x{toast.Count})" : toast.Title, toast.Type, toast.Message);
-                p.Box(id + "-close")
-                    .PositionType(PositionType.SelfDirected)
-                    .Left(266).Top((height - 28) / 2).Size(28, 28)
-                    .Cursor(PaperCursor.Pointer)
-                    .Tooltip(Loc.Get("launcher.common.close"))
-                    .OnClick(_ => _activeToasts.Remove(toast));
+                string id = "notification-" + toast.Id;
+                var semantic = toast.Type switch
+                {
+                    ToastType.Success => theme.Green.C500,
+                    ToastType.Warning => theme.Amber.C500,
+                    ToastType.Error => theme.Red.C500,
+                    _ => theme.Blue.C500
+                };
+                var icon = toast.Type switch
+                {
+                    ToastType.Success => theme.Icons.Check,
+                    ToastType.Warning => theme.Icons.Warning,
+                    ToastType.Error => theme.Icons.Close,
+                    _ => theme.Icons.Info
+                };
+                using (p.Box(id).Size(UnitValue.Auto).StopEventPropagation().Enter())
+                {
+                    using (p.Row(id + "-card")
+                        .Size(UnitValue.Auto)
+                        .Padding(metrics.PaddingLarge)
+                        .Gap(metrics.SpacingLarge)
+                        .AlignItems(LayoutAlignment.Center)
+                        .BackgroundColor(theme.Popover)
+                        .BorderColor(theme.BorderStrong).BorderWidth(1)
+                        .Rounded(metrics.ContainerRounding)
+                        .Enter())
+                    {
+                        p.Box(id + "-icon")
+                            .Size(metrics.CompactHeight)
+                            .Rounded(metrics.Rounding)
+                            .BackgroundColor(OrigamiTheme.WithAlpha(semantic, 38))
+                            .IsNotInteractable()
+                            .Icon(p, icon, semantic, size: metrics.FontSizeSmall);
+                        using (p.Column(id + "-text").Size(UnitValue.Auto).Gap(metrics.SpacingSmall).Enter())
+                        {
+                            p.Box(id + "-title").Size(UnitValue.Auto).MaxWidth(textWidth)
+                                .Text(toast.Count > 1 ? $"{toast.Title} (x{toast.Count})" : toast.Title, theme.Medium ?? font)
+                                .FontSize(metrics.FontSize).TextColor(theme.Ink.C500)
+                                .Wrap(Prowl.Scribe.TextWrapMode.Wrap).IsNotInteractable();
+                            if (toast.Message.Length > 0)
+                            {
+                                p.Box(id + "-message").Size(UnitValue.Auto).MaxWidth(textWidth)
+                                    .Text(toast.Message, font)
+                                    .FontSize(metrics.FontSizeSmall).TextColor(theme.Ink.C200)
+                                    .Wrap(Prowl.Scribe.TextWrapMode.Wrap).IsNotInteractable();
+                            }
+                        }
+                        p.Box(id + "-close")
+                            .Size(metrics.CompactHeight)
+                            .Cursor(PaperCursor.Pointer)
+                            .Tooltip(Loc.Get("launcher.common.close"))
+                            .OnClick(_ => _activeToasts.Remove(toast))
+                            .Icon(p, theme.Icons.Close, theme.Ink.C200, size: metrics.FontSizeSmall);
+                    }
+                }
             }
         }
     }

@@ -280,7 +280,7 @@ public sealed class LauncherStore
 
     public string InstallPath(InstalledEditor editor)
     {
-        if (editor.ReleaseId <= 0 || !Constants.Storage.SupportedPlatforms.Contains(editor.Platform)
+        if ((editor.ReleaseId <= 0 && !editor.IsMain) || !Constants.Storage.SupportedPlatforms.Contains(editor.Platform)
                                   || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));

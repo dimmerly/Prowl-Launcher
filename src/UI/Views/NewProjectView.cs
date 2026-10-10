@@ -101,7 +101,7 @@ public sealed partial class Launcher
                         value => _newProjectEditorKey = value,
                         _installed.Select(e => e.Key).ToArray()
                     )
-                    .Display(key => _installed.FirstOrDefault(e => e.Key == key)?.Tag ?? Loc.Get("launcher.projects.choose_editor"))
+                    .Display(key => _installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
                     .Width(UnitValue.Stretch())
                     .IsItemEnabled(_ => !Busy)
                     .Show();

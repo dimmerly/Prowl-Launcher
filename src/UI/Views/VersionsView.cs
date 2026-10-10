@@ -6,6 +6,7 @@ using System.Drawing;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+using TextWrapMode = Prowl.Scribe.TextWrapMode;
 
 namespace Prowl.Launcher;
 
@@ -104,8 +105,11 @@ public sealed partial class Launcher
                         if (showMaintenance)
                         {
                             Button(p, id + "uninstall", "launcher.versions.uninstall", token => UninstallEditorAsync(editor, token), width: 110);
-                            Button(p, id + "repair", "launcher.versions.repair",
-                                token => RepairEditorAsync(editor, token), width: 90);
+                            if (!editor.IsMain)
+                            {
+                                Button(p, id + "repair", "launcher.versions.repair",
+                                    token => RepairEditorAsync(editor, token), width: 90);
+                            }
                         }
                         Button(p, id + "launch", "launcher.versions.launch", token => LaunchAsync(editor, null, token), true, 90);
                     }
@@ -138,6 +142,40 @@ public sealed partial class Launcher
                     .Disabled(Busy).Show();
             }
             Button(p, "refresh", "launcher.versions.refresh", token => RefreshAsync(token), width: 96);
+        }
+
+        if (_includeEditorPrereleases)
+        {
+            using (VersionCard(p, "main"))
+            {
+                bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
+                using ((wide ? p.Row("main-row") : p.Column("main-row"))
+                    .Height(UnitValue.Auto)
+                    .Gap(12)
+                    .AlignItems(LayoutAlignment.Center)
+                    .Enter())
+                {
+                    using (p.Column("main-info").Height(UnitValue.Auto).Gap(2).Enter())
+                    {
+                        Label(p, "main-title", "launcher.versions.main_title", 18, Ink, 32, true);
+                        p.Box("main-description")
+                            .Height(UnitValue.Auto)
+                            .IsNotInteractable()
+                            .Text(Loc.Get("launcher.versions.main_description"), _font)
+                            .FontSize(16)
+                            .TextColor(Muted)
+                            .Wrap(TextWrapMode.Wrap);
+                    }
+                    using (p.Row("main-actions")
+                        .Width(wide ? UnitValue.Auto : UnitValue.Stretch())
+                        .Height(UnitValue.Auto)
+                        .JustifyContent(LayoutJustification.End)
+                        .Enter())
+                    {
+                        DrawSourceBuildButton(p, "main-build", primary: true);
+                    }
+                }
+            }
         }
 
         HashSet<long> installedReleaseIds = _installed
@@ -201,6 +239,29 @@ public sealed partial class Launcher
     }
 
     private InstalledEditor DefaultEditor() => _installed.FirstOrDefault(e => e.Key == store.Settings.DefaultEditorKey) ?? _installed.FirstOrDefault() ?? throw new InvalidOperationException(Loc.Get("launcher.errors.install_editor_first"));
+
+    private void DrawSourceBuildButton(Paper p, string id, string? repository = null, bool primary = false)
+    {
+        const string label = "launcher.versions.main_build";
+        string text = Loc.Get(label);
+        float width = Math.Max(154, text.Length * _appearance.Theme.Metrics.FontSize * 0.7f + 48);
+        Origami.Button(p, id, text)
+            .Width(width)
+            .Height(40)
+            .Rounding(_appearance.Theme.Metrics.Rounding)
+            .LeadingIcon(LauncherIcons.ForAction(label))
+            .Variant(primary ? OrigamiVariant.Primary : OrigamiVariant.Default)
+            .Disabled(Busy)
+            .OnClick(() => Start(token => BuildMainAsync(token, repository), label))
+            .Show();
+    }
+
+    private async Task BuildMainAsync(CancellationToken token, string? repository = null)
+    {
+        _immediateProgress = true;
+        EditorInstallerService.SourceBuildResult result = await _installer.InstallMainAsync(Platform.Identifier, Transfer(), token, repository);
+        Notify(result.AlreadyInstalled ? "launcher.versions.main_current" : "launcher.versions.main_ready", result.Editor.ToString());
+    }
     private async Task InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
     {
         _operationTitle = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing", new

@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace Prowl.Launcher;
 
-public sealed class EditorInstallerService(HttpClient http, LauncherStore store)
+public sealed partial class EditorInstallerService(HttpClient http, LauncherStore store)
 {
     public async Task<InstalledEditor> InstallAsync(
         EditorRelease release,

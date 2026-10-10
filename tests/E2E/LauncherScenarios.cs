@@ -173,12 +173,47 @@ static class LauncherScenarios
                 notifications.Enqueue(("Keep this toast", "Second notification", ToastType.Error));
                 await ui.Frame(2);
                 ElementHandle toastCard = ui.Text("Dismiss this toast").GetParentHandle().GetParentHandle().GetParentHandle();
-                ElementHandle closeToast = ui.Nodes().Single(n => n.GetParentHandle() == toastCard && n.Data.OnClick != null);
+                ElementHandle closeToast = ui.Nodes().Single(n => n.GetParentHandle().GetParentHandle() == toastCard && n.Data.OnClick != null);
                 await ui.Click(closeToast);
                 await ui.Frame(2);
                 Check(!ui.HasText("Dismiss this toast"), "Clicking the close target must dismiss its toast immediately.");
                 Check(ui.HasText("Keep this toast"), "Dismissing one toast must preserve the other toast.");
                 await ui.Wait(() => !ui.HasText("Keep this toast"), "Undismissed toasts must still expire automatically.");
+                break;
+            case "ToastAutoSize":
+                ConcurrentQueue<(string Title, string Message, ToastType Type)> sizingNotifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                string longVersion = "main-c988840fc2807f11e3cf1720f60490a1d9a01234";
+                string longMessage = string.Join(" ", Enumerable.Repeat("A longer notification must wrap within the window.", 12));
+                sizingNotifications.Enqueue(("Short toast", "Done", ToastType.Error));
+                sizingNotifications.Enqueue(("Editor uninstalled", longVersion, ToastType.Error));
+                sizingNotifications.Enqueue(("Wrapping toast", longMessage, ToastType.Error));
+                await ui.Frame(2);
+                ElementHandle shortCard = ui.Text("Short toast").GetParentHandle().GetParentHandle();
+                ElementHandle versionCard = ui.Text("Editor uninstalled").GetParentHandle().GetParentHandle();
+                ElementHandle wrappingCard = ui.Text("Wrapping toast").GetParentHandle().GetParentHandle();
+                Check(versionCard.Data.LayoutWidth > shortCard.Data.LayoutWidth,
+                    "Toast width must grow with its content.");
+                Check(wrappingCard.Data.LayoutHeight > versionCard.Data.LayoutHeight,
+                    "Long messages must wrap and increase the card height.");
+                foreach (ElementHandle card in new[] { shortCard, versionCard, wrappingCard })
+                {
+                    Check(card.Data.X >= 0 && card.Data.X + card.Data.LayoutWidth <= ui.Paper.Width,
+                        "Toast cards must fit within the window.");
+                    Check(Math.Abs(card.Data.X + card.Data.LayoutWidth - shortCard.Data.X - shortCard.Data.LayoutWidth) < 1,
+                        "Toasts of different widths must share the same right edge.");
+                }
+                ElementHandle versionText = ui.Text(longVersion);
+                Check(versionText.Data.LayoutWidth >= ui.Paper.MeasureText(longVersion,
+                        GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.FontSizeSmall,
+                        versionText.Data.Font).X - 1,
+                    "The version identifier must fit fully within its text area.");
+                ElementHandle wrappingClose = ui.Nodes().Single(n => n.GetParentHandle() == wrappingCard && n.Data.OnClick != null);
+                Check(wrappingClose.Data.X >= ui.Text(longMessage).Data.X + ui.Text(longMessage).Data.LayoutWidth,
+                    "The close button must remain beside the wrapped text.");
+                await ui.Click(wrappingClose);
+                await ui.Frame(2);
+                Check(!ui.HasText("Wrapping toast") && ui.HasText("Short toast"),
+                    "A dynamically sized toast must dismiss independently.");
                 break;
             case "ReadLocalNews":
                 GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.ContainerRounding = 12;

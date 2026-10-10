@@ -81,7 +81,7 @@ public static class ProjectTemplates
         }
     }
 
-    private static string ProjectVersionFor(InstalledEditor editor) => editor.Tag.TrimStart('v')
+    private static string ProjectVersionFor(InstalledEditor editor) => (editor.EditorVersion ?? editor.Tag).Split('+')[0].TrimStart('v')
         .Replace("-preview-", "-preview.")
         .Replace("-alpha-", "-alpha.")
         .Replace("-beta-", "-beta.");
