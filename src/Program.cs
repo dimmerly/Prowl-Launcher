@@ -23,7 +23,8 @@ static class Program
             }
             LauncherStartupService.CaptureReadyPipe();
             LauncherStore store = new();
-            if (ForwardToUpdatedLauncher(store, args))
+            // Source builds share the user's settings, so they would otherwise hand off to the installed update.
+            if (LauncherInstallationService.IsSelfInstallBuild && ForwardToUpdatedLauncher(store, args))
             {
                 return;
             }

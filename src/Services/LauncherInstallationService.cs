@@ -17,9 +17,12 @@ sealed class LauncherInstallationService(LauncherStore store)
     private const string LinuxEntryName = "com.prowlengine.launcher.desktop";
     private const string ProjectClass = "ProwlLauncher.Project";
 
+    /// <summary>True for the released, self-installing build; false for source and update builds.</summary>
+    internal static bool IsSelfInstallBuild { get; } = typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true");
+
     internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled
-                                                             && typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-                                                                 .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true")
+                                                             && IsSelfInstallBuild
                                                              && SourcePath() != null;
 
     internal static string InstallRoot(LauncherStore store)
