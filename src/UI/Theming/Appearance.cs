@@ -1,18 +1,13 @@
 using System.Drawing;
-using System.Text.Json;
 
 using Prowl.Launcher.Theming;
 using Prowl.OrigamiUI;
 using Prowl.Scribe;
-
 namespace Prowl.Launcher;
 
 /// <summary>Uses the editor's theme data and presets, with independent launcher settings.</summary>
 sealed class LauncherAppearance
 {
-    private readonly string _path;
-    private readonly FontFile _font;
-    private readonly FontFile _bold;
     public EditorThemeData Data
     {
         get;
@@ -29,6 +24,9 @@ sealed class LauncherAppearance
     public Color Background => ColorRamp.ParseHex(Data.BackgroundStyle == EditorBackgroundStyle.Color ? Data.BackgroundColorA : Data.BackgroundVoidColor);
     public Color Panel => Opaque(Theme.Neutral.C500);
     public Color Card => Opaque(Theme.Neutral.C300);
+    private readonly FontFile _bold;
+    private readonly FontFile _font;
+    private readonly string _path;
 
     public LauncherAppearance(string home, FontFile font, FontFile bold)
     {
@@ -60,7 +58,7 @@ sealed class LauncherAppearance
     public void Save()
     {
         Apply();
-        LauncherStore.WriteJson(_path, Data);
+        JsonFile.Write(_path, Data);
     }
 
     private void Apply()
@@ -80,32 +78,7 @@ sealed class LauncherAppearance
         Theme.Metrics.IconWidth = 20;
     }
 
-    private static EditorThemeData ReadEditorTheme()
-    {
-        string path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Prowl",
-            "EditorSettings.json"
-        );
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
-            if (document.RootElement.TryGetProperty("Theme", out JsonElement theme))
-            {
-                EditorThemeData? data = theme.Deserialize<EditorThemeData>();
-                if (data != null)
-                {
-                    data.InitRamps();
-                    return data;
-                }
-            }
-        }
-        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
-        {
-        }
-
-        return EditorThemeData.CreateDefault();
-    }
+    private static EditorThemeData ReadEditorTheme() => EditorSettings.Theme() ?? EditorThemeData.CreateDefault();
 
     public static Color Opaque(Color color) => Color.FromArgb(255, color.R, color.G, color.B);
 }

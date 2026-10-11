@@ -1,8 +1,8 @@
-using Prowl.Rosetta;
 using Prowl.Launcher.Theming;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+using Prowl.Rosetta;
 
 using Color=System.Drawing.Color;
 
@@ -10,11 +10,11 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private string? _prowlRepositoryDraft;
     private string? _launcherRepositoryDraft;
     private string _launcherStorageSize = "—";
-    private Task? _storageSizeRefresh;
     private DateTimeOffset _nextStorageSizeRefresh;
+    private string? _prowlRepositoryDraft;
+    private Task? _storageSizeRefresh;
     private void DrawRepositorySettings(Paper p)
     {
         using (Card(p, "repository-settings"))
@@ -49,12 +49,7 @@ public sealed partial class Launcher
 
     private void DrawSettings(Paper p)
     {
-        if ((_storageSizeRefresh == null || _storageSizeRefresh.IsCompleted)
-            && DateTimeOffset.UtcNow >= _nextStorageSizeRefresh)
-        {
-            _nextStorageSizeRefresh = DateTimeOffset.UtcNow.AddSeconds(5);
-            _storageSizeRefresh = RefreshStorageSizeAsync();
-        }
+        RefreshStorageSizeIfDue();
         using (Card(p, "appearance-settings"))
         {
             Label(p, "appearance-title", "launcher.settings.appearance", 19, Ink, 28, true);
@@ -186,14 +181,7 @@ public sealed partial class Launcher
                     .Width(190)
                     .Height(40)
                     .LeadingIcon(LauncherIcons.Refresh)
-                    .OnClick(() =>
-                    {
-                        Settings defaults = new();
-                        store.Settings.UiScale = defaults.UiScale;
-                        store.Settings.LogoColor = defaults.LogoColor;
-                        store.Save();
-                        _appearance.ResetToDefault();
-                    })
+                    .OnClick(ResetAppearance)
                     .Show();
             }
         }
@@ -235,26 +223,14 @@ public sealed partial class Launcher
             }
             Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
             {
-                version = LauncherVersion, platform = Platform.Identifier
+                version = VersionHelper.LauncherVersion, platform = Platform.Identifier
             }), 13, Muted, 24);
 
             Origami.Toggle(p, "launcher-auto-update", store.Settings.LauncherAutoUpdate, SetLauncherAutoUpdate)
                 .LabelLeft(Loc.Get("launcher.settings.launcher_auto_update"))
                 .Stretch().Disabled(Busy).Show();
 
-            Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, value =>
-                {
-                    store.Settings.LauncherPrereleases = value;
-                    store.Save();
-                    if (value)
-                    {
-                        _ = CheckLauncherInBackgroundAsync();
-                    }
-                    else if (VersionHelper.IsPreview(LauncherVersion))
-                    {
-                        Start(UpdateLauncherAsync, "launcher.updates.checking");
-                    }
-                })
+            Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, SetLauncherPrereleases)
                 .LabelLeft(Loc.Get("launcher.settings.launcher_prereleases"))
                 .Stretch().Disabled(Busy).Show();
 
@@ -271,7 +247,7 @@ public sealed partial class Launcher
                     "launcher.settings.open_data_folder",
                     _ =>
                     {
-                        Open(store.Home);
+                        ProcessHelper.OpenInShell(store.Home);
                         return Task.CompletedTask;
                     },
                     width: 155
@@ -301,7 +277,7 @@ public sealed partial class Launcher
             Origami.ColorField(
                     p,
                     id,
-                    new Prowl.Vector.Color(color.R / 255f, color.G / 255f, color.B / 255f, 1),
+                    new Vector.Color(color.R / 255f, color.G / 255f, color.B / 255f, 1),
                     value => changed(ColorRamp.ColorToHex(Color.FromArgb(
                         255,
                         (int)(Math.Clamp(value.R, 0, 1) * 255),
@@ -313,5 +289,89 @@ public sealed partial class Launcher
                 .Height(40)
                 .Show();
         }
+    }
+
+    /// <summary>Refreshes the launcher home size shown in settings, at most every few seconds.</summary>
+    private void RefreshStorageSizeIfDue()
+    {
+        if (_storageSizeRefresh is { IsCompleted: false } || DateTimeOffset.UtcNow < _nextStorageSizeRefresh)
+        {
+            return;
+        }
+        _nextStorageSizeRefresh = DateTimeOffset.UtcNow.AddSeconds(5);
+        _storageSizeRefresh = RefreshStorageSizeAsync();
+    }
+
+    private async Task RefreshStorageSizeAsync()
+    {
+        CancellationToken token = _backgroundCancellation.Token;
+        try
+        {
+            long bytes = await Task.Run(() => DirectorySize(store.Home, token), token);
+            _launcherStorageSize = bytes >= 1073741824
+                ? $"{bytes / 1073741824d:F1} GB"
+                : $"{bytes / 1048576d:F1} MB";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or OperationCanceledException)
+        {
+            _launcherStorageSize = "—";
+        }
+    }
+
+    private static long DirectorySize(string root, CancellationToken token)
+    {
+        EnumerationOptions options = new()
+        {
+            RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint
+        };
+        long total = 0;
+        foreach (FileInfo file in new DirectoryInfo(root).EnumerateFiles("*", options))
+        {
+            token.ThrowIfCancellationRequested();
+            try
+            {
+                total += file.Length;
+            }
+            catch (IOException)
+            {
+                // An installation or update may remove files during the scan.
+            }
+        }
+        return total;
+    }
+
+    /// <summary>Saves both repository drafts and reloads editor releases from the new source.</summary>
+    private async Task SaveRepositoriesAsync(CancellationToken token)
+    {
+        string prowl = GitHubRepository.Normalize(_prowlRepositoryDraft ?? store.Settings.ProwlRepository);
+        string launcher = GitHubRepository.Normalize(_launcherRepositoryDraft ?? store.Settings.LauncherRepository);
+        // Results from the old repositories must not land after the switch.
+        _backgroundCancellation.Cancel();
+
+        store.Settings.ProwlRepository = prowl;
+        store.Settings.LauncherRepository = launcher;
+        _prowlRepositoryDraft = prowl;
+        _launcherRepositoryDraft = launcher;
+        store.Save();
+        _releases = [];
+
+        Notify("launcher.settings.repository_saved", prowl);
+        await RefreshAsync(token, false);
+    }
+
+    private Task ResetRepositoryDraftsAsync(CancellationToken token)
+    {
+        _prowlRepositoryDraft = Constants.Defaults.ProwlRepository;
+        _launcherRepositoryDraft = Constants.Defaults.LauncherRepository;
+        return Task.CompletedTask;
+    }
+
+    private void ResetAppearance()
+    {
+        Settings defaults = new();
+        store.Settings.UiScale = defaults.UiScale;
+        store.Settings.LogoColor = defaults.LogoColor;
+        store.Save();
+        _appearance.ResetToDefault();
     }
 }

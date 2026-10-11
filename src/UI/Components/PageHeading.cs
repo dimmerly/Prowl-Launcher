@@ -1,7 +1,7 @@
-using Prowl.Rosetta;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
-
+using Prowl.Rosetta;
+using Prowl.Scribe;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
@@ -10,16 +10,16 @@ public sealed partial class Launcher
     {
         string title = _tab switch
         {
-            0 => _newProjectPage ? Loc.Get("launcher.projects.new_title") : "launcher.projects.title",
-            1 => "launcher.versions.title",
-            3 => "launcher.samples.title",
+            LauncherTab.Projects => _newProjectPage ? Loc.Get("launcher.projects.new_title") : "launcher.projects.title",
+            LauncherTab.Versions => "launcher.versions.title",
+            LauncherTab.Samples => "launcher.samples.title",
             _ => "launcher.settings.title"
         };
         string subtitle = _tab switch
         {
-            0 => _newProjectPage ? Loc.Get("launcher.projects.choose_template") : "launcher.projects.subtitle",
-            1 => "launcher.versions.subtitle",
-            3 => "launcher.samples.subtitle",
+            LauncherTab.Projects => _newProjectPage ? Loc.Get("launcher.projects.choose_template") : "launcher.projects.subtitle",
+            LauncherTab.Versions => "launcher.versions.subtitle",
+            LauncherTab.Samples => "launcher.samples.subtitle",
             _ => "launcher.settings.subtitle"
         };
 
@@ -27,8 +27,8 @@ public sealed partial class Launcher
         {
             using (p.Column("heading-text").Height(76).Enter())
             {
-                Label(p, "title", title, 32, Ink, 36, true, Scribe.FontQuality.Ultra);
-                Label(p, "subtitle", subtitle, 16, Muted, 23, quality: Scribe.FontQuality.Ultra);
+                Label(p, "title", title, 32, Ink, 36, true, FontQuality.Ultra);
+                Label(p, "subtitle", subtitle, 16, Muted, 23, quality: FontQuality.Ultra);
             }
 
             if (actions != null)

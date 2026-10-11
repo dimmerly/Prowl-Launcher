@@ -1,9 +1,11 @@
 using System.Diagnostics;
 
+using OpenTK.Graphics.OpenGL4;
+
 using Prowl.Aperture;
-using Prowl.OrigamiUI;
 using Prowl.Rosetta;
 
+using PixelFormat=OpenTK.Graphics.OpenGL4.PixelFormat;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
@@ -81,15 +83,15 @@ public sealed partial class Launcher
 
         int width = _window.FramebufferSize.X, height = _window.FramebufferSize.Y;
         byte[] pixels = new byte[width * height * 4];
-        OpenTK.Graphics.OpenGL4.GL.ReadPixels(0, 0, width, height,
-            OpenTK.Graphics.OpenGL4.PixelFormat.Rgba, OpenTK.Graphics.OpenGL4.PixelType.UnsignedByte, pixels);
+        GL.ReadPixels(0, 0, width, height,
+            PixelFormat.Rgba, PixelType.UnsignedByte, pixels);
         byte[] flipped = new byte[pixels.Length];
         for (int y = 0; y < height; y++)
         {
             Array.Copy(pixels, y * width * 4, flipped, (height - 1 - y) * width * 4, width * 4);
         }
 
-        using Image image = Image.FromPixels(flipped, width, height, PixelFormat.Rgba8);
+        using Image image = Image.FromPixels(flipped, width, height, Aperture.PixelFormat.Rgba8);
         image.Save(screenshot);
         ForceClose();
     }

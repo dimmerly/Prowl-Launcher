@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-
 namespace Prowl.Launcher;
 
 sealed class UiContext : SynchronizationContext, IDisposable
@@ -9,6 +8,13 @@ sealed class UiContext : SynchronizationContext, IDisposable
     private bool _disposed;
 
     public UiContext() => SetSynchronizationContext(this);
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _queue.Clear();
+        SetSynchronizationContext(_previous);
+    }
 
     public override void Post(SendOrPostCallback callback, object? state)
     {
@@ -24,12 +30,5 @@ sealed class UiContext : SynchronizationContext, IDisposable
         {
             entry.callback(entry.state);
         }
-    }
-
-    public void Dispose()
-    {
-        _disposed = true;
-        _queue.Clear();
-        SetSynchronizationContext(_previous);
     }
 }

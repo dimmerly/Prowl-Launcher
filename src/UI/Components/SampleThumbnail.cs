@@ -1,10 +1,18 @@
 using Prowl.Aperture;
-
 namespace Prowl.Launcher;
 
 sealed class SampleThumbnail : IDisposable
 {
     private readonly Dictionary<string, TextureTK> _textures = [];
+
+    public void Dispose()
+    {
+        foreach (TextureTK texture in _textures.Values)
+        {
+            texture.Dispose();
+        }
+        _textures.Clear();
+    }
 
     public TextureTK? Get(Sample sample)
     {
@@ -24,14 +32,5 @@ sealed class SampleThumbnail : IDisposable
         texture = TextureTK.FromImage(decoded);
         _textures.Add(sample.Id, texture);
         return texture;
-    }
-
-    public void Dispose()
-    {
-        foreach (TextureTK texture in _textures.Values)
-        {
-            texture.Dispose();
-        }
-        _textures.Clear();
     }
 }

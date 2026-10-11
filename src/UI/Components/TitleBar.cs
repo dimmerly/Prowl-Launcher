@@ -1,26 +1,25 @@
 using System.Drawing;
 
-using Prowl.Rosetta;
-using Prowl.OrigamiUI;
-using Prowl.PaperUI;
-using Prowl.PaperUI.LayoutEngine;
-
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 
+using Prowl.OrigamiUI;
+using Prowl.PaperUI;
+using Prowl.PaperUI.LayoutEngine;
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
     private float WindowControlsWidth => (store.Settings.ShowFps ? Constants.Layout.FpsWidth : 0) + Constants.Layout.LanguagePickerWidth + 126;
-    private Vector2i _windowDragOffset;
-    private double _fpsSeconds;
-    private int _fpsFrames;
-    private string _fpsText = "— FPS";
-    private OrigamiTheme? _languageThemeSource;
-    private OrigamiTheme? _languageTheme;
 
     private float WindowUiScale => _windowScale.Input;
+    private int _fpsFrames;
+    private double _fpsSeconds;
+    private string _fpsText = "— FPS";
+    private OrigamiTheme? _languageTheme;
+    private OrigamiTheme? _languageThemeSource;
+    private Vector2i _windowDragOffset;
 
     private void DrawTitleBar(Paper p)
     {
@@ -28,7 +27,7 @@ public sealed partial class Launcher
             .PositionType(PositionType.SelfDirected)
             .Left(0)
             .Top(0)
-            .Width((float)p.ScreenRect.Size.X)
+            .Width(p.ScreenRect.Size.X)
             .Height(Constants.Layout.TitleBarHeight)
             .Enter())
         {

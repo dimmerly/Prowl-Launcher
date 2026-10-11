@@ -1,19 +1,16 @@
-using Prowl.Rosetta;
-
-using System.Diagnostics;
 using System.Drawing;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
-using TextWrapMode = Prowl.Scribe.TextWrapMode;
+using Prowl.Rosetta;
+
+using TextWrapMode=Prowl.Scribe.TextWrapMode;
 
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private bool _includeEditorPrereleases = Constants.Defaults.EditorPrereleases;
-
     private void DrawVersions(Paper p)
     {
         using (p.Row("installed-heading").Height(40).Gap(10).AlignItems(LayoutAlignment.Center).Enter())
@@ -30,7 +27,7 @@ public sealed partial class Launcher
         foreach (InstalledEditor editor in _installed)
         {
             string id = "installed-" + editor.Key;
-            bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
+            bool wide = IsWideLayout(p);
             using (VersionCard(p, id))
             {
                 bool showMaintenance = p.IsParentHovered;
@@ -62,7 +59,7 @@ public sealed partial class Launcher
 
                             Origami.Button(p, id + "default", "")
                                 .LeadingIcon(isDefault
-                                    ? LauncherIcons.FilledStar.Tinted(System.Drawing.Color.Gold)
+                                    ? LauncherIcons.FilledStar.Tinted(Color.Gold)
                                     : OrigamiIconSet.Star.Tinted(Muted))
                                 .Width(28)
                                 .Height(28)
@@ -94,7 +91,7 @@ public sealed partial class Launcher
 
                     using (p.Row(id + "actions")
                         .Width(wide ? UnitValue.Auto : UnitValue.Stretch())
-                        .MaxWidth(wide ? UnitValue.Pixels((float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 - 250) : UnitValue.Percentage(100))
+                        .MaxWidth(wide ? UnitValue.Pixels(ContentWidth(p) - 250) : UnitValue.Percentage(100))
                         .Height(UnitValue.Auto)
                         .WrapContent()
                         .Gap(8)
@@ -148,7 +145,7 @@ public sealed partial class Launcher
         {
             using (VersionCard(p, "main"))
             {
-                bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
+                bool wide = IsWideLayout(p);
                 using ((wide ? p.Row("main-row") : p.Column("main-row"))
                     .Height(UnitValue.Auto)
                     .Gap(12)
@@ -193,7 +190,7 @@ public sealed partial class Launcher
             string id = "release-" + release.Id;
             using (VersionCard(p, id))
             {
-                using ((p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 < 800 ? p.Column(id + "row") : p.Row(id + "row")).Height(UnitValue.Auto)
+                using ((IsWideLayout(p) ? p.Row(id + "row") : p.Column(id + "row")).Height(UnitValue.Auto)
                     .AlignItems(LayoutAlignment.Center)
                     .Gap(12)
                     .Enter())
@@ -238,8 +235,6 @@ public sealed partial class Launcher
 
     }
 
-    private InstalledEditor DefaultEditor() => _installed.FirstOrDefault(e => e.Key == store.Settings.DefaultEditorKey) ?? _installed.FirstOrDefault() ?? throw new InvalidOperationException(Loc.Get("launcher.errors.install_editor_first"));
-
     private void DrawSourceBuildButton(Paper p, string id, string? repository = null, bool primary = false)
     {
         const string label = "launcher.versions.main_build";
@@ -254,107 +249,5 @@ public sealed partial class Launcher
             .Disabled(Busy)
             .OnClick(() => Start(token => BuildMainAsync(token, repository), label))
             .Show();
-    }
-
-    private async Task BuildMainAsync(CancellationToken token, string? repository = null)
-    {
-        _immediateProgress = true;
-        EditorInstallerService.SourceBuildResult result = await _installer.InstallMainAsync(Platform.Identifier, Transfer(), token, repository);
-        Notify(result.AlreadyInstalled ? "launcher.versions.main_current" : "launcher.versions.main_ready", result.Editor.ToString());
-    }
-    private async Task InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
-    {
-        _operationTitle = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing", new
-        {
-            version = release.Tag
-        });
-        _immediateProgress = true;
-        await _installer.InstallAsync(release, Platform.Identifier, Transfer(), token, repository);
-        Notify(repair ? "launcher.versions.repaired" : "launcher.versions.installed", Loc.Get("launcher.versions.ready", new
-        {
-            version = release.Tag
-        }));
-    }
-
-    private async Task LaunchAsync(InstalledEditor editor, Project? project, CancellationToken token)
-    {
-        int sdk = _installer.RequiredSdkMajor(editor);
-        if (!await EditorInstallerService.HasSdkAsync(sdk, token))
-        {
-            if (!await ConfirmAsync(
-                    Loc.Get("launcher.sdk.required_title", new
-                    {
-                        sdk
-                    }),
-                    Loc.Get("launcher.sdk.required_description", new
-                    {
-                        sdk
-                    }),
-                    "launcher.sdk.open_anyway",
-                    token,
-                    $"https://dotnet.microsoft.com/download/dotnet/{sdk}.0"
-                ))
-            {
-                return;
-            }
-        }
-
-        EditorConsoleSession session = EditorConsoleService.Start(_installer.LaunchInfo(editor, project?.Path),
-            store.Home, project?.Name ?? editor.Tag, editor.Tag);
-        _editorSessions.Add(session);
-        _selectedEditorSession = session;
-        _logsSearch = "";
-        _logsProblemsOnly = false;
-        _tab = 4;
-        await session.WaitForStartAsync(token);
-        if (project != null)
-        {
-            project.LastOpened = DateTimeOffset.UtcNow;
-            store.Save();
-        }
-
-        session.CloseWhenReady = store.Settings.CloseOnEditorLaunch;
-    }
-    private async Task UninstallEditorAsync(InstalledEditor editor, CancellationToken token)
-    {
-        bool confirmed = await ConfirmAsync(
-            Loc.Get("launcher.versions.uninstall_title", new
-            {
-                version = editor.Tag
-            }),
-            "launcher.versions.uninstall_description",
-            "launcher.versions.uninstall", token);
-        if (!confirmed)
-        {
-            return;
-        }
-
-        await Task.Run(() => _installer.Uninstall(editor), token);
-        Notify("launcher.versions.uninstalled", Loc.Get("launcher.versions.uninstalled_description", new
-        {
-            version = editor.Tag
-        }));
-    }
-
-    private void SetDefaultEditor(InstalledEditor editor, bool enabled)
-    {
-        store.Settings.DefaultEditorKey = enabled ? editor.Key : null;
-        store.Save();
-        Notify("launcher.versions.default_updated", enabled ? editor.Tag : "launcher.versions.automatic_selection");
-    }
-
-    private async Task RepairEditorAsync(InstalledEditor editor, CancellationToken token)
-    {
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(_http, store, editor.Repository).GetAsync(token);
-        EditorRelease release = releases.FirstOrDefault(release => release.Id == editor.ReleaseId && release.Tag == editor.Tag)
-                                ?? throw new InvalidOperationException(Loc.Get("launcher.errors.release_unavailable"));
-        await InstallAsync(release, token, true, editor.Repository);
-    }
-
-    private Task OpenInstallFolderAsync(CancellationToken token)
-    {
-        Directory.CreateDirectory(store.VersionsPath);
-        Open(store.VersionsPath);
-        return Task.CompletedTask;
     }
 }

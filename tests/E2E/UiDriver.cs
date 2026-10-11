@@ -1,28 +1,34 @@
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 
-using OpenTK.Windowing.Common;
+using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 
 using Prowl.Aperture;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 
+using PixelFormat=OpenTK.Graphics.OpenGL4.PixelFormat;
 namespace Prowl.Launcher.Test.E2E;
 
 /// <summary>Drives the real rendered Paper tree through its pointer/key input pipeline.</summary>
 sealed class UiDriver(Launcher launcher, string diagnostics)
 {
-    private readonly List<TaskCompletionSource> _frames = [];
-    private GameWindow _window = null!;
-    private Paper _paper = null!;
-    private bool _started;
     internal Exception? Failure { get; private set; }
     internal bool Completed { get; private set; }
     internal bool ExpectsClose { get; private set; }
-    internal void ExpectClose() => ExpectsClose = true;
-    internal Paper Paper => _paper;
+    internal Paper Paper
+    {
+        get;
+        private set;
+    } = null!;
     internal Launcher Launcher => launcher;
+    private readonly List<TaskCompletionSource> _frames = [];
+    private bool _started;
+    private GameWindow _window = null!;
+    internal void ExpectClose() => ExpectsClose = true;
 
     internal void Attach(Func<UiDriver, Task> scenario) => _ = Task.Run(async () =>
     {
@@ -45,7 +51,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         {
             return;
         }
-        _paper = paper;
+        Paper = paper;
         _window.IsVisible = false;
         // Hidden windows are normally throttled to 5 Hz. Keep automation deterministic and responsive.
         SetField(launcher, "_windowResizing", true);
@@ -94,7 +100,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
     internal IEnumerable<ElementHandle> Nodes()
     {
         Stack<ElementHandle> pending = new();
-        pending.Push(_paper.RootElement);
+        pending.Push(Paper.RootElement);
         while (pending.TryPop(out ElementHandle node))
         {
             if (!node.IsValid)
@@ -104,7 +110,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
             yield return node;
             foreach (int child in node.Data.ChildIndices.AsEnumerable().Reverse())
             {
-                pending.Push(new ElementHandle(_paper, child));
+                pending.Push(new ElementHandle(Paper, child));
             }
         }
     }
@@ -136,7 +142,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         }
         if (node.Data.OnTextInput != null)
         {
-            ElementBuilder.TextInputState state = _paper.GetElementStorage<ElementBuilder.TextInputState>(node, "TextInputState", default);
+            ElementBuilder.TextInputState state = Paper.GetElementStorage<ElementBuilder.TextInputState>(node, "TextInputState");
             if (state.Value is {} text)
             {
                 yield return text;
@@ -149,7 +155,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
                 "_foregroundRenderCommands"
             })
         {
-            if (data.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(data) is not System.Collections.IEnumerable commands)
+            if (data.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(data) is not IEnumerable commands)
             {
                 continue;
             }
@@ -236,17 +242,17 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
 
     internal async Task ClickAt(float x, float y, PaperMouseBtn button = PaperMouseBtn.Left)
     {
-        _paper.SetPointerState(PaperMouseBtn.Unknown, x, y, false, true);
+        Paper.SetPointerState(PaperMouseBtn.Unknown, x, y, false, true);
         await Frame();
-        _paper.SetPointerState(button, x, y, true, false);
+        Paper.SetPointerState(button, x, y, true, false);
         await Frame();
-        _paper.SetPointerState(button, x, y, false, false);
+        Paper.SetPointerState(button, x, y, false, false);
         await Frame(2);
     }
 
     internal Task Navigate(string page) => ClickAt(36, page switch
     {
-        "Projects" => 107, "Versions" => 159, "Samples" => 211, "Settings" => _paper.Height - 34,
+        "Projects" => 107, "Versions" => 159, "Samples" => 211, "Settings" => Paper.Height - 34,
         _ => throw new ArgumentException("Unknown sidebar page: " + page)
     });
 
@@ -255,7 +261,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         await Wait(() => Text(current).IsValid, "Expected text field containing: " + current);
         await Click(Text(current));
         await KeyChord(PaperKey.LeftControl, PaperKey.A);
-        _paper.AddInputCharacter(value);
+        Paper.AddInputCharacter(value);
         await Frame(2);
     }
 
@@ -265,7 +271,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         ElementData data = Text(label).Data;
         await ClickAt(data.X + data.LayoutWidth / 2, data.Y + data.LayoutHeight + 25);
         await KeyChord(PaperKey.LeftControl, PaperKey.A);
-        _paper.AddInputCharacter(value);
+        Paper.AddInputCharacter(value);
         await Frame(2);
     }
 
@@ -275,30 +281,30 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
         ElementData data = Text(label).Data;
         await ClickAt(data.X + data.LayoutWidth + 50, data.Y + data.LayoutHeight / 2);
         await KeyChord(PaperKey.LeftControl, PaperKey.A);
-        _paper.AddInputCharacter(value);
+        Paper.AddInputCharacter(value);
         await Frame(2);
     }
 
     internal async Task KeyChord(PaperKey modifier, PaperKey key)
     {
-        _paper.SetKeyState(modifier, true);
-        _paper.SetKeyState(key, true);
+        Paper.SetKeyState(modifier, true);
+        Paper.SetKeyState(key, true);
         await Frame();
-        _paper.SetKeyState(key, false);
-        _paper.SetKeyState(modifier, false);
+        Paper.SetKeyState(key, false);
+        Paper.SetKeyState(modifier, false);
         await Frame();
     }
 
     internal async Task Scroll(float amount = -8)
     {
-        _paper.SetPointerState(PaperMouseBtn.Unknown, _paper.Width - 200, _paper.Height / 2, false, true);
-        _paper.SetPointerWheel(amount);
+        Paper.SetPointerState(PaperMouseBtn.Unknown, Paper.Width - 200, Paper.Height / 2, false, true);
+        Paper.SetPointerWheel(amount);
         await Frame(20);
     }
 
     internal async Task Resize(int width, int height)
     {
-        _window.ClientSize = new OpenTK.Mathematics.Vector2i(width, height);
+        _window.ClientSize = new Vector2i(width, height);
         await Frame(5);
     }
 
@@ -306,7 +312,7 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
     {
         await Wait(() => Text(text).IsValid, "Expected hover target: " + text);
         ElementData data = Text(text).Data;
-        _paper.SetPointerState(PaperMouseBtn.Unknown, data.X + 8, data.Y + 8, false, true);
+        Paper.SetPointerState(PaperMouseBtn.Unknown, data.X + 8, data.Y + 8, false, true);
         await Frame(3);
     }
 
@@ -331,13 +337,13 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
     {
         int width = _window.FramebufferSize.X, height = _window.FramebufferSize.Y;
         byte[] pixels = new byte[width * height * 4], flipped = new byte[width * height * 4];
-        OpenTK.Graphics.OpenGL4.GL.ReadPixels(0, 0, width, height,
-            OpenTK.Graphics.OpenGL4.PixelFormat.Rgba, OpenTK.Graphics.OpenGL4.PixelType.UnsignedByte, pixels);
+        GL.ReadPixels(0, 0, width, height,
+            PixelFormat.Rgba, PixelType.UnsignedByte, pixels);
         for (int y = 0; y < height; y++)
         {
             Array.Copy(pixels, y * width * 4, flipped, (height - 1 - y) * width * 4, width * 4);
         }
-        using Image image = Image.FromPixels(flipped, width, height, PixelFormat.Rgba8);
+        using Image image = Image.FromPixels(flipped, width, height, Aperture.PixelFormat.Rgba8);
         image.Save(path);
     }
 

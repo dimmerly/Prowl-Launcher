@@ -3,21 +3,26 @@
 
 using OpenTK.Graphics.OpenGL4;
 
+using Prowl.Aperture;
 using Prowl.Vector;
-using Prowl.Vector.Geometry;
 
-
+using PixelFormat=OpenTK.Graphics.OpenGL4.PixelFormat;
 namespace Prowl.Launcher;
 
 sealed class TextureTK(int glHandle) : IDisposable
 {
     public readonly int Handle = glHandle;
-
-    public uint Width;
     public uint Height;
 
+    public uint Width;
 
-    public static TextureTK FromImage(Aperture.Image image)
+    // Dispose of the texture
+    public void Dispose() =>
+        // Delete the texture
+        GL.DeleteTexture(Handle);
+
+
+    public static TextureTK FromImage(Image image)
     {
         TextureTK texture = CreateNew((uint)image.Width, (uint)image.Height);
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, image.Width, image.Height,
@@ -69,9 +74,4 @@ sealed class TextureTK(int glHandle) : IDisposable
         GL.ActiveTexture(unit);
         GL.BindTexture(TextureTarget.Texture2D, Handle);
     }
-
-    // Dispose of the texture
-    public void Dispose() =>
-        // Delete the texture
-        GL.DeleteTexture(Handle);
 }

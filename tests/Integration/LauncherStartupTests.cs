@@ -2,13 +2,20 @@ using System.Diagnostics;
 using System.IO.Pipes;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherStartupTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlStartupTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     [Fact]
     public void InvalidUpdateFallsBackAndClearsTheSavedTarget()
@@ -108,13 +115,5 @@ public sealed class LauncherStartupTests : IDisposable
         }
         info.ArgumentList.Add(command);
         return Process.Start(info)!;
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

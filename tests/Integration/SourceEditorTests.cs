@@ -1,19 +1,25 @@
 using System.Diagnostics;
 
-using Prowl.Launcher;
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class SourceEditorTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSourceTests", Guid.NewGuid().ToString("N"));
     private readonly List<string[]> _commands = [];
-    private bool _failBuild;
+    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSourceTests", Guid.NewGuid().ToString("N"));
     private bool _cancelBuild;
+    private string _commit = new( 'a', 40 );
     private bool _dirty;
-    private string _commit = new('a', 40);
+    private bool _failBuild;
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     private Task<string> RunAsync(ProcessStartInfo info, CancellationToken token)
     {
@@ -45,10 +51,10 @@ public sealed class SourceEditorTests : IDisposable
             {
                 throw new OperationCanceledException(token);
             }
-            File.Copy(typeof(Launcher).Assembly.Location, Path.Combine(staging, "Prowl.Editor.dll"));
+            File.Copy(typeof( Launcher ).Assembly.Location, Path.Combine(staging, "Prowl.Editor.dll"));
             File.WriteAllText(Path.Combine(staging, "Prowl.Editor.runtimeconfig.json"), """
-                {"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}
-                """);
+                                                                                        {"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}
+                                                                                        """);
         }
         return Task.FromResult("");
     }
@@ -56,9 +62,9 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task CloneThenPull_InstallsEachCommitAndPreservesProjectSelections()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         Assert.True(first.IsMain);
         Assert.Equal("main-aaaaaaa", first.Tag);
@@ -66,7 +72,11 @@ public sealed class SourceEditorTests : IDisposable
         Assert.Equal(first.Key, store.Settings.DefaultEditorKey);
         Assert.Contains(_commands, command => command.SequenceEqual(new[]
         {
-            "git", "submodule", "update", "--init", "--recursive"
+            "git",
+            "submodule",
+            "update",
+            "--init",
+            "--recursive"
         }));
 
         _commands.Clear();
@@ -87,7 +97,11 @@ public sealed class SourceEditorTests : IDisposable
         Assert.DoesNotContain(_commands, command => command.Contains("clone"));
         Assert.Contains(_commands, command => command.SequenceEqual(new[]
         {
-            "git", "pull", "--ff-only", "origin", "main"
+            "git",
+            "pull",
+            "--ff-only",
+            "origin",
+            "main"
         }));
         string project = ProjectTemplates.CreateBlank(Path.Combine(_home, "Projects"), "Test", updated);
         Assert.True(File.Exists(Path.Combine(project, "Test.prowl")));
@@ -103,9 +117,9 @@ public sealed class SourceEditorTests : IDisposable
     [InlineData(true)]
     public async Task FailedOrCancelledBuild_PreservesInstalledEditor(bool cancel)
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         InstalledEditor previous = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         string content = File.ReadAllText(store.ExecutablePath(previous));
         _commit = new string('b', 40);
@@ -129,9 +143,9 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task DirtyCheckout_IsRejectedBeforePullOrBuild()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         InstalledEditor previous = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         _dirty = true;
         _commands.Clear();
@@ -144,9 +158,9 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task InstalledCommit_SkipsBuildWithoutChangingMetadata()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         EditorInstallerService.SourceBuildResult first = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         Assert.False(first.AlreadyInstalled);
         _commands.Clear();
@@ -166,9 +180,9 @@ public sealed class SourceEditorTests : IDisposable
     [InlineData("Prowl.Editor.runtimeconfig.json")]
     public async Task MissingBuildFile_RebuildsTheInstalledCommit(string file)
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         string missing = file == "executable"
             ? store.ExecutablePath(first)
@@ -188,13 +202,16 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task LegacyMainInstallation_IsRecognizedWhenItsCommitIsAlreadyInstalled()
     {
-        LauncherStore store = new(_home);
+        LauncherStore store = new( _home );
         using HttpClient http = new();
-        EditorInstallerService installer = new(http, store);
+        EditorInstallerService installer = new( http, store );
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
-        InstalledEditor legacy = first with { Tag = "main" };
+        InstalledEditor legacy = first with
+        {
+            Tag = "main"
+        };
         Directory.Move(store.InstallPath(first), store.InstallPath(legacy));
-        LauncherStore.WriteJson(Path.Combine(store.InstallPath(legacy), "installation.json"), legacy);
+        JsonFile.Write(Path.Combine(store.InstallPath(legacy), "installation.json"), legacy);
         _commands.Clear();
 
         EditorInstallerService.SourceBuildResult repeated = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
@@ -206,26 +223,33 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public void MainInstallation_DoesNotAllowOtherNonReleaseRecords()
     {
-        LauncherStore store = new(_home);
-        InstalledEditor main = new(0, "main", Platform.Identifier, "Prowl.Editor", DateTimeOffset.UtcNow);
+        LauncherStore store = new( _home );
+        InstalledEditor main = new( 0, "main", Platform.Identifier, "Prowl.Editor", DateTimeOffset.UtcNow );
         Assert.StartsWith(store.VersionsPath, store.InstallPath(main));
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with { Tag = "v1.0.0" }));
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with { ReleaseId = -1 }));
-        InstalledEditor commit = main with { Tag = "main-" + _commit, SourceCommit = _commit };
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with
+        {
+            Tag = "v1.0.0"
+        }));
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with
+        {
+            ReleaseId = -1
+        }));
+        InstalledEditor commit = main with
+        {
+            Tag = "main-" + _commit, SourceCommit = _commit
+        };
         Assert.StartsWith(store.VersionsPath, store.InstallPath(commit));
         Assert.Contains(_commit, commit.Key);
         Assert.Equal(commit.Tag, commit.ToString());
-        InstalledEditor shortName = commit with { Tag = "main-" + _commit[..7] };
+        InstalledEditor shortName = commit with
+        {
+            Tag = "main-" + _commit[..7]
+        };
         Assert.Equal(commit.Key, shortName.Key);
         Assert.Equal("main-aaaaaaa", shortName.ToString());
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(commit with { Tag = "main-../outside" }));
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(commit with
         {
-            Directory.Delete(_home, true);
-        }
+            Tag = "main-../outside"
+        }));
     }
 }

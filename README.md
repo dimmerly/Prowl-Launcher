@@ -45,7 +45,6 @@ before pulling. Source builds can contain unfinished or broken changes.
 
 ## News
 
-
 News appears below your projects, with arrows to browse three posts at a time.
 The feed updates automatically, and previously opened posts and images work offline.
 

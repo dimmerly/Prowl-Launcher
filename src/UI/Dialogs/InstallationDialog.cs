@@ -2,13 +2,12 @@ using Prowl.OrigamiUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private bool _showInstallationPrompt;
     private bool _createDesktopShortcut = true;
+    private bool _showInstallationPrompt;
 
     private void ShowInstallationDialog() => Origami.Modal(Loc.Get("launcher.installation.title"))
         .Width(Math.Min(520, _window.FramebufferSize.X / DisplayScale - 48))

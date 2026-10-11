@@ -6,13 +6,20 @@ using System.Security.Cryptography;
 using System.Text.Json;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class SampleHelperTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSampleTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     [Fact]
     public void CatalogRejectsPathsAndDeduplicatesNames() => Assert.Equal(["HelloProwl", "NewSample"], SampleService.Discover(
@@ -45,7 +52,7 @@ public sealed class SampleHelperTests : IDisposable
         Assert.Equal(1, fixture.Checks);
         Assert.Empty(Directory.EnumerateDirectories(fixture.Store.WorkPath));
 
-        ProcessStartInfo launch = SampleHelper.LaunchInfo(first);
+        ProcessStartInfo launch = SampleService.LaunchInfo(first);
         Assert.Equal(Path.GetDirectoryName(first), launch.WorkingDirectory);
         Assert.False(launch.UseShellExecute);
         Assert.True(launch.RedirectStandardOutput && launch.RedirectStandardError);
@@ -324,14 +331,6 @@ public sealed class SampleHelperTests : IDisposable
         Assert.Equal(1, fixture.Downloads);
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
-    }
-
     private sealed class SampleBundleFactAttribute : FactAttribute
     {
         public SampleBundleFactAttribute()
@@ -345,14 +344,14 @@ public sealed class SampleHelperTests : IDisposable
 
     private sealed class BundleFixture : IDisposable
     {
-        private byte[] _archive;
         internal LauncherStore Store { get; }
         internal HttpClient Http { get; }
         internal List<EditorRelease> Releases { get; }
+        internal TaskCompletionSource DownloadStarted { get; } = new( TaskCreationOptions.RunContinuationsAsynchronously );
+        private byte[] _archive;
         internal int Checks;
         internal int Downloads;
         internal bool Stall;
-        internal TaskCompletionSource DownloadStarted { get; } = new( TaskCreationOptions.RunContinuationsAsynchronously );
 
         internal BundleFixture(string home, string? failure = null, string? archive = null)
         {
@@ -370,6 +369,8 @@ public sealed class SampleHelperTests : IDisposable
             ];
             Http = new HttpClient(new Handler(Respond));
         }
+
+        public void Dispose() => Http.Dispose();
 
         private async Task<HttpResponseMessage> Respond(HttpRequestMessage request, CancellationToken token)
         {
@@ -449,8 +450,6 @@ public sealed class SampleHelperTests : IDisposable
             }
             return output.ToArray();
         }
-
-        public void Dispose() => Http.Dispose();
 
         private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
         {

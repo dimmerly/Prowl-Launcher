@@ -1,12 +1,11 @@
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
-
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private void DrawToolbar(Paper p, float width)
+    private void DrawToolbar(Paper p)
     {
         using (p.Row("toolbar").Height(44).Gap(10).Enter())
         {
@@ -20,7 +19,7 @@ public sealed partial class Launcher
                 Origami.Button(p, "project-logs", Loc.Get("launcher.console.logs"))
                     .Width(76).Height(40).Variant(OrigamiVariant.Subtle).OnClick(ShowLogsDialog).Show();
             }
-            float searchWidth = Math.Clamp(width - Constants.Layout.SidebarWidth - 56 - 380 - (hasLogs ? 86 : 0), 140, 240);
+            float searchWidth = Math.Clamp(ContentWidth(p) - 380 - (hasLogs ? 86 : 0), 140, 240);
             Origami.TextField(p, "search", _search, value => _search = value)
                 .Width(searchWidth)
                 .Placeholder(Loc.Get("launcher.projects.search"))

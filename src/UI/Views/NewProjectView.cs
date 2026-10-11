@@ -1,25 +1,23 @@
-using System.Diagnostics;
+using System.Drawing;
 
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+using Prowl.Rosetta;
 using Prowl.Scribe;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private bool _newProjectPage = previews?.NewProject == true;
-    private string _newProjectName = "";
     private string? _newProjectDirectory;
     private string? _newProjectEditorKey;
-
+    private string _newProjectName = "";
+    private bool _newProjectPage = previews?.NewProject == true;
     private void DrawNewProject(Paper p)
     {
         _newProjectDirectory ??= EditorSettings.ProjectsDirectory();
         _newProjectEditorKey ??= store.Settings.DefaultEditorKey ?? _installed.FirstOrDefault()?.Key;
-        bool wide = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56 >= 800;
+        bool wide = IsWideLayout(p);
         using ((wide ? p.Row("new-project-form") : p.Column("new-project-form"))
             .Height(UnitValue.Auto)
             .Gap(18)
@@ -46,7 +44,7 @@ public sealed partial class Launcher
                         .Rounded(_appearance.Theme.Metrics.ContainerRounding)
                         .BackgroundColor(_appearance.Accent)
                         .IsNotInteractable()
-                        .Icon(p, OrigamiIconSet.Document, System.Drawing.Color.White, size: 26);
+                        .Icon(p, OrigamiIconSet.Document, Color.White, size: 26);
                     Label(p, "blank-title", Loc.Get("launcher.projects.blank_name"), 18, Ink, 28, true);
                     p.Box("blank-description")
                         .Height(UnitValue.Auto)
@@ -148,40 +146,27 @@ public sealed partial class Launcher
 
     private async Task PickNewProjectDirectoryAsync(CancellationToken token)
     {
-        TaskCompletionSource<string?> completion = new();
-        _filePickerOpen = true;
-        try
+        if (await PickFolderAsync(_newProjectDirectory ?? EditorSettings.ProjectsDirectory(), token) is {} selected)
         {
-            string directory = _newProjectDirectory ?? EditorSettings.ProjectsDirectory();
-            Directory.CreateDirectory(directory);
-            Origami.OpenFileDialog(FileDialogMode.SelectFolder, selected => completion.TrySetResult(selected), directory);
-            if (await completion.Task.WaitAsync(token) is {} selected)
-            {
-                _newProjectDirectory = selected;
-            }
-        }
-        finally
-        {
-            _filePickerOpen = false;
-            _operationStarted = Stopwatch.GetTimestamp();
+            _newProjectDirectory = selected;
         }
     }
 
+    /// <summary>Creates a blank project for the chosen editor, adds it to the list and opens it.</summary>
     private async Task CreateProjectAsync(CancellationToken token)
     {
-        InstalledEditor editor = _installed.FirstOrDefault(e => e.Key == _newProjectEditorKey) ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
+        InstalledEditor editor = _installed.FirstOrDefault(e => e.Key == _newProjectEditorKey)
+                                 ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
         // Validate the installation before creating anything on disk.
         _ = _installer.LaunchInfo(editor);
         string parent = _newProjectDirectory ?? EditorSettings.ProjectsDirectory();
         string name = _newProjectName;
-        string path = await Task.Run(
-            () =>
-            {
-                token.ThrowIfCancellationRequested();
-                return ProjectTemplates.CreateBlank(parent, name, editor);
-            },
-            token
-        );
+        string path = await Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+            return ProjectTemplates.CreateBlank(parent, name, editor);
+        }, token);
+
         Project project = store.AddProject(path);
         project.EditorKey = editor.Key;
         store.Save();

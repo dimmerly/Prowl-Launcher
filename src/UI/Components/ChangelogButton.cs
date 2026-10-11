@@ -1,7 +1,6 @@
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
-
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher

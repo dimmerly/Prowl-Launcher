@@ -1,7 +1,6 @@
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
-
 namespace Prowl.Launcher;
 
 static class ModalLayout

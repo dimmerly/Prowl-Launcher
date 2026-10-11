@@ -1,11 +1,15 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
-
 namespace Prowl.Launcher;
 
 /// <summary>Shared release precedence, with support for historical Prowl editor tags and preview-N releases.</summary>
 static class VersionHelper
 {
     internal const string Pattern = @"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?";
+
+    /// <summary>The running launcher's version, without build metadata.</summary>
+    internal static string LauncherVersion => typeof( VersionHelper ).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
 
     internal static bool TryParse(string? value, out ReleaseVersion version, bool editorTag = false)
     {
@@ -59,6 +63,9 @@ sealed class ReleaseVersion(string[] core, string[] prerelease) : IComparable<Re
 {
     internal bool IsPrerelease => prerelease.Length != 0;
 
+    private string[] Core => core;
+    private string[] Prerelease => prerelease;
+
     public int CompareTo(ReleaseVersion? other)
     {
         if (other == null)
@@ -90,9 +97,6 @@ sealed class ReleaseVersion(string[] core, string[] prerelease) : IComparable<Re
         }
         return prerelease.Length.CompareTo(other.Prerelease.Length);
     }
-
-    private string[] Core => core;
-    private string[] Prerelease => prerelease;
     // Compare decimal strings directly so release numbers cannot overflow an integer type.
     private static int CompareNumbers(string left, string right) => left.Length != right.Length
         ? left.Length.CompareTo(right.Length) : string.CompareOrdinal(left, right);

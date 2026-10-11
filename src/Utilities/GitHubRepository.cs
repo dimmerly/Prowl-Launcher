@@ -1,12 +1,11 @@
-using Prowl.Rosetta;
-
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
-public static class GitHubRepositoryHelper
+public static class GitHubRepository
 {
     public static string Normalize(string value)
     {

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 using Prowl.OrigamiUI;
@@ -15,7 +16,7 @@ static class LauncherScenarios
     private static Project? _project;
     private static string? _secondEditorKey;
 
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    [DllImport("user32.dll", EntryPoint = "SendMessageW")]
     private static extern nint SendWindowMessage(nint window, uint message, nint wParam, nint lParam);
 
     private static nint WindowIconHandle(Launcher launcher)
@@ -51,12 +52,12 @@ static class LauncherScenarios
         if (scenario == "EnablePrereleases")
         {
             // Runs online so opting in can trigger the background check; keep the stable update from opening at startup.
-            LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+            LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
         }
         if (scenario.StartsWith("Sample", StringComparison.Ordinal))
         {
             fixture.PublishSamples();
-            LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+            LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
             if (scenario is "SampleUpdateAvailable" or "SampleAlreadyLatest")
             {
                 await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
@@ -131,7 +132,7 @@ static class LauncherScenarios
         }
         if (scenario == "ManualReoffersDismissedUpdate")
         {
-            LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+            LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
         }
         if (scenario == "CloseOnEditorLaunch")
         {
@@ -156,7 +157,7 @@ static class LauncherScenarios
                 {
                     SetField(ui.Launcher, "_operation", operation);
                     SetField(ui.Launcher, "_immediateProgress", true);
-                    ConcurrentQueue<(string Title, string Message, ToastType Type)> progressNotifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                    ConcurrentQueue<(string Title, string Message, ToastType Type)> progressNotifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
                     progressNotifications.Enqueue(("Toast above progress", "Cancel remains accessible", ToastType.Error));
                     await ui.Frame(2);
                     ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
@@ -173,7 +174,7 @@ static class LauncherScenarios
                 }
                 break;
             case "DismissToasts":
-                ConcurrentQueue<(string Title, string Message, ToastType Type)> notifications = GetField<System.Collections.Concurrent.ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
+                ConcurrentQueue<(string Title, string Message, ToastType Type)> notifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
                 notifications.Enqueue(("Dismiss this toast", "First notification", ToastType.Success));
                 notifications.Enqueue(("Keep this toast", "Second notification", ToastType.Error));
                 await ui.Frame(2);
@@ -200,7 +201,12 @@ static class LauncherScenarios
                     "Toast width must grow with its content.");
                 Check(wrappingCard.Data.LayoutHeight > versionCard.Data.LayoutHeight,
                     "Long messages must wrap and increase the card height.");
-                foreach (ElementHandle card in new[] { shortCard, versionCard, wrappingCard })
+                foreach (ElementHandle card in new[]
+                    {
+                        shortCard,
+                        versionCard,
+                        wrappingCard
+                    })
                 {
                     Check(card.Data.X >= 0 && card.Data.X + card.Data.LayoutWidth <= ui.Paper.Width,
                         "Toast cards must fit within the window.");
@@ -312,7 +318,7 @@ static class LauncherScenarios
                     archivePosts.Add(archived);
                     await File.WriteAllTextAsync(Path.Combine(localNewsRoot, archived.File), "# Archived showcase " + i + "\n\nArchived content " + i);
                 }
-                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), archivePosts);
+                JsonFile.Write(Path.Combine(localNewsRoot, "index.json"), archivePosts);
                 await ui.Wait(() => ui.HasText("Archived update 2"), "Local index edits should appear automatically.");
                 await ui.Frame(3);
                 Check(!ui.HasText("Archived update 3") && !ui.HasText("Archived update 4"),
@@ -359,7 +365,7 @@ static class LauncherScenarios
                 Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
                     "Scrolling projects must leave news in place.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-scrolled-news.png"));
-                LauncherStore.WriteJson(Path.Combine(localNewsRoot, "index.json"), new[]
+                JsonFile.Write(Path.Combine(localNewsRoot, "index.json"), new[]
                 {
                     latest
                 });
@@ -699,7 +705,7 @@ static class LauncherScenarios
                 await OpenManualUpdate(ui);
                 Check(ui.HasText("Fixture release notes") && ui.HasText("Changelog"), "The update dialog must render its release notes.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdateCheckService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Dismissing an update must save its repository and release ID.");
+                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Dismissing an update must save its repository and release ID.");
                 break;
             case "EnablePrereleases":
                 await ui.Navigate("Settings");
@@ -708,12 +714,12 @@ static class LauncherScenarios
                 await ui.Wait(() => ui.HasText("3.0.0-preview.1") && Modal.IsOpen, "Opting into previews should immediately offer the latest preview.");
                 Check(f.Saved().LauncherPrereleases && f.LauncherChecks > 0, "Opt-in and its update check must both occur.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdateCheckService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 202), "Preview dismissal must be saved.");
+                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 202), "Preview dismissal must be saved.");
                 break;
             case "StartupDismissFirst":
                 await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"), "Startup should check for updates and show their changelog.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdateCheckService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Startup dismissal must persist.");
+                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Startup dismissal must persist.");
                 break;
             case "StartupDismissSecond":
                 await ui.Wait(() => f.LauncherChecks > 0, "Restart should still check for newer releases.");

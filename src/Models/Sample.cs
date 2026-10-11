@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 public sealed record Sample(string Id)

@@ -1,7 +1,6 @@
-using Prowl.Rosetta;
-
 using System.Text.RegularExpressions;
 
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 /// <summary>Creates the editor's blank project layout, stamped for the selected installed editor.</summary>
@@ -28,7 +27,7 @@ public static class ProjectTemplates
         }
 
         parentDirectory = Path.GetFullPath(parentDirectory);
-        string destination = LauncherStore.SafeChildPath(parentDirectory, name);
+        string destination = FileSystemHelper.SafeChildPath(parentDirectory, name);
         if (Directory.Exists(destination) || File.Exists(destination))
         {
             throw new IOException(Loc.Get("launcher.errors.project_folder_exists"));
@@ -54,7 +53,7 @@ public static class ProjectTemplates
                 Directory.CreateDirectory(Path.Combine(staging, folder));
             }
 
-            LauncherStore.WriteJson(
+            JsonFile.Write(
                 Path.Combine(staging, name + ".prowl"),
                 new
                 {

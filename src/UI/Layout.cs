@@ -1,18 +1,17 @@
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private int _tab = initialTab;
     private float _newsFooterHeight = 101;
+    private LauncherTab _tab = initialTab;
 
     private void OnGui(Paper p)
     {
-        float width = (float)p.ScreenRect.Size.X;
-        float height = (float)p.ScreenRect.Size.Y;
+        float width = p.ScreenRect.Size.X;
+        float height = p.ScreenRect.Size.Y;
         bool progressVisible = ShowProgress;
         using IDisposable theme = Origami.PushTheme(_appearance.Theme);
 
@@ -24,7 +23,7 @@ public sealed partial class Launcher
             ShowInstallationDialog();
         }
 
-        if (_tab == 4)
+        if (_tab == LauncherTab.Launch)
         {
             DrawLaunchView(p, width, height);
             DrawNotifications(p, false);
@@ -55,32 +54,34 @@ public sealed partial class Launcher
                     .Gap(14)
                     .Enter())
                 {
-                    DrawHeading(p, _tab == 3 ? DrawSamplesHeadingActions : null);
+                    DrawHeading(p, _tab == LauncherTab.Samples ? DrawSamplesHeadingActions : null);
 
-                    bool showToolbar = _tab == 0 && !_newProjectPage;
+                    bool showToolbar = _tab == LauncherTab.Projects && !_newProjectPage;
                     if (showToolbar)
                     {
-                        DrawToolbar(p, width);
+                        DrawToolbar(p);
                     }
 
                     // Keep the list and news above the fixed bottom progress bar.
                     float operationSpace = progressVisible ? Constants.Layout.OperationHeight : 0;
                     float toolbarSpace = showToolbar ? 0 : 58;
-                    float listWidth = Math.Max(1, width - Constants.Layout.SidebarWidth - 56);
+                    float listWidth = Math.Max(1, ContentWidth(p));
                     float listHeight = Math.Max(0, height - (showToolbar ? 190 : 202) - operationSpace + toolbarSpace);
+                    // Sample cards scale up on hover; leave room so the scroll clip doesn't cut them.
+                    float samplesInset = _tab == LauncherTab.Samples ? 8 : 0;
                     float scrollHeight = showToolbar ? Math.Max(0, listHeight - _newsFooterHeight - 14) : listHeight;
 
-                    Origami.ScrollView(p, "list-" + _tab, listWidth, scrollHeight)
+                    Origami.ScrollView(p, "list-" + (int)_tab, listWidth, scrollHeight)
                         .OverlayScrollbars(false)
-                        .Padding(_tab == 3 ? 8 : 0, 8, _tab == 3 ? 8 : 0, _tab == 3 ? 8 : 0)
-                        .SmoothScroll(true)
+                        .Padding(samplesInset, 8, samplesInset, samplesInset)
+                        .SmoothScroll()
                         .WheelStep(72)
                         .ColSpacing(12)
                         .Body(() => DrawSelectedPage(p));
                     if (showToolbar)
                     {
                         using (p.Column("projects-footer").Height(UnitValue.Auto).Gap(12)
-                            .OnPostLayout((_, rect) => _newsFooterHeight = (float)rect.Size.Y).Enter())
+                            .OnPostLayout((_, rect) => _newsFooterHeight = rect.Size.Y).Enter())
                         {
                             DrawNewsSection(p);
                         }
@@ -103,13 +104,13 @@ public sealed partial class Launcher
     {
         switch (_tab)
         {
-            case 0:
+            case LauncherTab.Projects:
                 DrawProjects(p);
                 break;
-            case 1:
+            case LauncherTab.Versions:
                 DrawVersions(p);
                 break;
-            case 3:
+            case LauncherTab.Samples:
                 DrawSamples(p);
                 break;
             default:

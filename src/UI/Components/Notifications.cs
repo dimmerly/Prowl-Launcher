@@ -1,27 +1,18 @@
 using System.Collections.Concurrent;
+using System.Drawing;
 
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
-
+using Prowl.Rosetta;
+using Prowl.Scribe;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private readonly ConcurrentQueue<(string Title, string Message, ToastType Type)> _notifications = new();
     private readonly List<NotificationToast> _activeToasts = [];
+    private readonly ConcurrentQueue<(string Title, string Message, ToastType Type)> _notifications = new();
     private int _nextToastId;
-
-    private sealed class NotificationToast(int id, string title, string message, ToastType type, float duration)
-    {
-        public int Id = id;
-        public string Title = title;
-        public string Message = message;
-        public ToastType Type = type;
-        public float Remaining = duration;
-        public int Count = 1;
-    }
 
     private void ShowPendingNotifications()
     {
@@ -62,9 +53,9 @@ public sealed partial class Launcher
             }
         }
 
-        float availableWidth = Math.Max(0, (float)p.ScreenRect.Size.X - metrics.PaddingLarge * 2);
+        float availableWidth = Math.Max(0, p.ScreenRect.Size.X - metrics.PaddingLarge * 2);
         float textWidth = Math.Max(0, availableWidth - metrics.PaddingLarge * 2
-            - metrics.CompactHeight * 2 - metrics.SpacingLarge * 2);
+                                                     - metrics.CompactHeight * 2 - metrics.SpacingLarge * 2);
         using (p.Column("notifications")
             .PositionType(PositionType.SelfDirected)
             .AnchorRight(metrics.PaddingLarge)
@@ -79,14 +70,14 @@ public sealed partial class Launcher
             foreach (NotificationToast toast in _activeToasts)
             {
                 string id = "notification-" + toast.Id;
-                var semantic = toast.Type switch
+                Color semantic = toast.Type switch
                 {
                     ToastType.Success => theme.Green.C500,
                     ToastType.Warning => theme.Amber.C500,
                     ToastType.Error => theme.Red.C500,
                     _ => theme.Blue.C500
                 };
-                var icon = toast.Type switch
+                IOrigamiIcon? icon = toast.Type switch
                 {
                     ToastType.Success => theme.Icons.Check,
                     ToastType.Warning => theme.Icons.Warning,
@@ -116,13 +107,13 @@ public sealed partial class Launcher
                             p.Box(id + "-title").Size(UnitValue.Auto).MaxWidth(textWidth)
                                 .Text(toast.Count > 1 ? $"{toast.Title} (x{toast.Count})" : toast.Title, theme.Medium ?? font)
                                 .FontSize(metrics.FontSize).TextColor(theme.Ink.C500)
-                                .Wrap(Prowl.Scribe.TextWrapMode.Wrap).IsNotInteractable();
+                                .Wrap(TextWrapMode.Wrap).IsNotInteractable();
                             if (toast.Message.Length > 0)
                             {
                                 p.Box(id + "-message").Size(UnitValue.Auto).MaxWidth(textWidth)
                                     .Text(toast.Message, font)
                                     .FontSize(metrics.FontSizeSmall).TextColor(theme.Ink.C200)
-                                    .Wrap(Prowl.Scribe.TextWrapMode.Wrap).IsNotInteractable();
+                                    .Wrap(TextWrapMode.Wrap).IsNotInteractable();
                             }
                         }
                         p.Box(id + "-close")
@@ -138,4 +129,14 @@ public sealed partial class Launcher
     }
 
     private void Notify(string title, string message, ToastType type = ToastType.Success) => _notifications.Enqueue((title, message, type));
+
+    private sealed class NotificationToast(int id, string title, string message, ToastType type, float duration)
+    {
+        public readonly int Id = id;
+        public readonly string Message = message;
+        public readonly string Title = title;
+        public readonly ToastType Type = type;
+        public int Count = 1;
+        public float Remaining = duration;
+    }
 }

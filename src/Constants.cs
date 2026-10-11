@@ -23,10 +23,10 @@ public static class Constants
         public const string GitHubApiUrl = "https://api.github.com/";
         public const string UserAgent = "Prowl-Launcher/1.0";
         public const int ReleasesPerPage = 100;
-        public static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(30);
-        public static readonly TimeSpan ReleaseCheckTimeout = TimeSpan.FromSeconds(15);
         public const int TransferBufferSize = 81920;
         public const int ProgressIntervalMilliseconds = 100;
+        public static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(30);
+        public static readonly TimeSpan ReleaseCheckTimeout = TimeSpan.FromSeconds(15);
     }
 
     public static class Storage
@@ -50,12 +50,11 @@ public static class Constants
     public static class Startup
     {
         public const string ReadyEnvironment = "PROWL_LAUNCHER_READY_PIPE";
-        public const string VersionPattern = VersionHelper.Pattern;
+        public const int SampleStartupMilliseconds = 1500;
         public static readonly TimeSpan ReadyPipeTimeout = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan LauncherTimeout = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan StabilityDelay = TimeSpan.FromSeconds(1);
         public static readonly TimeSpan SdkCheckTimeout = TimeSpan.FromSeconds(10);
-        public const int SampleStartupMilliseconds = 1500;
     }
 
     public static class Layout

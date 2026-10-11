@@ -3,13 +3,20 @@ using System.Net;
 using System.Security.Cryptography;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherUpdateRepairTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlUpdateRepair", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     [Theory]
     [InlineData("Prowl.Launcher.exe", false)]
@@ -87,7 +94,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
         Assert.True(File.Exists(original));
         Assert.True(File.Exists(active));
         Assert.Equal(2, Directory.EnumerateDirectories(Path.Combine(LauncherUpdaterService.UpdatesPath(fixture.Store),
-            GitHubRepositoryHelper.CacheKey(fixture.Store.Settings.LauncherRepository))).Count());
+            GitHubRepository.CacheKey(fixture.Store.Settings.LauncherRepository))).Count());
     }
 
     [Fact]
@@ -169,9 +176,9 @@ public sealed class LauncherUpdateRepairTests : IDisposable
         internal LauncherStore Store { get; }
         internal LauncherUpdaterService Updater { get; }
         internal EditorRelease Release { get; }
-        internal int Downloads;
-        internal bool CorruptDownload;
         private readonly HttpClient _http;
+        internal bool CorruptDownload;
+        internal int Downloads;
 
         internal Fixture(string home)
         {
@@ -212,13 +219,5 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     private sealed class Handler(Func<HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => Task.FromResult(respond());
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

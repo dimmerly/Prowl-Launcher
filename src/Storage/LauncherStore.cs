@@ -1,33 +1,35 @@
-using Prowl.Rosetta;
-
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
+/// <summary>
+///     The launcher's home folder: settings shared safely between launcher processes, the project list and
+///     the installed editors.
+/// </summary>
 public sealed class LauncherStore
 {
-    private JsonObject _savedSettings;
-    public static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
+
     public string Home
     {
         get;
     }
-    public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome),
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
-        ? Platform.DefaultVersionsPath
-        : Path.Combine(Home, "Versions");
-    public string WorkPath => Path.Combine(Home, "Work");
     public Settings Settings
     {
         get;
     }
+    public string SettingsPath => Path.Combine(Home, "settings.json");
+    public string WorkPath => Path.Combine(Home, "Work");
+
+    // The default home shares its Versions folder with the editor; custom homes stay self-contained.
+    public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome), FileSystemHelper.PathComparison)
+        ? Platform.DefaultVersionsPath
+        : Path.Combine(Home, "Versions");
+    private JsonObject _savedSettings;
 
     public LauncherStore(string? home = null)
     {
@@ -38,44 +40,62 @@ public sealed class LauncherStore
         _savedSettings = Snapshot(Settings);
     }
 
+    #region Settings
+
+    /// <summary>
+    ///     Saves this instance's edits since its last load or save, merged over whatever other launcher
+    ///     processes have written in the meantime.
+    /// </summary>
     public void Save()
     {
-        // Merge only this instance's edits while holding a cross-process write lock.
         using FileStream writeLock = AcquireSettingsLock();
-        string path = Path.Combine(Home, "settings.json");
         NormalizeSettings(Settings);
         JsonObject local = Snapshot(Settings);
         JsonObject merged = Snapshot(LoadSettings());
-        MergeProperties(_savedSettings, local, merged, "Projects", "DismissedLauncherReleases");
-        MergeProperties((JsonObject)_savedSettings["DismissedLauncherReleases"]!,
-            (JsonObject)local["DismissedLauncherReleases"]!, (JsonObject)merged["DismissedLauncherReleases"]!);
-        merged["Projects"] = MergeProjects((JsonArray)_savedSettings["Projects"]!,
-            (JsonArray)local["Projects"]!, (JsonArray)merged["Projects"]!);
-        Settings saved = merged.Deserialize<Settings>(JsonOptions)!;
-        WriteJson(path, saved);
-        WriteJson(path + ".bak", saved);
-        // Keep project objects alive because UI callbacks may hold references to them.
-        Dictionary<string, Project> existing = Settings.Projects.ToDictionary(p => ProjectPath(p.Path));
-        foreach (Project project in saved.Projects)
-        {
-            if (!existing.TryGetValue(ProjectPath(project.Path), out Project? current))
-            {
-                continue;
-            }
-            foreach (PropertyInfo property in typeof( Project ).GetProperties())
-            {
-                property.SetValue(current, property.GetValue(project));
-            }
-        }
-        saved.Projects = saved.Projects.Select(p => existing.GetValueOrDefault(ProjectPath(p.Path)) ?? p).ToList();
-        foreach (PropertyInfo property in typeof( Settings ).GetProperties())
-        {
-            property.SetValue(Settings, property.GetValue(saved));
-        }
+        MergeProperties(_savedSettings, local, merged, nameof( Settings.Projects ), nameof( Settings.DismissedLauncherReleases ));
+        MergeProperties(
+            (JsonObject)_savedSettings[nameof( Settings.DismissedLauncherReleases )]!,
+            (JsonObject)local[nameof( Settings.DismissedLauncherReleases )]!,
+            (JsonObject)merged[nameof( Settings.DismissedLauncherReleases )]!);
+        merged[nameof( Settings.Projects )] = MergeProjects(
+            (JsonArray)_savedSettings[nameof( Settings.Projects )]!,
+            (JsonArray)local[nameof( Settings.Projects )]!,
+            (JsonArray)merged[nameof( Settings.Projects )]!);
+
+        Settings saved = merged.Deserialize<Settings>(JsonFile.Options)!;
+        JsonFile.Write(SettingsPath, saved);
+        JsonFile.Write(SettingsPath + ".bak", saved);
+        CopyIntoCurrentSettings(saved);
         _savedSettings = Snapshot(saved);
     }
 
-    // Serializes installs, uninstalls, updates and cleanup across launcher processes.
+    /// <summary>
+    ///     Updates <see cref="Settings" /> in place. Project objects are kept alive because UI callbacks may
+    ///     hold references to them.
+    /// </summary>
+    private void CopyIntoCurrentSettings(Settings saved)
+    {
+        Dictionary<string, Project> existing = Settings.Projects.ToDictionary(p => ProjectKey(p.Path));
+        foreach (Project project in saved.Projects)
+        {
+            if (existing.TryGetValue(ProjectKey(project.Path), out Project? current))
+            {
+                CopyProperties(project, current);
+            }
+        }
+        saved.Projects = saved.Projects.Select(p => existing.GetValueOrDefault(ProjectKey(p.Path)) ?? p).ToList();
+        CopyProperties(saved, Settings);
+    }
+
+    private static void CopyProperties<T>(T source, T target)
+    {
+        foreach (PropertyInfo property in typeof( T ).GetProperties())
+        {
+            property.SetValue(target, property.GetValue(source));
+        }
+    }
+
+    /// <summary>Serializes installs, uninstalls, updates and cleanup across launcher processes.</summary>
     public FileStream AcquireOperationLock()
     {
         try
@@ -104,10 +124,13 @@ public sealed class LauncherStore
         }
     }
 
-    // Called under the settings lock so another launcher cannot save during recovery.
+    /// <summary>
+    ///     Loads settings.json, falling back to its backup. Damaged files are kept aside rather than deleted.
+    ///     Called under the settings lock so another launcher cannot save during recovery.
+    /// </summary>
     private Settings LoadSettings()
     {
-        string path = Path.Combine(Home, "settings.json");
+        string path = SettingsPath;
         Settings? settings = ReadSettings(path);
         if (settings != null)
         {
@@ -116,7 +139,7 @@ public sealed class LauncherStore
             if (!JsonNode.DeepEquals(original, Snapshot(settings)))
             {
                 PreserveDamagedSettings(path);
-                WriteJson(path, settings);
+                JsonFile.Write(path, settings);
             }
             return settings;
         }
@@ -128,7 +151,7 @@ public sealed class LauncherStore
         string backup = path + ".bak";
         settings = ReadSettings(backup);
         bool restored = settings != null;
-        if (settings == null && File.Exists(backup))
+        if (!restored && File.Exists(backup))
         {
             PreserveDamagedSettings(backup);
         }
@@ -136,7 +159,7 @@ public sealed class LauncherStore
         NormalizeSettings(settings);
         if (restored)
         {
-            WriteJson(path, settings);
+            JsonFile.Write(path, settings);
         }
         return settings;
     }
@@ -145,7 +168,7 @@ public sealed class LauncherStore
     {
         try
         {
-            return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), JsonOptions);
+            return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), JsonFile.Options);
         }
         catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException or JsonException)
         {
@@ -156,6 +179,7 @@ public sealed class LauncherStore
     private static void PreserveDamagedSettings(string path) =>
         File.Move(path, path + ".corrupt-" + Guid.NewGuid().ToString("N"));
 
+    /// <summary>Repairs hand-edited or older settings: drops invalid projects, merges duplicates and validates repositories.</summary>
     private static void NormalizeSettings(Settings settings)
     {
         settings.DismissedLauncherReleases ??= [];
@@ -169,7 +193,7 @@ public sealed class LauncherStore
             string key;
             try
             {
-                key = ProjectPath(project.Path);
+                key = ProjectKey(project.Path);
             }
             catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException)
             {
@@ -202,7 +226,7 @@ public sealed class LauncherStore
             }
             try
             {
-                return GitHubRepositoryHelper.Normalize(value);
+                return GitHubRepository.Normalize(value);
             }
             catch (InvalidDataException)
             {
@@ -211,10 +235,12 @@ public sealed class LauncherStore
         }
     }
 
-    private static JsonObject Snapshot(Settings settings) => (JsonObject)JsonSerializer.SerializeToNode(settings, JsonOptions)!;
-    private static string ProjectPath(string path) => OperatingSystem.IsWindows()
-        ? Path.GetFullPath(path).ToUpperInvariant() : Path.GetFullPath(path);
+    private static JsonObject Snapshot(Settings settings) => (JsonObject)JsonSerializer.SerializeToNode(settings, JsonFile.Options)!;
 
+    /// <summary>
+    ///     Copies properties that changed between <paramref name="baseline" /> and <paramref name="local" /> into
+    ///     <paramref name="target" />.
+    /// </summary>
     private static void MergeProperties(JsonObject baseline, JsonObject local, JsonObject target, params string[] skip)
     {
         foreach ((string key, JsonNode? value) in local)
@@ -226,10 +252,9 @@ public sealed class LauncherStore
         }
     }
 
+    /// <summary>Three-way merge of the project list, keyed by project path.</summary>
     private static JsonArray MergeProjects(JsonArray baseline, JsonArray local, JsonArray disk)
     {
-        Dictionary<string, JsonObject> Index(JsonArray projects) => projects.Cast<JsonObject>()
-            .ToDictionary(p => ProjectPath(p["Path"]!.GetValue<string>()));
         Dictionary<string, JsonObject> before = Index(baseline);
         Dictionary<string, JsonObject> edits = Index(local);
         Dictionary<string, JsonObject> merged = Index(disk);
@@ -239,20 +264,14 @@ public sealed class LauncherStore
         }
         foreach ((string path, JsonObject project) in edits)
         {
-            if (before.TryGetValue(path, out JsonObject? original))
+            if (before.TryGetValue(path, out JsonObject? original) && JsonNode.DeepEquals(original, project))
             {
-                if (JsonNode.DeepEquals(original, project))
-                {
-                    continue;
-                }
-                if (!merged.TryGetValue(path, out JsonObject? target))
-                {
-                    merged[path] = (JsonObject)project.DeepClone();
-                }
-                else
-                {
-                    MergeProperties(original, project, target);
-                }
+                // Unchanged here; keep whatever the other process did, including removing it.
+                continue;
+            }
+            if (original != null && merged.TryGetValue(path, out JsonObject? target))
+            {
+                MergeProperties(original, project, target);
             }
             else
             {
@@ -260,48 +279,33 @@ public sealed class LauncherStore
             }
         }
         return new JsonArray(merged.Values.Select(p => (JsonNode)p.DeepClone()).ToArray());
-    }
-    public static T? ReadJson<T>(string path)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<T>(File.ReadAllText(path), JsonOptions);
-        }
-        catch (Exception e) when (e is IOException or JsonException)
-        {
-            return default;
-        }
+
+        static Dictionary<string, JsonObject> Index(JsonArray projects) => projects.Cast<JsonObject>()
+            .ToDictionary(p => ProjectKey(p[nameof( Project.Path )]!.GetValue<string>()));
     }
 
-    public static void WriteJson<T>(string path, T value)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllText(temporary, JsonSerializer.Serialize(value, JsonOptions));
-            File.Move(temporary, path, true);
-        }
-        finally
-        {
-            if (File.Exists(temporary))
-            {
-                File.Delete(temporary);
-            }
-        }
-    }
+    #endregion
+
+    #region Editors
 
     public string InstallPath(InstalledEditor editor)
     {
-        if ((editor.ReleaseId <= 0 && !editor.IsMain) || !Constants.Storage.SupportedPlatforms.Contains(editor.Platform)
-                                  || string.IsNullOrEmpty(editor.Tag) || !Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z"))
+        bool valid = (editor.ReleaseId > 0 || editor.IsMain)
+                     && Constants.Storage.SupportedPlatforms.Contains(editor.Platform)
+                     && !string.IsNullOrEmpty(editor.Tag)
+                     && Regex.IsMatch(editor.Tag, @"\A[A-Za-z0-9][A-Za-z0-9.+-]*\z");
+        if (!valid)
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
         }
 
-        return SafeChildPath(VersionsPath, editor.Key);
+        return FileSystemHelper.SafeChildPath(VersionsPath, editor.Key);
     }
 
+    public string ExecutablePath(InstalledEditor editor) =>
+        FileSystemHelper.SafeChildPath(InstallPath(editor), editor.ExecutableRelativePath);
+
+    /// <summary>Editors whose installation.json matches the folder they were found in, newest first.</summary>
     public IReadOnlyList<InstalledEditor> InstalledEditors()
     {
         if (!Directory.Exists(VersionsPath))
@@ -312,13 +316,8 @@ public sealed class LauncherStore
         List<InstalledEditor> result = [];
         foreach (string folder in Directory.EnumerateDirectories(VersionsPath))
         {
-            if ((File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0)
-            {
-                continue;
-            }
-
-            InstalledEditor? editor = ReadJson<InstalledEditor>(Path.Combine(folder, "installation.json"));
-            if (editor == null)
+            if (FileSystemHelper.IsLink(folder)
+                || JsonFile.Read<InstalledEditor>(Path.Combine(folder, "installation.json")) is not {} editor)
             {
                 continue;
             }
@@ -338,57 +337,32 @@ public sealed class LauncherStore
         return result.OrderByDescending(e => e.InstalledAt).ToArray();
     }
 
-    public string ExecutablePath(InstalledEditor editor) => SafeChildPath(InstallPath(editor), editor.ExecutableRelativePath);
-    public static string SafeChildPath(string root, string relative)
-    {
-        string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        string fullPath = Path.GetFullPath(Path.Combine(fullRoot, relative));
-        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (Path.IsPathRooted(relative) || !fullPath.StartsWith(fullRoot, comparison))
-        {
-            throw new InvalidDataException(Loc.Get("launcher.errors.path_outside_folder"));
-        }
+    #endregion
 
-        return fullPath;
-    }
+    #region Projects
 
     public Project AddProject(string path) => AddProject(path, true);
 
     private Project AddProject(string path, bool save)
     {
-        string root = Path.GetFullPath(File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase) ? Path.GetDirectoryName(path)! : path);
+        bool isMarker = File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase);
+        string root = Path.GetFullPath(isMarker ? Path.GetDirectoryName(path)! : path);
         if (!Directory.Exists(Path.Combine(root, "Assets")))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_project_folder"));
         }
 
-        Project? existing = Settings.Projects.FirstOrDefault(p => PathsEqual(p.Path, root));
+        Project? existing = Settings.Projects.FirstOrDefault(p => FileSystemHelper.PathsEqual(p.Path, root));
         if (existing != null)
         {
             return existing;
         }
 
-        string name = Path.GetFileName(root);
-        string? marker = Directory.EnumerateFiles(root, "*.prowl").FirstOrDefault();
-        string? version = null;
-        if (marker != null)
-        {
-            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(marker));
-            if (doc.RootElement.TryGetProperty("name", out JsonElement n))
-            {
-                name = n.GetString() ?? name;
-            }
-
-            if (doc.RootElement.TryGetProperty("version", out JsonElement v))
-            {
-                version = v.GetString();
-            }
-        }
-
+        (string name, string? version) = ReadProjectMarker(root);
         // Match both historical preview-4 tags and the editor's newer preview.4 version format.
-        InstalledEditor? matching = InstalledEditors()
-            .FirstOrDefault(e => e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
-                                 && VersionHelper.EquivalentEditorTags(e.Tag, version));
+        InstalledEditor? matching = InstalledEditors().FirstOrDefault(e =>
+            e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
+            && VersionHelper.EquivalentEditorTags(e.Tag, version));
         Project project = new()
         {
             Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
@@ -401,6 +375,27 @@ public sealed class LauncherStore
         return project;
     }
 
+    /// <summary>Reads the name and editor version from a project's .prowl file, defaulting to the folder name.</summary>
+    private static (string Name, string? Version) ReadProjectMarker(string root)
+    {
+        string name = Path.GetFileName(root);
+        string? marker = Directory.EnumerateFiles(root, "*.prowl").FirstOrDefault();
+        if (marker == null)
+        {
+            return (name, null);
+        }
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(marker));
+        JsonElement json = document.RootElement;
+        string? version = json.TryGetProperty("version", out JsonElement v) ? v.GetString() : null;
+        if (json.TryGetProperty("name", out JsonElement n))
+        {
+            name = n.GetString() ?? name;
+        }
+        return (name, version);
+    }
+
+    /// <summary>Imports the editor's recent projects once, then keeps favourites and open times in sync.</summary>
     public void ImportRecentProjects(string? recentProjectsPath = null)
     {
         if (Settings.RecentProjectsImported && Settings.RecentProjectMetadataImported)
@@ -408,17 +403,14 @@ public sealed class LauncherStore
             return;
         }
 
-        string path = recentProjectsPath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Prowl",
-            "RecentProjects.json"
-        );
-        List<Project>? entries = ReadJson<List<Project>>(path);
+        List<Project>? entries = JsonFile.Read<List<Project>>(recentProjectsPath ?? EditorSettings.RecentProjectsPath);
         foreach (Project entry in entries ?? [])
         {
             try
             {
-                Project? project = Settings.RecentProjectsImported ? Settings.Projects.FirstOrDefault(p => PathsEqual(p.Path, entry.Path)) : AddProject(entry.Path, false);
+                Project? project = Settings.RecentProjectsImported
+                    ? Settings.Projects.FirstOrDefault(p => FileSystemHelper.PathsEqual(p.Path, entry.Path))
+                    : AddProject(entry.Path, false);
                 if (project == null)
                 {
                     continue;
@@ -440,9 +432,9 @@ public sealed class LauncherStore
         Save();
     }
 
-    public static bool PathsEqual(string a, string b) => string.Equals(
-        Path.GetFullPath(a),
-        Path.GetFullPath(b),
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal
-    );
+    private static string ProjectKey(string path) => OperatingSystem.IsWindows()
+        ? Path.GetFullPath(path).ToUpperInvariant()
+        : Path.GetFullPath(path);
+
+    #endregion
 }

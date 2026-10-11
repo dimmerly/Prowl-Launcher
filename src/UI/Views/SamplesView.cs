@@ -5,18 +5,15 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
-using Prowl.Vector.Spatial;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
     private readonly SampleThumbnail _sampleThumbnails = new();
     private string? _launchingSampleId;
-    private string? _sampleUpdatesCheckedRepository;
     private bool _sampleUpdateAvailable;
     private bool _sampleUpdateChecking;
-
+    private string? _sampleUpdatesCheckedRepository;
     private void DrawSamplesHeadingActions(Paper p)
     {
         if (_sampleUpdateAvailable && _samples.IsCached
@@ -41,7 +38,7 @@ public sealed partial class Launcher
         }
 
         // Leave eight pixels on each edge for the hover scale to expand inside the scroll clip.
-        float available = (float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 72;
+        float available = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 72;
         int columns = Math.Clamp((int)((available + Constants.Layout.SampleGap) / 260), 1, samples.Count);
         float cardWidth = Math.Clamp((available - Constants.Layout.SampleGap * (columns - 1)) / columns, 1, 280);
         for (int first = 0; first < samples.Count; first += columns)
@@ -54,41 +51,6 @@ public sealed partial class Launcher
                 }
             }
         }
-    }
-
-    private async Task CheckSamplesInBackgroundAsync()
-    {
-        string repository = store.Settings.LauncherRepository;
-        _sampleUpdateChecking = true;
-        try
-        {
-            bool available = await _samples.HasUpdateAsync(_backgroundCancellation.Token);
-            if (!_backgroundCancellation.IsCancellationRequested && store.Settings.LauncherRepository == repository)
-            {
-                _sampleUpdateAvailable = available;
-            }
-        }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception error)
-        {
-            LogError(error);
-        }
-        finally
-        {
-            _sampleUpdateChecking = false;
-            _sampleUpdatesCheckedRepository = repository;
-        }
-    }
-
-    private async Task UpdateSamplesAsync(CancellationToken token)
-    {
-        _immediateProgress = true;
-        _operationTitle = "launcher.samples.downloading";
-        await _samples.EnsureDownloadedAsync(Transfer(), token, checkForUpdates: true);
-        _sampleUpdateAvailable = false;
-        Notify("launcher.samples.updated", "launcher.samples.subtitle");
     }
 
     private void DrawSampleCard(Paper p, Sample sample, float width)
@@ -123,21 +85,7 @@ public sealed partial class Launcher
                 TextureTK? texture = _sampleThumbnails.Get(sample);
                 if (texture is not null)
                 {
-                    p.Draw((canvas, rect) =>
-                    {
-                        float w = (float)rect.Size.X, h = (float)rect.Size.Y;
-                        float scale = Math.Max(w / texture.Width, h / texture.Height);
-                        float iw = texture.Width * scale, ih = texture.Height * scale;
-                        float x = (float)rect.Min.X, y = (float)rect.Min.Y;
-                        // Fill the card's rounded shape while keeping the image's centered cover crop.
-                        canvas.SaveState();
-                        canvas.SetBrushTexture(texture);
-                        canvas.SetBrushTextureTransform(
-                            Transform2D.CreateTranslation(x + (w - iw) / 2, y + (h - ih) / 2)
-                            * Transform2D.CreateScale(iw, ih));
-                        canvas.RoundedRectFilled(x, y, w, h, rounding, Color.White);
-                        canvas.RestoreState();
-                    });
+                    DrawCoverImage(p, texture, rounding, rounding, rounding, rounding);
                 }
             }
             float captionHeight = Math.Max(80, width * 0.25f);
@@ -175,5 +123,63 @@ public sealed partial class Launcher
                 }
             }
         }
+    }
+
+    /// <summary>The first run downloads the bundle with visible progress; later runs only show the card spinner.</summary>
+    private async Task RunSampleAsync(Sample sample, CancellationToken token)
+    {
+        _launchingSampleId = sample.Id;
+        try
+        {
+            _immediateProgress = !_samples.IsCached;
+            if (_immediateProgress)
+            {
+                _operationTitle = "launcher.samples.downloading";
+            }
+            await _samples.EnsureDownloadedAsync(Transfer(), token, !offline);
+            _immediateProgress = false;
+            _operationTitle = "launcher.samples.run";
+            await _samples.RunAsync(sample, Transfer(), token, !offline);
+        }
+        finally
+        {
+            _launchingSampleId = null;
+        }
+    }
+
+    /// <summary>Checks once per launcher repository whether a newer bundle exists.</summary>
+    private async Task CheckSamplesInBackgroundAsync()
+    {
+        string repository = store.Settings.LauncherRepository;
+        _sampleUpdateChecking = true;
+        try
+        {
+            bool available = await _samples.HasUpdateAsync(_backgroundCancellation.Token);
+            if (!_backgroundCancellation.IsCancellationRequested && store.Settings.LauncherRepository == repository)
+            {
+                _sampleUpdateAvailable = available;
+            }
+        }
+        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception error)
+        {
+            LogError(error);
+        }
+        finally
+        {
+            _sampleUpdateChecking = false;
+            _sampleUpdatesCheckedRepository = repository;
+        }
+    }
+
+    private async Task UpdateSamplesAsync(CancellationToken token)
+    {
+        _immediateProgress = true;
+        _operationTitle = "launcher.samples.downloading";
+        await _samples.EnsureDownloadedAsync(Transfer(), token, checkForUpdates: true);
+        _sampleUpdateAvailable = false;
+        Notify("launcher.samples.updated", "launcher.samples.subtitle");
     }
 }

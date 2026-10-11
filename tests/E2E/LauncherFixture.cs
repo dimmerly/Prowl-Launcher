@@ -2,7 +2,6 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
-
 namespace Prowl.Launcher.Test.E2E;
 
 sealed class LauncherFixture : IDisposable
@@ -16,16 +15,17 @@ sealed class LauncherFixture : IDisposable
     internal List<EditorRelease> EditorReleases { get; }
     internal EditorRelease StableUpdate { get; }
     internal EditorRelease PreviewUpdate { get; }
-    internal int LauncherChecks;
-    internal int Downloads;
-    internal bool SlowDownload;
-    internal bool CorruptDownload;
-    internal bool DelaySampleDownload;
-    private byte[]? _sampleZip;
-    private EditorRelease? _sampleRelease;
-    internal int SampleDownloads;
+    internal string LaunchRecord => Path.Combine(Home, "editor-launch.json");
     private readonly byte[] _editorZip;
     private readonly byte[] _launcherZip;
+    private EditorRelease? _sampleRelease;
+    private byte[]? _sampleZip;
+    internal bool CorruptDownload;
+    internal bool DelaySampleDownload;
+    internal int Downloads;
+    internal int LauncherChecks;
+    internal int SampleDownloads;
+    internal bool SlowDownload;
 
     internal LauncherFixture(string root)
     {
@@ -56,6 +56,8 @@ sealed class LauncherFixture : IDisposable
         };
     }
 
+    public void Dispose() => Http.Dispose();
+
     internal async Task<InstalledEditor> InstallEditor()
     {
         InstalledEditor installed = await new EditorInstallerService(Http, Store).InstallAsync(EditorRelease, Platform.Identifier);
@@ -66,7 +68,7 @@ sealed class LauncherFixture : IDisposable
     {
         string path = Path.Combine(Projects, name);
         Directory.CreateDirectory(Path.Combine(path, "Assets"));
-        LauncherStore.WriteJson(Path.Combine(path, name + ".prowl"), new
+        JsonFile.Write(Path.Combine(path, name + ".prowl"), new
         {
             name, version = "1.0.0"
         });
@@ -81,7 +83,6 @@ sealed class LauncherFixture : IDisposable
     }
 
     internal Settings Saved() => new LauncherStore(Home).Settings;
-    internal string LaunchRecord => Path.Combine(Home, "editor-launch.json");
 
     internal void PublishSamples(bool newer = false)
     {
@@ -266,6 +267,4 @@ sealed class LauncherFixture : IDisposable
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
-
-    public void Dispose() => Http.Dispose();
 }

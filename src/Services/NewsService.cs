@@ -4,21 +4,20 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-
 namespace Prowl.Launcher;
 
 sealed class NewsService(HttpClient http, LauncherStore store, string repository, string? localDirectory = null)
 {
-    private static readonly JsonSerializerOptions Options = new( JsonSerializerDefaults.Web );
     private const string ArticlePathPattern = @"\A(?:[a-zA-Z0-9][a-zA-Z0-9_-]*/)*[a-zA-Z0-9][a-zA-Z0-9_-]*\.md\z";
-    private readonly string _repository = GitHubRepositoryHelper.Normalize(repository);
-    private readonly string? _localDirectory = localDirectory == null ? null : Path.GetFullPath(localDirectory);
+    private static readonly JsonSerializerOptions Options = new( JsonSerializerDefaults.Web );
 
     private string CacheRoot => Path.Combine(store.Home, "News", _repository.Replace('/', '_'));
     private string IndexPath => Path.Combine(_localDirectory ?? CacheRoot, "index.json");
 
     internal bool IsLocal => _localDirectory != null;
     internal DateTime? LocalIndexStamp => IsLocal ? File.GetLastWriteTimeUtc(IndexPath) : null;
+    private readonly string? _localDirectory = localDirectory == null ? null : Path.GetFullPath(localDirectory);
+    private readonly string _repository = GitHubRepository.Normalize(repository);
 
     internal static string? DevelopmentDirectory() => typeof( NewsService ).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -65,7 +64,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         }
         string json = await DownloadAsync("index.json", token);
         IReadOnlyList<NewsPost> posts = ParseIndex(json);
-        LauncherStore.WriteJson(IndexPath, posts);
+        JsonFile.Write(IndexPath, posts);
         return posts;
     }
 
@@ -79,20 +78,20 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         string cachePath = Path.Combine(CacheRoot, post.File + ".json");
         if (!allowNetwork)
         {
-            return LauncherStore.ReadJson<string>(cachePath)
+            return JsonFile.Read<string>(cachePath)
                    ?? throw new IOException("This news article has not been cached for offline reading.");
         }
 
         try
         {
             string markdown = await DownloadAsync(post.File, token);
-            LauncherStore.WriteJson(cachePath, markdown);
+            JsonFile.Write(cachePath, markdown);
             return markdown;
         }
         catch (Exception error) when (error is HttpRequestException
                                       || error is OperationCanceledException && !token.IsCancellationRequested)
         {
-            if (LauncherStore.ReadJson<string>(cachePath) is {} cached)
+            if (JsonFile.Read<string>(cachePath) is {} cached)
             {
                 return cached;
             }
@@ -128,7 +127,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
             throw new InvalidDataException("News images must use HTTPS.");
         }
         string cachePath = ImageCachePath(source);
-        if (LauncherStore.ReadJson<byte[]>(cachePath) is {} cached)
+        if (JsonFile.Read<byte[]>(cachePath) is {} cached)
         {
             return cached;
         }
@@ -139,7 +138,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(Constants.Network.ReleaseCheckTimeout);
         byte[] bytes = await http.GetByteArrayAsync(source, deadline.Token);
-        LauncherStore.WriteJson(cachePath, bytes);
+        JsonFile.Write(cachePath, bytes);
         return bytes;
     }
 
@@ -152,7 +151,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         }
     }
 
-    private string LocalImagePath(Uri source) => LauncherStore.SafeChildPath(
+    private string LocalImagePath(Uri source) => FileSystemHelper.SafeChildPath(
         _localDirectory!, Path.GetRelativePath(_localDirectory!, source.LocalPath));
 
     private string ImageCachePath(Uri source)

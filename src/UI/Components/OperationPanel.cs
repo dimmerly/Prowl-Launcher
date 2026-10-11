@@ -1,7 +1,7 @@
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+using Prowl.Rosetta;
 
 using TextAlignment=Prowl.PaperUI.TextAlignment;
 
@@ -48,8 +48,8 @@ public sealed partial class Launcher
         using (p.Column("operation-panel")
             .PositionType(PositionType.SelfDirected)
             .Left(Constants.Layout.SidebarWidth)
-            .Top((float)p.ScreenRect.Size.Y - Constants.Layout.OperationHeight)
-            .Width(Math.Max(1, (float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth))
+            .Top(p.ScreenRect.Size.Y - Constants.Layout.OperationHeight)
+            .Width(Math.Max(1, p.ScreenRect.Size.X - Constants.Layout.SidebarWidth))
             .Height(Constants.Layout.OperationHeight)
             .Gap(0)
             .BackgroundColor(_appearance.Panel)

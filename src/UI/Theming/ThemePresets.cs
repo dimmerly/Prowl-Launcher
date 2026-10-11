@@ -1,8 +1,8 @@
 namespace Prowl.Launcher.Theming;
 
 /// <summary>
-/// A built-in color theme. Stops override a ramp's computed offsets, for themes the dark defaults can't be
-/// shifted into. Solid themes use a flat background, so they turn the nebula and the glass blur off.
+///     A built-in color theme. Stops override a ramp's computed offsets, for themes the dark defaults can't be
+///     shifted into. Solid themes use a flat background, so they turn the nebula and the glass blur off.
 /// </summary>
 public readonly record struct ThemePreset(string Name,
     string Accent,
@@ -15,7 +15,7 @@ public readonly record struct ThemePreset(string Name,
     string[]? NeutralStops = null,
     string[]? InkStops = null)
 {
-    /// <summary>Apply this theme's ramps and effects to <paramref name="t"/>. Status ramps return to their defaults.</summary>
+    /// <summary>Apply this theme's ramps and effects to <paramref name="t" />. Status ramps return to their defaults.</summary>
     public void ApplyTo(EditorThemeData t)
     {
         SetRamp(t.Purple, Accent, AccentStops);

@@ -1,14 +1,17 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 public sealed partial class EditorInstallerService
 {
-    internal sealed record SourceBuildResult(InstalledEditor Editor, bool AlreadyInstalled);
 
+    /// <summary>
+    ///     Clones or fast-forwards the repository's main branch into Source/, then publishes and installs the
+    ///     editor for that commit unless it is already installed.
+    /// </summary>
     internal async Task<SourceBuildResult> InstallMainAsync(
         string platform,
         IProgress<TransferProgress>? progress = null,
@@ -16,145 +19,104 @@ public sealed partial class EditorInstallerService
         string? sourceRepository = null,
         Func<ProcessStartInfo, CancellationToken, Task<string>>? runCommand = null)
     {
-        string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
-        InstalledEditor editor = new(
-            0,
-            "main",
-            platform,
-            platform.StartsWith("win-", StringComparison.Ordinal) ? "Prowl.Editor.exe" : "Prowl.Editor",
-            DateTimeOffset.UtcNow)
+        string repository = GitHubRepository.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
+        InstalledEditor editor = new( 0, "main", platform, Platform.ExecutableName(EditorName, platform), DateTimeOffset.UtcNow )
         {
             Repository = repository
         };
         // Validate the platform before doing any source work.
         store.InstallPath(editor);
-        using FileStream operation = AcquireOperationLock();
-        RecoverInterruptedInstalls();
 
-        Directory.CreateDirectory(store.WorkPath);
-        Directory.CreateDirectory(store.VersionsPath);
         string sources = Path.Combine(store.Home, "Source");
-        Directory.CreateDirectory(sources);
-        foreach (string path in new[] { store.Home, store.WorkPath, store.VersionsPath, sources })
-        {
-            RejectLink(path);
-        }
-        string checkout = Path.Combine(sources, GitHubRepositoryHelper.CacheKey(repository));
-        string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
-        string staging = Path.Combine(work, "extracted");
-        string backup = Path.Combine(work, "previous");
-        Directory.CreateDirectory(work);
+        using FileStream operation = BeginOperation(sources);
+        using InstallWorkspace workspace = new( store );
+        string checkout = Path.Combine(sources, GitHubRepository.CacheKey(repository));
 
-        async Task<string> RunAsync(string executable, string directory, params string[] arguments)
+        Task<string> Git(string directory, params string[] arguments) => RunAsync("git", directory, arguments);
+        Task<string> RunAsync(string executable, string directory, params string[] arguments)
         {
-            ProcessStartInfo info = new(executable)
-            {
-                WorkingDirectory = directory,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            foreach (string argument in arguments)
-            {
-                info.ArgumentList.Add(argument);
-            }
+            ProcessStartInfo info = ProcessHelper.Captured(executable, directory, arguments);
             // Avoid interactive Git prompts in the launcher's background operation.
             info.Environment["GIT_TERMINAL_PROMPT"] = "0";
-            return runCommand != null
-                ? await runCommand(info, token)
-                : await RunSourceCommandAsync(info, progress, token);
+            return runCommand != null ? runCommand(info, token) : RunSourceCommandAsync(info, progress, token);
         }
 
-        try
+        if (!Directory.Exists(checkout))
         {
-            if (!Directory.Exists(checkout))
-            {
-                progress?.Report(new("launcher.versions.main_cloning"));
-                string cloned = Path.Combine(work, "source");
-                await RunAsync("git", work, "clone", "--branch", "main", "--single-branch",
-                    "https://github.com/" + repository + ".git", cloned);
-                Directory.Move(cloned, checkout);
-            }
-            else
-            {
-                RejectLink(checkout);
-                string changes = await RunAsync("git", checkout, "status", "--porcelain");
-                if (!string.IsNullOrWhiteSpace(changes))
-                {
-                    throw new IOException(Loc.Get("launcher.versions.main_dirty"));
-                }
-
-                await RunAsync("git", checkout, "switch", "main");
-                progress?.Report(new("launcher.versions.main_pulling"));
-                await RunAsync("git", checkout, "pull", "--ff-only", "origin", "main");
-            }
-            string commit = (await RunAsync("git", checkout, "rev-parse", "HEAD")).Trim();
-            if (!Regex.IsMatch(commit, @"\A[0-9a-f]{40}\z"))
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
-            }
-            editor = editor with { Tag = "main-" + commit[..7], SourceCommit = commit };
-            string destination = store.InstallPath(editor);
-            InstalledEditor? installed = store.InstalledEditors().FirstOrDefault(candidate =>
-                candidate.IsMain && candidate.SourceCommit == commit && candidate.Platform == platform
-                && candidate.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)
-                && File.Exists(store.ExecutablePath(candidate))
-                && File.Exists(Path.Combine(store.InstallPath(candidate), "Prowl.Editor.dll"))
-                && File.Exists(Path.Combine(store.InstallPath(candidate), "Prowl.Editor.runtimeconfig.json")));
-            if (installed != null)
-            {
-                progress?.Report(new("launcher.versions.main_current", 1));
-                return new SourceBuildResult(installed, AlreadyInstalled: true);
-            }
-
-            await RunAsync("git", checkout, "submodule", "sync", "--recursive");
-            await RunAsync("git", checkout, "submodule", "update", "--init", "--recursive");
-
-            progress?.Report(new("launcher.versions.main_building"));
-            await RunAsync("dotnet", checkout, "publish", "Prowl.Editor/Prowl.Editor.csproj",
-                "-c", "Release", "-r", platform, "--self-contained", "false", "-o", staging);
-            if (!File.Exists(Path.Combine(staging, editor.ExecutableRelativePath)))
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
-            }
-
-            editor = editor with
-            {
-                EditorVersion = FileVersionInfo.GetVersionInfo(Path.Combine(staging, "Prowl.Editor.dll")).ProductVersion
-            };
-            LauncherStore.WriteJson(Path.Combine(staging, "installation.json"), editor);
-            token.ThrowIfCancellationRequested();
-            if (IsRunning(editor))
-            {
-                throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
-            }
-
-            // Use the same repair journal as release installs so an interrupted replacement can recover.
-            LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
-            DirectoryReplacementService.Swap(staging, destination, backup);
-            if (store.Settings.DefaultEditorKey == null)
-            {
-                store.Settings.DefaultEditorKey = editor.Key;
-                store.Save();
-            }
-            progress?.Report(new("launcher.versions.main_ready", 1));
-            return new SourceBuildResult(editor, AlreadyInstalled: false);
+            progress?.Report(new TransferProgress("launcher.versions.main_cloning"));
+            string cloned = Path.Combine(workspace.Work, "source");
+            await Git(workspace.Work, "clone", "--branch", "main", "--single-branch",
+                Constants.Network.GitHubUrl + repository + ".git", cloned);
+            Directory.Move(cloned, checkout);
         }
-        finally
+        else
         {
-            if (Directory.Exists(work) && !Directory.Exists(backup))
+            RejectLink(checkout);
+            if (!string.IsNullOrWhiteSpace(await Git(checkout, "status", "--porcelain")))
             {
-                Directory.Delete(work, true);
+                throw new IOException(Loc.Get("launcher.versions.main_dirty"));
             }
+
+            await Git(checkout, "switch", "main");
+            progress?.Report(new TransferProgress("launcher.versions.main_pulling"));
+            await Git(checkout, "pull", "--ff-only", "origin", "main");
         }
+
+        string commit = (await Git(checkout, "rev-parse", "HEAD")).Trim();
+        if (!Regex.IsMatch(commit, @"\A[0-9a-f]{40}\z"))
+        {
+            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
+        }
+        editor = editor with
+        {
+            Tag = "main-" + commit[..7], SourceCommit = commit
+        };
+
+        if (FindInstalledBuild(commit, platform, repository) is {} installed)
+        {
+            progress?.Report(new TransferProgress("launcher.versions.main_current", 1));
+            return new SourceBuildResult(installed, true);
+        }
+
+        await Git(checkout, "submodule", "sync", "--recursive");
+        await Git(checkout, "submodule", "update", "--init", "--recursive");
+
+        progress?.Report(new TransferProgress("launcher.versions.main_building"));
+        await RunAsync("dotnet", checkout, "publish", "Prowl.Editor/Prowl.Editor.csproj",
+            "-c", "Release", "-r", platform, "--self-contained", "false", "-o", workspace.Staging);
+        if (!File.Exists(Path.Combine(workspace.Staging, editor.ExecutableRelativePath)))
+        {
+            throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
+        }
+
+        editor = editor with
+        {
+            EditorVersion = FileVersionInfo.GetVersionInfo(Path.Combine(workspace.Staging, EditorName + ".dll")).ProductVersion
+        };
+        CommitInstall(editor, workspace, store.InstallPath(editor), token);
+        progress?.Report(new TransferProgress("launcher.versions.main_ready", 1));
+        return new SourceBuildResult(editor, false);
     }
 
+    /// <summary>A complete existing installation built from <paramref name="commit" />, if any.</summary>
+    private InstalledEditor? FindInstalledBuild(string commit, string platform, string repository) =>
+        store.InstalledEditors().FirstOrDefault(candidate =>
+            candidate.IsMain
+            && candidate.SourceCommit == commit
+            && candidate.Platform == platform
+            && candidate.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)
+            && File.Exists(store.ExecutablePath(candidate))
+            && File.Exists(Path.Combine(store.InstallPath(candidate), EditorName + ".dll"))
+            && File.Exists(Path.Combine(store.InstallPath(candidate), EditorName + ".runtimeconfig.json")));
+
+    /// <summary>Runs a build tool, streaming its output as progress. Returns stdout; throws with the output tail on failure.</summary>
     private static async Task<string> RunSourceCommandAsync(
         ProcessStartInfo info,
         IProgress<TransferProgress>? progress,
         CancellationToken token)
     {
+        const int MaxRetainedLines = 30;
+
         using Process process = new()
         {
             StartInfo = info
@@ -163,27 +125,29 @@ public sealed partial class EditorInstallerService
         {
             process.Start();
         }
-        catch (System.ComponentModel.Win32Exception error)
+        catch (Win32Exception error)
         {
             throw new IOException(Loc.Get("launcher.versions.main_tool_missing", new
             {
                 tool = info.FileName
             }), error);
         }
+
         List<string> output = [];
         List<string> errors = [];
         async Task Drain(StreamReader reader, List<string> lines)
         {
-            while (await reader.ReadLineAsync(token) is { } line)
+            while (await reader.ReadLineAsync(token) is {} line)
             {
                 lines.Add(line);
-                if (lines.Count > 30)
+                if (lines.Count > MaxRetainedLines)
                 {
                     lines.RemoveAt(0);
                 }
-                progress?.Report(new(line));
+                progress?.Report(new TransferProgress(line));
             }
         }
+
         Task stdout = Drain(process.StandardOutput, output);
         Task stderr = Drain(process.StandardError, errors);
         try
@@ -204,4 +168,5 @@ public sealed partial class EditorInstallerService
             }
         }
     }
+    internal sealed record SourceBuildResult(InstalledEditor Editor, bool AlreadyInstalled);
 }

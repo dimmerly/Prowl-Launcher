@@ -4,7 +4,6 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 sealed class LauncherInstallationService(LauncherStore store)
@@ -30,8 +29,8 @@ sealed class LauncherInstallationService(LauncherStore store)
     }
 
     internal static bool IsRunningInstallation(string executable) =>
-        Environment.ProcessPath is {} processPath && LauncherStore.PathsEqual(executable, processPath)
-        || SourcePath() is {} source && LauncherStore.PathsEqual(executable, source);
+        Environment.ProcessPath is {} processPath && FileSystemHelper.PathsEqual(executable, processPath)
+        || SourcePath() is {} source && FileSystemHelper.PathsEqual(executable, source);
 
     private static string? SourcePath()
     {
@@ -51,12 +50,12 @@ sealed class LauncherInstallationService(LauncherStore store)
     public async Task<string> InstallAsync(bool desktopShortcut, CancellationToken token)
     {
         string source = SourcePath() ?? throw new InvalidOperationException(Loc.Get("launcher.installation.unavailable"));
-        string version = typeof( Launcher ).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
+        string version = VersionHelper.LauncherVersion;
         string root = InstallRoot(store);
         string fileName = OperatingSystem.IsWindows() ? "Prowl.Launcher.exe" : "Prowl Launcher.AppImage";
         string relative = OperatingSystem.IsMacOS() ? "Prowl Launcher.app"
             : OperatingSystem.IsWindows() ? fileName : Path.Combine(version, fileName);
-        string destination = LauncherStore.SafeChildPath(root, relative);
+        string destination = FileSystemHelper.SafeChildPath(root, relative);
         string executable = OperatingSystem.IsMacOS() ? Path.Combine(destination, "Contents", "MacOS", "Prowl.Launcher") : destination;
 
         if (!IsRunningInstallation(executable))
@@ -188,12 +187,12 @@ sealed class LauncherInstallationService(LauncherStore store)
         foreach (string path in Directory.EnumerateFileSystemEntries(source, "*", SearchOption.AllDirectories))
         {
             token.ThrowIfCancellationRequested();
-            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            if (FileSystemHelper.IsLink(path))
             {
                 throw new IOException(Loc.Get("launcher.errors.archive_link"));
             }
 
-            string target = LauncherStore.SafeChildPath(destination, Path.GetRelativePath(source, path));
+            string target = FileSystemHelper.SafeChildPath(destination, Path.GetRelativePath(source, path));
             if (Directory.Exists(path))
             {
                 Directory.CreateDirectory(target);
@@ -225,7 +224,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         foreach (string file in files)
         {
             token.ThrowIfCancellationRequested();
-            if (!SameFile(file, LauncherStore.SafeChildPath(destination, Path.GetRelativePath(source, file))))
+            if (!SameFile(file, FileSystemHelper.SafeChildPath(destination, Path.GetRelativePath(source, file))))
             {
                 return false;
             }

@@ -2,13 +2,20 @@ using System.Net;
 using System.Text.Json;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherUpdateCheckTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlUpdateCheckTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
     private static EditorRelease Release(long id, string version, bool preview = false) => new( id, "v" + version,
         preview, false, DateTimeOffset.UtcNow, "https://github.com/dimmerly/Prowl-Launcher/releases/tag/v" + version,
         "## Changes\n\n- A new feature\n- A bug fix", [new ReleaseAsset($"Prowl-Launcher-{version}-win-x64.zip", "", 1, null)] );
@@ -36,7 +43,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
                 }))
             });
         }) );
-        LauncherUpdateCheckService service = new( http, store );
+        LauncherUpdaterService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         Assert.Equal(0, requests);
         Assert.Equal(1, (await service.CheckAsync("win-x64", "1.0.0", false)).Release!.Id);
@@ -60,7 +67,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     {
         LauncherStore store = new( _home );
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0-preview.1", true));
-        LauncherUpdateCheckService service = new( http, store );
+        LauncherUpdaterService service = new( http, store );
         Assert.Equal(2, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
         store.Settings.LauncherPrereleases = false;
         Assert.Equal(1, (await service.CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
@@ -75,10 +82,10 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     public async Task StartupDismissalSurvivesRestartAndManualCheckCanStillOfferIt()
     {
         LauncherStore store = new( _home );
-        LauncherUpdateCheckService.Dismiss(store, store.Settings.LauncherRepository, 2);
+        LauncherUpdaterService.Dismiss(store, store.Settings.LauncherRepository, 2);
         store = new LauncherStore(_home);
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0"));
-        LauncherUpdateCheckService service = new( http, store );
+        LauncherUpdaterService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         Assert.Equal(2, (await service.CheckAsync("win-x64", "1.0.0", false)).Release!.Id);
     }
@@ -87,9 +94,9 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     public async Task ANewReleaseIsOfferedEvenAfterDismissingThePreviousOne()
     {
         LauncherStore store = new( _home );
-        LauncherUpdateCheckService.Dismiss(store, store.Settings.LauncherRepository, 1);
+        LauncherUpdaterService.Dismiss(store, store.Settings.LauncherRepository, 1);
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0"));
-        Assert.Equal(2, (await new LauncherUpdateCheckService(http, store).CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
+        Assert.Equal(2, (await new LauncherUpdaterService(http, store).CheckAsync("win-x64", "1.0.0", true)).Release!.Id);
     }
 
     [Fact]
@@ -97,12 +104,12 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     {
         LauncherStore store = new( _home );
         string repository = store.Settings.LauncherRepository;
-        LauncherUpdateCheckService.Dismiss(store, repository, 1);
-        LauncherUpdateCheckService.Dismiss(store, repository, 2);
+        LauncherUpdaterService.Dismiss(store, repository, 1);
+        LauncherUpdaterService.Dismiss(store, repository, 2);
         store.Settings.LauncherPrereleases = true;
         store.Save();
         using HttpClient http = Client(Release(1, "1.1.0"), Release(2, "1.2.0-preview.1", true));
-        LauncherUpdateCheckService service = new( http, store );
+        LauncherUpdaterService service = new( http, store );
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
         store.Settings.LauncherPrereleases = false;
         Assert.Null((await service.CheckAsync("win-x64", "1.0.0", true)).Release);
@@ -114,11 +121,11 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     public void ConcurrentDismissalsDoNotOverwriteEachOther()
     {
         LauncherStore first = new( _home ), second = new( _home );
-        LauncherUpdateCheckService.Dismiss(first, first.Settings.LauncherRepository, 1);
-        LauncherUpdateCheckService.Dismiss(second, second.Settings.LauncherRepository, 2);
+        LauncherUpdaterService.Dismiss(first, first.Settings.LauncherRepository, 1);
+        LauncherUpdaterService.Dismiss(second, second.Settings.LauncherRepository, 2);
         Settings saved = new LauncherStore(_home).Settings;
-        Assert.True(LauncherUpdateCheckService.IsDismissed(saved, saved.LauncherRepository, 1));
-        Assert.True(LauncherUpdateCheckService.IsDismissed(saved, saved.LauncherRepository, 2));
+        Assert.True(LauncherUpdaterService.IsDismissed(saved, saved.LauncherRepository, 1));
+        Assert.True(LauncherUpdaterService.IsDismissed(saved, saved.LauncherRepository, 2));
     }
 
     [Fact]
@@ -132,7 +139,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
             Assert.Equal("/repos/dimmerly/Prowl-Launcher/releases", request.RequestUri!.AbsolutePath);
             return response.Task;
         }) );
-        Task<LauncherUpdateCheck> pending = new LauncherUpdateCheckService(http, store).CheckAsync("win-x64", "1.0.0", true);
+        Task<LauncherUpdateCheck> pending = new LauncherUpdaterService(http, store).CheckAsync("win-x64", "1.0.0", true);
         store.Settings.LauncherPrereleases = true;
         store.Settings.LauncherRepository = "someone/custom-launcher";
         response.SetResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -152,12 +159,12 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     public async Task ADeadlineDoesNotUseCachedLauncherReleases()
     {
         LauncherStore store = new( _home );
-        LauncherStore.WriteJson(Path.Combine(_home, "releases-" + GitHubRepositoryHelper.CacheKey(store.Settings.LauncherRepository) + ".json"), new[]
+        JsonFile.Write(Path.Combine(_home, "releases-" + GitHubRepository.CacheKey(store.Settings.LauncherRepository) + ".json"), new[]
         {
             Release(1, "1.1.0")
         });
         using HttpClient http = new( new StalledHandler() );
-        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdateCheckService(http, store)
+        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdaterService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50)));
     }
 
@@ -166,7 +173,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     {
         LauncherStore store = new( _home );
         using HttpClient http = new( new StalledHandler() );
-        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdateCheckService(http, store)
+        await Assert.ThrowsAsync<HttpRequestException>(() => new LauncherUpdaterService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, timeout: TimeSpan.FromMilliseconds(50)));
     }
 
@@ -176,7 +183,7 @@ public sealed class LauncherUpdateCheckTests : IDisposable
         LauncherStore store = new( _home );
         using HttpClient http = new( new StalledHandler() );
         using CancellationTokenSource cancellation = new();
-        Task<LauncherUpdateCheck> check = new LauncherUpdateCheckService(http, store)
+        Task<LauncherUpdateCheck> check = new LauncherUpdaterService(http, store)
             .CheckAsync("win-x64", "1.0.0", false, cancellation.Token, TimeSpan.FromSeconds(10));
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => check);
@@ -194,13 +201,5 @@ public sealed class LauncherUpdateCheckTests : IDisposable
     private sealed class Handler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

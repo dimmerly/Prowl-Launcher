@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Drawing;
 
 using OpenTK.Mathematics;
 
@@ -9,22 +8,29 @@ using Prowl.PaperUI.LayoutEngine;
 using Prowl.PaperUI.Markdown;
 using Prowl.Rosetta;
 using Prowl.Scribe;
-using Prowl.Vector.Spatial;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private NewsService? _news;
-    private string? _newsRepository;
-    private IReadOnlyList<NewsPost> _newsPosts = [];
-    private int _newsPage;
-    private int _newsPreviousPage;
-    private long _newsSlideStarted;
     private const double NewsSlideDuration = 0.24;
 
     private bool NewsSliding => _newsSlideStarted != 0
                                 && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
+    private readonly NewsImages _newsImages = new();
+    private readonly NewsImages _newsThumbnails = new();
+    private NewsService? _news;
+    private bool _newsFailed;
+    private bool _newsLoading;
+    private DateTime? _newsLocalStamp;
+    private MarkdownBuilder? _newsMarkdown;
+    private DateTime _newsNextCheck;
+    private int _newsPage;
+    private IReadOnlyList<NewsPost> _newsPosts = [];
+    private int _newsPreviousPage;
+    private string? _newsRepository;
+    private bool _newsRequested;
+    private NewsPost? _newsSelected;
+    private long _newsSlideStarted;
 
     private void ChangeNewsPage(int page)
     {
@@ -37,15 +43,6 @@ public sealed partial class Launcher
         _newsPage = page;
         _newsSlideStarted = Stopwatch.GetTimestamp();
     }
-    private bool _newsLoading;
-    private bool _newsRequested;
-    private bool _newsFailed;
-    private DateTime? _newsLocalStamp;
-    private DateTime _newsNextCheck;
-    private NewsPost? _newsSelected;
-    private MarkdownBuilder? _newsMarkdown;
-    private readonly NewsImages _newsImages = new();
-    private readonly NewsImages _newsThumbnails = new();
 
     private void DrawNewsSection(Paper p)
     {
@@ -119,7 +116,7 @@ public sealed partial class Launcher
             return;
         }
 
-        float available = Math.Max(1, (float)p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56);
+        float available = Math.Max(1, ContentWidth(p));
         bool hasMore = lastPage > 0;
         float sideSpace = hasMore ? 28 : 0;
         using (p.Box("news-previews").Height(88).Enter())
@@ -228,20 +225,8 @@ public sealed partial class Launcher
         float rounding = _appearance.Theme.Metrics.ContainerRounding;
         using (p.Box("thumbnail").Size(96, 88).Clip().IsNotInteractable().Enter())
         {
-            p.Draw((canvas, rect) =>
-            {
-                float width = (float)rect.Size.X, height = (float)rect.Size.Y;
-                float scale = Math.Max(width / texture.Width, height / texture.Height);
-                float imageWidth = texture.Width * scale, imageHeight = texture.Height * scale;
-                float x = (float)rect.Min.X, y = (float)rect.Min.Y;
-                canvas.SaveState();
-                canvas.SetBrushTexture(texture);
-                canvas.SetBrushTextureTransform(
-                    Transform2D.CreateTranslation(x + (width - imageWidth) / 2, y + (height - imageHeight) / 2)
-                    * Transform2D.CreateScale(imageWidth, imageHeight));
-                canvas.RoundedRectFilled(x, y, width, height, rounding, 0, 0, rounding, Color.White);
-                canvas.RestoreState();
-            });
+            // Only the card's left corners are rounded; the text sits to the right.
+            DrawCoverImage(p, texture, rounding, 0, 0, rounding);
         }
     }
 
@@ -332,7 +317,7 @@ public sealed partial class Launcher
                     {
                         if (Uri.TryCreate(service.Page(post.File), href, out Uri? uri) && uri.Scheme is "https" or "http")
                         {
-                            Open(uri.AbsoluteUri);
+                            ProcessHelper.OpenInShell(uri.AbsoluteUri);
                         }
                     });
                 ShowNewsArticle(post, _newsMarkdown);
@@ -358,16 +343,15 @@ public sealed partial class Launcher
     private void ShowNewsArticle(NewsPost post, MarkdownBuilder markdown)
     {
         Vector2i framebuffer = _window.FramebufferSize;
-        float scale = Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
+        float scale = ModalScale;
         float width = Math.Min(920, framebuffer.X / scale - 48);
         float height = Math.Max(100, Math.Min(600, framebuffer.Y / scale * 0.8f - 150));
         Origami.Modal(post.Title).Width(width)
             .CenteredContent(p => Origami.ScrollView(p, "news-article-scroll", width - 24, height)
                 .OverlayScrollbars(false).Padding(0, 20, 0, 0)
-                .ColSpacing(8).SmoothScroll(true).WheelStep(72).Body(() =>
+                .ColSpacing(8).SmoothScroll().WheelStep(72).Body(() =>
                 {
-                    markdown.Colors(Ink, Muted, _appearance.Accent, _appearance.Panel, _appearance.Theme.BorderSoft)
-                        .Build(p, "news-article-" + post.File);
+                    StyleMarkdown(markdown).Build(p, "news-article-" + post.File);
                 }))
             .Button(Loc.Get("launcher.common.close"), Modal.Pop, OrigamiVariant.Primary)
             .Show();

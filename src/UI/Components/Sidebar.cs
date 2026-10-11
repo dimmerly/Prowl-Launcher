@@ -1,6 +1,6 @@
+using Prowl.Launcher.Theming;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
-using Prowl.PaperUI.LayoutEngine;
 
 using Color=System.Drawing.Color;
 
@@ -27,7 +27,7 @@ public sealed partial class Launcher
                 .AlignItems(LayoutAlignment.Center)
                 .Enter())
             {
-                Color logoColor = store.Settings.LogoColor is {} hex ? Theming.ColorRamp.ParseHex(hex) : Ink;
+                Color logoColor = store.Settings.LogoColor is {} hex ? ColorRamp.ParseHex(hex) : Ink;
                 p.Box("brand-icon")
                     .Size(56, 56)
                     .IsNotInteractable()
@@ -39,13 +39,13 @@ public sealed partial class Launcher
                 .BackgroundColor(_appearance.Theme.BorderSoft)
                 .IsNotInteractable();
 
-            Nav(p, "projects-nav", "launcher.projects.title", 0);
-            Nav(p, "versions-nav", "launcher.versions.title", 1);
-            Nav(p, "samples-nav", "launcher.samples.title", 3);
+            Nav(p, "projects-nav", "launcher.projects.title", LauncherTab.Projects);
+            Nav(p, "versions-nav", "launcher.versions.title", LauncherTab.Versions);
+            Nav(p, "samples-nav", "launcher.samples.title", LauncherTab.Samples);
             p.Box("sidebar-spacer");
-            SidebarLink(p, "github", "GitHub", () => Open("https://github.com/" + store.Settings.ProwlRepository));
-            SidebarLink(p, "discord", "Discord", () => Open("https://discord.gg/BqnJ9Rn4sn"), LauncherIcons.Discord);
-            Nav(p, "settings-nav", "launcher.settings.title", 2);
+            SidebarLink(p, "github", "GitHub", () => ProcessHelper.OpenInShell(Constants.Network.GitHubUrl + store.Settings.ProwlRepository));
+            SidebarLink(p, "discord", "Discord", () => ProcessHelper.OpenInShell("https://discord.gg/BqnJ9Rn4sn"), LauncherIcons.Discord);
+            Nav(p, "settings-nav", "launcher.settings.title", LauncherTab.Settings);
         }
     }
 }

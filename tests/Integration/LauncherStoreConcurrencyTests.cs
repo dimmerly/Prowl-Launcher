@@ -1,11 +1,18 @@
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherStoreConcurrencyTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
     private string ProjectFolder(string name)
     {
         string path = Path.Combine(_home, name);
@@ -72,13 +79,5 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
         });
         await Task.WhenAll(Task.Run(first.Save), Task.Run(second.Save));
         Assert.Equal(2, new LauncherStore(_home).Settings.Projects.Count);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

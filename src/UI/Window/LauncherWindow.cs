@@ -8,7 +8,6 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 
 using Prowl.PaperUI;
 using Prowl.Vector;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher

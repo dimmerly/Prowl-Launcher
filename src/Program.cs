@@ -1,5 +1,4 @@
-using System.Diagnostics;
-
+using System.ComponentModel;
 namespace Prowl.Launcher;
 
 static class Program
@@ -9,11 +8,11 @@ static class Program
     {
         try
         {
-            if (args.Length == 2 && args[0] == "--editor-console-host")
+            if (args.Length == 2 && args[0] == EditorConsoleService.CollectorArgument)
             {
                 try
                 {
-                    Environment.ExitCode = EditorConsoleService.CollectAsync(args[1]).GetAwaiter().GetResult();
+                    Environment.ExitCode = EditorConsoleCollector.RunAsync(args[1]).GetAwaiter().GetResult();
                 }
                 catch (Exception error)
                 {
@@ -30,7 +29,7 @@ static class Program
             }
 
             string? screenshot = null;
-            int tab = 0;
+            LauncherTab tab = LauncherTab.Projects;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -39,13 +38,13 @@ static class Program
                         screenshot = args[++i];
                         break;
                     case "--versions":
-                        tab = 1;
+                        tab = LauncherTab.Versions;
                         break;
                     case "--settings":
-                        tab = 2;
+                        tab = LauncherTab.Settings;
                         break;
                     case "--samples":
-                        tab = 3;
+                        tab = LauncherTab.Samples;
                         break;
                 }
             }
@@ -56,12 +55,12 @@ static class Program
                 tab,
                 args.Contains("--offline"),
                 new LauncherPreviews(
-                    Progress: args.Contains("--progress-preview"),
-                    Alert: args.Contains("--alert-preview"),
-                    Notes: args.Contains("--notes-preview"),
-                    NewProject: args.Contains("--new-project"),
-                    Uninstall: args.Contains("--uninstall-preview"),
-                    Installation: args.Contains("--installation-preview")));
+                    args.Contains("--progress-preview"),
+                    args.Contains("--alert-preview"),
+                    args.Contains("--notes-preview"),
+                    args.Contains("--new-project"),
+                    args.Contains("--uninstall-preview"),
+                    args.Contains("--installation-preview")) );
             launcher.Run(Constants.Layout.WindowTitle, Constants.Layout.WindowWidth, Constants.Layout.WindowHeight);
         }
         catch (Exception exception)
@@ -78,7 +77,7 @@ static class Program
     {
         string? updated = store.Settings.LauncherExecutable;
         if (LauncherStartupService.ReadyPipe != null || args.Contains("--screenshot") || updated == null
-            || LauncherStore.PathsEqual(updated, Environment.ProcessPath!))
+            || FileSystemHelper.PathsEqual(updated, Environment.ProcessPath!))
         {
             return false;
         }
@@ -86,16 +85,16 @@ static class Program
         try
         {
             string versions = LauncherUpdaterService.UpdatesPath(store);
-            LauncherStore.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
+            FileSystemHelper.SafeChildPath(versions, Path.GetRelativePath(versions, updated));
             LauncherStartupService.StartAsync(updated, store.Home, args).GetAwaiter().GetResult();
             return true;
         }
-        catch (Exception exception) when (exception is IOException or System.ComponentModel.Win32Exception
+        catch (Exception exception) when (exception is IOException or Win32Exception
             or OperationCanceledException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
         {
             store.Settings.LauncherExecutable = null;
             store.Save();
-            File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Update fallback: {exception}\n");
+            LauncherLog.Append(store.Home, $"Update fallback: {exception}");
             return false;
         }
     }

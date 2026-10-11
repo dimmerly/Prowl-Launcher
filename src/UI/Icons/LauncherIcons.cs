@@ -1,7 +1,7 @@
+using System.Globalization;
 using System.Xml.Linq;
 
 using Prowl.OrigamiUI;
-
 namespace Prowl.Launcher;
 
 static class LauncherIcons
@@ -16,23 +16,23 @@ static class LauncherIcons
     public static readonly IOrigamiIcon Minimize = LoadSvgIcon("minimize");
     public static readonly IOrigamiIcon ProwlLogo = LoadSvgIcon("prowl");
 
+    public static readonly SvgIcon ExternalLink = new( "M9 2h5v5M14 2L7 9M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10" );
+    public static readonly SvgIcon Refresh = new( "M13 6a5 5 0 1 0 0 4M13 2v4H9" );
+    public static readonly SvgIcon Play = new( "M5 2l8 6-8 6z" );
+
     private static IOrigamiIcon LoadSvgIcon(string name)
     {
         using Stream stream = typeof( LauncherIcons ).Assembly.GetManifestResourceStream($"Prowl.Launcher.Icons.{name}.svg")
                               ?? throw new InvalidOperationException($"Missing SVG icon: {name}");
         XElement svg = XElement.Load(stream);
         float[] viewBox = svg.Attribute("viewBox")!.Value.Split(' ')
-            .Select(value => float.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+            .Select(value => float.Parse(value, CultureInfo.InvariantCulture))
             .ToArray();
         string path = string.Join(" ", svg.Descendants()
             .Where(element => element.Name.LocalName == "path")
             .Select(element => element.Attribute("d")!.Value));
         return new SvgPathIcon(path, viewBox[2], viewBox[3]);
     }
-
-    public static readonly SvgIcon ExternalLink = new( "M9 2h5v5M14 2L7 9M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10" );
-    public static readonly SvgIcon Refresh = new( "M13 6a5 5 0 1 0 0 4M13 2v4H9" );
-    public static readonly SvgIcon Play = new( "M5 2l8 6-8 6z" );
     public static IOrigamiIcon? ForAction(string text) => text switch
     {
         "launcher.projects.add" => OrigamiIconSet.FolderPlus,

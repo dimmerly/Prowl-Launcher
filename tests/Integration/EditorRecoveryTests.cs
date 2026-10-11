@@ -1,5 +1,4 @@
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -8,15 +7,24 @@ public sealed class EditorRecoveryTests : IDisposable
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlRecoveryTests", Guid.NewGuid().ToString("N"));
     private readonly HttpClient _http = new();
 
+    public void Dispose()
+    {
+        _http.Dispose();
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
+
     private (LauncherStore store, InstalledEditor editor, string work) InterruptedRepair()
     {
         LauncherStore store = new( _home );
         InstalledEditor editor = new( 1, "v1.0.0", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow );
         string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
         string previous = Path.Combine(work, "previous");
-        LauncherStore.WriteJson(Path.Combine(previous, "installation.json"), editor);
+        JsonFile.Write(Path.Combine(previous, "installation.json"), editor);
         File.WriteAllText(Path.Combine(previous, editor.ExecutableRelativePath), "old editor");
-        LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
+        JsonFile.Write(Path.Combine(work, "repair.json"), editor);
         return (store, editor, work);
     }
 
@@ -46,7 +54,7 @@ public sealed class EditorRecoveryTests : IDisposable
     public void CommittedRepairKeepsTheNewEditorAndRemovesOnlyItsBackup()
     {
         (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
-        LauncherStore.WriteJson(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
+        JsonFile.Write(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
         File.WriteAllText(store.ExecutablePath(editor), "new editor");
         string sample = Path.Combine(store.WorkPath, "sample-running", "data.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(sample)!);
@@ -65,14 +73,5 @@ public sealed class EditorRecoveryTests : IDisposable
         new EditorInstallerService(_http, store).RecoverInterruptedOperations();
         Assert.Equal("old editor", File.ReadAllText(Path.Combine(work, "previous", editor.ExecutableRelativePath)));
         Assert.True(File.Exists(Path.Combine(work, "repair.json")));
-    }
-
-    public void Dispose()
-    {
-        _http.Dispose();
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

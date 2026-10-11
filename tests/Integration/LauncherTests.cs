@@ -4,16 +4,21 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using Prowl.Launcher;
-
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherTests : IDisposable
 {
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlLauncherTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
     private LauncherStore Store() => new( _home );
 
     [Fact]
@@ -31,7 +36,7 @@ public sealed class LauncherTests : IDisposable
         Assert.Equal("win-x64", editor.Platform);
         Assert.Equal("v1.0-preview-4-win-x64", editor.Key);
         Assert.Equal(directory, store.InstallPath(editor));
-        LauncherStore.WriteJson(path, editor);
+        JsonFile.Write(path, editor);
         Assert.Equal(editor, Assert.Single(new LauncherStore(_home).InstalledEditors()));
     }
 
@@ -71,12 +76,6 @@ public sealed class LauncherTests : IDisposable
 
     private static byte[] EditorArchive(string text = "editor") => Archive(("Prowl/Prowl.Editor.exe", text),
         ("Prowl/Prowl.Editor.runtimeconfig.json", "{\"runtimeOptions\":{\"tfm\":\"net10.0\"}}"));
-
-    private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
-            => Task.FromResult(respond(request));
-    }
 
     private static HttpClient Client(byte[] content) => new( new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK)
     {
@@ -179,7 +178,7 @@ public sealed class LauncherTests : IDisposable
         Directory.CreateDirectory(_home);
         string archive = Path.Combine(_home, "attack.zip");
         File.WriteAllBytes(archive, Archive((name, "bad")));
-        Assert.Throws<InvalidDataException>(() => EditorInstallerService.ExtractArchive(archive, Path.Combine(_home, "stage")));
+        Assert.Throws<InvalidDataException>(() => ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "stage")));
         Assert.False(File.Exists(Path.Combine(_home, "outside.txt")));
     }
 
@@ -194,7 +193,7 @@ public sealed class LauncherTests : IDisposable
             ZipArchiveEntry link = zip.CreateEntry("Prowl/link");
             link.ExternalAttributes = unchecked((int)0xA1FF0000);
         }
-        Assert.Throws<InvalidDataException>(() => EditorInstallerService.ExtractArchive(archive, Path.Combine(_home, "stage")));
+        Assert.Throws<InvalidDataException>(() => ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "stage")));
     }
 
     [Fact]
@@ -282,7 +281,7 @@ public sealed class LauncherTests : IDisposable
         const string original = "{\"name\":\"My game\",\"version\":\"1.0-preview.4\"}";
         File.WriteAllText(marker, original);
         InstalledEditor editor = new( 1, "v1.0-preview-4", "win-x64", "Prowl/Prowl.Editor.exe", DateTimeOffset.UtcNow );
-        LauncherStore.WriteJson(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
+        JsonFile.Write(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
         Project added = store.AddProject(marker);
         Assert.Equal("My game", added.Name);
         Assert.Equal(editor.Key, added.EditorKey);
@@ -298,7 +297,7 @@ public sealed class LauncherTests : IDisposable
         string project = Path.Combine(_home, "Project");
         Directory.CreateDirectory(Path.Combine(project, "Assets"));
         string recent = Path.Combine(_home, "recent.json");
-        LauncherStore.WriteJson(recent, new[]
+        JsonFile.Write(recent, new[]
         {
             new Project
             {
@@ -333,7 +332,7 @@ public sealed class LauncherTests : IDisposable
     [InlineData("1.0.0-preview.1", "1.0.0-preview.1", false)]
     [InlineData("v1.1.0", "1.0.0", false)]
     public void LauncherUpdates_OnlyOfferNewerVersions(string tag, string current, bool expected)
-        => Assert.Equal(expected, LauncherUpdaterService.IsNewer(tag, current));
+        => Assert.Equal(expected, VersionHelper.IsNewer(tag, current));
 
     [Theory]
     [InlineData(false)]
@@ -613,12 +612,10 @@ public sealed class LauncherTests : IDisposable
         Assert.Empty(store.InstalledEditors());
     }
 
-    public void Dispose()
+    private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+            => Task.FromResult(respond(request));
     }
 }
 

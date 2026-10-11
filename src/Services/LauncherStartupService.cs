@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO.Pipes;
-
 namespace Prowl.Launcher;
 
 static class LauncherStartupService
@@ -46,12 +45,7 @@ static class LauncherStartupService
         CancellationToken token = default, TimeSpan? timeout = null,
         Func<ProcessStartInfo, Process?>? start = null)
     {
-        string name = "prowl-ready-" + Guid.NewGuid().ToString("N");
-        // Absolute Unix pipe paths avoid adding a potentially long TMPDIR and CoreFxPipe_ prefix.
-        if (!OperatingSystem.IsWindows())
-        {
-            name = Path.Combine("/tmp", name);
-        }
+        string name = ProcessHelper.PipeName("prowl-ready-");
         await using NamedPipeServerStream pipe = new( name, PipeDirection.In, 1,
             PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly );
         ProcessStartInfo info = new( executable )

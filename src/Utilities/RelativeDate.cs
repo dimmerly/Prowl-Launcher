@@ -1,5 +1,4 @@
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 static class RelativeDate
@@ -21,5 +20,33 @@ static class RelativeDate
                 count = days
             })
         };
+    }
+
+    /// <summary>Coarse elapsed time since <paramref name="time" />: just now, minutes, hours or days ago.</summary>
+    internal static string FormatElapsed(DateTimeOffset time)
+    {
+        TimeSpan elapsed = DateTimeOffset.UtcNow - time;
+        if (elapsed.TotalMinutes < 1)
+        {
+            return Loc.Get("launcher.projects.just_now");
+        }
+        if (elapsed.TotalHours < 1)
+        {
+            return Loc.Get("launcher.projects.minutes_ago", new
+            {
+                count = (int)elapsed.TotalMinutes
+            });
+        }
+        if (elapsed.TotalDays < 1)
+        {
+            return Loc.Get("launcher.projects.hours_ago", new
+            {
+                count = (int)elapsed.TotalHours
+            });
+        }
+        return Loc.Get("launcher.projects.days_ago", new
+        {
+            count = (int)elapsed.TotalDays
+        });
     }
 }

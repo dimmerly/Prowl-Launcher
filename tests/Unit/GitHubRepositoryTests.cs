@@ -1,7 +1,4 @@
-using Prowl.Launcher;
-
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Unit")]
@@ -12,12 +9,12 @@ public sealed class GitHubRepositoryTests
     [InlineData(" Someone/Prowl ", "Someone/Prowl")]
     [InlineData("https://github.com/Someone/Prowl/", "Someone/Prowl")]
     public void RepositoryInputAcceptsNamesAndGitHubUrls(string value, string expected)
-        => Assert.Equal(expected, GitHubRepositoryHelper.Normalize(value));
+        => Assert.Equal(expected, GitHubRepository.Normalize(value));
 
     [Theory]
     [InlineData("https://example.com/Someone/Prowl")]
     [InlineData("../Prowl")]
     [InlineData("Someone/../Prowl")]
     public void RepositoryInputRejectsInvalidNames(string value)
-        => Assert.Throws<InvalidDataException>(() => GitHubRepositoryHelper.Normalize(value));
+        => Assert.Throws<InvalidDataException>(() => GitHubRepository.Normalize(value));
 }

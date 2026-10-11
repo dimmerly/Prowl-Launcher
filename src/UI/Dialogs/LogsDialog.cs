@@ -1,15 +1,16 @@
+using System.Drawing;
+
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private EditorConsoleSession? _selectedLogSession;
-    private string _logsSearch = "";
     private bool _logsProblemsOnly;
+    private string _logsSearch = "";
+    private EditorConsoleSession? _selectedLogSession;
 
     private void ShowLogsDialog()
     {
@@ -80,7 +81,7 @@ public sealed partial class Launcher
             }
             Origami.ScrollView(p, "console-output-" + session.Id, width,
                     Math.Max(0, height - 52 - (_editorSessions.Count > 1 ? 52 : 0)))
-                .OverlayScrollbars(false).Padding(12).SmoothScroll(true).WheelStep(72).ColSpacing(2)
+                .OverlayScrollbars(false).Padding(12).SmoothScroll().WheelStep(72).ColSpacing(2)
                 .Body(() =>
                 {
                     int shown = 0;
@@ -95,7 +96,7 @@ public sealed partial class Launcher
                         shown++;
                         p.Box("console-line-" + i).Height(26).Clip()
                             .Text($"{line.Time.ToLocalTime():HH:mm:ss}  {line.Text}", _font).FontSize(15)
-                            .TextColor(line.IsError ? System.Drawing.Color.IndianRed : line.IsWarning ? System.Drawing.Color.Goldenrod : Ink)
+                            .TextColor(line.IsError ? Color.IndianRed : line.IsWarning ? Color.Goldenrod : Ink)
                             .Tooltip(line.Text);
                     }
                     if (shown == 0)

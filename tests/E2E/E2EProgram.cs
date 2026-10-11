@@ -1,6 +1,5 @@
 using System.IO.Pipes;
 using System.Text.Json;
-
 namespace Prowl.Launcher.Test.E2E;
 
 /// <summary>Child-process entry point for GUI scenarios and editor/update launch probes.</summary>

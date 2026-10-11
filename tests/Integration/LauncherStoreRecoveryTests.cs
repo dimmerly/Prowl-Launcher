@@ -1,14 +1,21 @@
 using System.Text.Json;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherStoreRecoveryTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsRecovery", Guid.NewGuid().ToString("N"));
     private string SettingsPath => Path.Combine(_home, "settings.json");
+    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsRecovery", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     [Theory]
     [InlineData("{broken")]
@@ -104,13 +111,5 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
         LauncherStore saved = new( _home );
         Assert.Equal("fr", saved.Settings.Locale);
         Assert.True(saved.Settings.ShowFps);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 }

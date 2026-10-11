@@ -1,11 +1,20 @@
-using Xunit;
+using System.Runtime.InteropServices;
 
+using Xunit;
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherInstallationTests : IDisposable
 {
     private readonly string _work = Path.Combine(Path.GetTempPath(), "ProwlInstallTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_work))
+        {
+            Directory.Delete(_work, true);
+        }
+    }
 
     [Fact]
     public void DefaultEditorsInstallAlongsideTheLauncherFolder()
@@ -152,24 +161,16 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             dynamic result = link = ((dynamic)shell).CreateShortcut(shortcut);
             Assert.Equal("Prowl", (string)result.Description);
-            Assert.True(LauncherStore.PathsEqual(executable, (string)result.TargetPath));
-            Assert.True(LauncherStore.PathsEqual(Path.GetDirectoryName(executable)!, (string)result.WorkingDirectory));
+            Assert.True(FileSystemHelper.PathsEqual(executable, (string)result.TargetPath));
+            Assert.True(FileSystemHelper.PathsEqual(Path.GetDirectoryName(executable)!, (string)result.WorkingDirectory));
         }
         finally
         {
             if (link != null)
             {
-                System.Runtime.InteropServices.Marshal.FinalReleaseComObject(link);
+                Marshal.FinalReleaseComObject(link);
             }
-            System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_work))
-        {
-            Directory.Delete(_work, true);
+            Marshal.FinalReleaseComObject(shell);
         }
     }
 }

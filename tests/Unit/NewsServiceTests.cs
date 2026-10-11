@@ -1,19 +1,27 @@
 using System.Net;
+using System.Text.Json;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Unit")]
 public sealed class NewsServiceTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlNewsTests", Guid.NewGuid().ToString("N"));
     private const string Index = """
                                  [
                                    {"file":"older.md","title":"Older showcase","date":"2024-01-01"},
                                    {"file":"newer.md","title":"New devlog","date":"2026-10-10","summary":"Progress","author":"Paper"}
                                  ]
                                  """;
+    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlNewsTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_home))
+        {
+            Directory.Delete(_home, true);
+        }
+    }
 
     [Fact]
     public void IndexIsSortedNewestFirstAndOptionalMetadataWorks()
@@ -38,7 +46,7 @@ public sealed class NewsServiceTests : IDisposable
     [InlineData("post.txt")]
     public void IndexRejectsPathsOutsideNews(string file)
     {
-        string json = System.Text.Json.JsonSerializer.Serialize(new[]
+        string json = JsonSerializer.Serialize(new[]
         {
             new NewsPost(file, "Title", new DateOnly(2026, 10, 10))
         });
@@ -50,7 +58,7 @@ public sealed class NewsServiceTests : IDisposable
     {
         NewsPost post = new( "preview-4/README.md", "Preview 4", new DateOnly(2026, 8, 30),
             Thumbnail: "images/thumbnail.png" );
-        string index = System.Text.Json.JsonSerializer.Serialize(new[]
+        string index = JsonSerializer.Serialize(new[]
         {
             post
         });
@@ -210,14 +218,6 @@ public sealed class NewsServiceTests : IDisposable
         using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.GetImageAsync(image, false, cancellation.Token));
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_home))
-        {
-            Directory.Delete(_home, true);
-        }
     }
 
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

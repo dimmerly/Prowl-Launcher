@@ -2,29 +2,28 @@ using System.Reflection;
 
 using Prowl.OrigamiUI;
 using Prowl.Rosetta;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher(
     LauncherStore store,
     string? screenshot = null,
-    int initialTab = 0,
+    LauncherTab initialTab = LauncherTab.Projects,
     bool offline = false,
     LauncherPreviews? previews = null
 )
 {
-    private readonly LauncherPreviews _previews = previews ?? new LauncherPreviews();
+    private readonly CancellationTokenSource _backgroundCancellation = new();
     private readonly HttpClient _http = new()
     {
         Timeout = Constants.Network.DownloadTimeout
     };
-    private readonly CancellationTokenSource _backgroundCancellation = new();
     private readonly CancellationTokenSource _launcherUpdateCancellation = new();
+    private readonly LauncherPreviews _previews = previews ?? new LauncherPreviews();
+    private LauncherAppearance _appearance = null!;
 
     private GitHubReleasesService _github = null!;
     private EditorInstallerService _installer = null!;
     private SampleService _samples = null!;
-    private LauncherAppearance _appearance = null!;
 
     private void Initialize()
     {
@@ -103,7 +102,7 @@ public sealed partial class Launcher(
         // can clean up immediately, even though it also uses a startup health check.
         if (LauncherStartupService.ReadyPipe == null
             || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
-                                                              && LauncherStore.PathsEqual(active, current))
+                                                              && FileSystemHelper.PathsEqual(active, current))
         {
             CleanupLauncherUpdates();
         }
@@ -127,6 +126,16 @@ public sealed partial class Launcher(
         _backgroundCancellation.Dispose();
         _launcherUpdateCancellation.Dispose();
     }
+}
+
+/// <summary>The page shown in the main area. <see cref="Launch" /> is the full-screen editor launch view.</summary>
+public enum LauncherTab
+{
+    Projects,
+    Versions,
+    Settings,
+    Samples,
+    Launch
 }
 
 /// <summary>Screenshot and development states the launcher can open directly into.</summary>

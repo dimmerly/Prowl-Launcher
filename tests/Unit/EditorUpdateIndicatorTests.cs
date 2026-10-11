@@ -1,5 +1,4 @@
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 public sealed class EditorUpdateIndicatorTests

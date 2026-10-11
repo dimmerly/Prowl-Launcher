@@ -1,11 +1,8 @@
-using System;
 using System.Drawing;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Prowl.OrigamiUI;
-
 namespace Prowl.Launcher.Theming;
 
 /// <summary>Static editor-background style used when the animated background is off.</summary>
@@ -28,8 +25,8 @@ public enum BackgroundImageFit
 }
 
 /// <summary>
-/// A color ramp with a single primary color. Other stops are computed from RGB offsets.
-/// Optionally, all stops can be individually overridden.
+///     A color ramp with a single primary color. Other stops are computed from RGB offsets.
+///     Optionally, all stops can be individually overridden.
 /// </summary>
 public class ColorRamp
 {
@@ -141,10 +138,20 @@ public class ColorRamp
 }
 
 /// <summary>
-/// Serializable theme data. Ramps store a single primary color + optional per-stop overrides.
+///     Serializable theme data. Ramps store a single primary color + optional per-stop overrides.
 /// </summary>
 public class EditorThemeData
 {
+
+    // Default ramp stops (RGB) = Origami's ramps. Customization is applied on top of Origami's
+    // live theme, preserving each stop's alpha, so translucent glass surfaces stay glass.
+    private static readonly Color[] DefaultNeutral = [H("#06060E"), H("#96A0FF"), H("#161628"), H("#0E0E1C"), H("#181830"), H("#22223E"), H("#30304E")];
+    private static readonly Color[] DefaultPurple = [H("#14153A"), H("#1E1F4D"), H("#2E3072"), H("#464B9E"), H("#6366F1"), H("#818CF8"), H("#A5B4FC")];
+    private static readonly Color[] DefaultBlue = [H("#1A0F33"), H("#241547"), H("#372066"), H("#4E2E8C"), H("#8B5CF6"), H("#A78BFA"), H("#C4B5FD")];
+    private static readonly Color[] DefaultRed = [H("#1F0E10"), H("#3A181E"), H("#5A242C"), H("#8C3442"), H("#FB7185"), H("#FC8C9C"), H("#FAAFBA")];
+    private static readonly Color[] DefaultGreen = [H("#0F1F15"), H("#162C20"), H("#1F4530"), H("#2D6446"), H("#4ADE80"), H("#78E6A0"), H("#AAF0C3")];
+    private static readonly Color[] DefaultAmber = [H("#1F1808"), H("#3A2A10"), H("#5C4017"), H("#825C28"), H("#FBBF24"), H("#FCD060"), H("#FAE0A0")];
+    private static readonly Color[] DefaultInk = [H("#494960"), H("#6A6A86"), H("#9090AB"), H("#BBBBD4"), H("#EAEAF7"), H("#FFFFFF"), H("#FFFFFF")];
     /// <summary> Display name of this theme. </summary>
     public string Name
     {
@@ -412,16 +419,6 @@ public class EditorThemeData
         set;
     } = 0.3f;
 
-    // Default ramp stops (RGB) = Origami's ramps. Customization is applied on top of Origami's
-    // live theme, preserving each stop's alpha, so translucent glass surfaces stay glass.
-    private static readonly Color[] DefaultNeutral = [H("#06060E"), H("#96A0FF"), H("#161628"), H("#0E0E1C"), H("#181830"), H("#22223E"), H("#30304E")];
-    private static readonly Color[] DefaultPurple = [H("#14153A"), H("#1E1F4D"), H("#2E3072"), H("#464B9E"), H("#6366F1"), H("#818CF8"), H("#A5B4FC")];
-    private static readonly Color[] DefaultBlue = [H("#1A0F33"), H("#241547"), H("#372066"), H("#4E2E8C"), H("#8B5CF6"), H("#A78BFA"), H("#C4B5FD")];
-    private static readonly Color[] DefaultRed = [H("#1F0E10"), H("#3A181E"), H("#5A242C"), H("#8C3442"), H("#FB7185"), H("#FC8C9C"), H("#FAAFBA")];
-    private static readonly Color[] DefaultGreen = [H("#0F1F15"), H("#162C20"), H("#1F4530"), H("#2D6446"), H("#4ADE80"), H("#78E6A0"), H("#AAF0C3")];
-    private static readonly Color[] DefaultAmber = [H("#1F1808"), H("#3A2A10"), H("#5C4017"), H("#825C28"), H("#FBBF24"), H("#FCD060"), H("#FAE0A0")];
-    private static readonly Color[] DefaultInk = [H("#494960"), H("#6A6A86"), H("#9090AB"), H("#BBBBD4"), H("#EAEAF7"), H("#FFFFFF"), H("#FFFFFF")];
-
     private static Color H(string hex) => ColorTranslator.FromHtml(hex);
 
     /// <summary>Initialize ramp offsets from the Origami defaults. Must be called after deserialization.</summary>
@@ -436,8 +433,10 @@ public class EditorThemeData
         Ink.Init(7, 4, DefaultInk);
     }
 
-    /// <summary>Overlay this customization onto Origami's live theme: overwrite each ramp's RGB from the
-    /// edited stops while keeping Origami's per-stop alpha (so translucent surfaces stay glass).</summary>
+    /// <summary>
+    ///     Overlay this customization onto Origami's live theme: overwrite each ramp's RGB from the
+    ///     edited stops while keeping Origami's per-stop alpha (so translucent surfaces stay glass).
+    /// </summary>
     public void ApplyTo(OrigamiTheme t)
     {
         ApplyRamp(t.Neutral, Neutral);
@@ -503,7 +502,7 @@ public class EditorThemeData
         }
     }
 
-    /// <summary> Creates the default theme, <see cref="ThemePresets.Default"/> with initialized ramps. </summary>
+    /// <summary> Creates the default theme, <see cref="ThemePresets.Default" /> with initialized ramps. </summary>
     public static EditorThemeData CreateDefault()
     {
         EditorThemeData d = new();

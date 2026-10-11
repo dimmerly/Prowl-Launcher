@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-
 namespace Prowl.Launcher;
 
 public sealed record InstalledEditor(
@@ -11,12 +10,20 @@ public sealed record InstalledEditor(
     DateTimeOffset InstalledAt
 )
 {
-    public string? SourceCommit { get; init; }
-    public string? EditorVersion { get; init; }
+    public string? SourceCommit
+    {
+        get;
+        init;
+    }
+    public string? EditorVersion
+    {
+        get;
+        init;
+    }
     [JsonIgnore]
     public bool IsMain => ReleaseId == 0 && (Tag == "main"
-        || SourceCommit is { Length: 40 } && Regex.IsMatch(SourceCommit, @"\A[0-9a-f]{40}\z")
-        && (Tag == "main-" + SourceCommit || Tag == "main-" + SourceCommit[..7]));
+                                             || SourceCommit is { Length: 40 } && Regex.IsMatch(SourceCommit, @"\A[0-9a-f]{40}\z")
+                                                                               && (Tag == "main-" + SourceCommit || Tag == "main-" + SourceCommit[..7]));
 
     // Metadata without provenance belongs to the historical default repository.
     public string Repository
@@ -32,7 +39,7 @@ public sealed record InstalledEditor(
             string identity = IsMain && Tag != "main" ? "main-" + SourceCommit : Tag;
             return Repository.Equals(Constants.Defaults.ProwlRepository, StringComparison.OrdinalIgnoreCase)
                 ? $"{identity}-{Platform}"
-                : $"{identity}-{Platform}-{GitHubRepositoryHelper.CacheKey(Repository)}";
+                : $"{identity}-{Platform}-{GitHubRepository.CacheKey(Repository)}";
         }
     }
 

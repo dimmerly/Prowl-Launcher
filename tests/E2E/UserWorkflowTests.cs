@@ -1,7 +1,6 @@
 using System.Diagnostics;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test.E2E;
 
 [CollectionDefinition("E2E", DisableParallelization = true)]
@@ -150,5 +149,4 @@ public sealed class UserWorkflowTests
             catch (ArgumentException) {}
         }
     }
-
 }

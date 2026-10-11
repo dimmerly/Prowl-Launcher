@@ -1,13 +1,19 @@
-using Prowl.Rosetta;
-
+using System.ComponentModel;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Text.Json;
 
+using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
+/// <summary>
+///     Installs, repairs, uninstalls and launches editors. Every change goes through a journaled workspace so
+///     an interrupted install never loses the previous installation.
+/// </summary>
 public sealed partial class EditorInstallerService(HttpClient http, LauncherStore store)
 {
+    private const string EditorName = "Prowl.Editor";
+    private const string RepairJournal = "repair.json";
+
     public async Task<InstalledEditor> InstallAsync(
         EditorRelease release,
         string platform,
@@ -16,29 +22,19 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         string? sourceRepository = null
     )
     {
-        ReleaseAsset asset = release.AssetFor(platform) ?? throw new InvalidOperationException(Loc.Get("launcher.errors.no_platform_build", new
-        {
-            platform
-        }));
+        ReleaseAsset asset = release.AssetFor(platform)
+                             ?? throw new InvalidOperationException(Loc.Get("launcher.errors.no_platform_build", new
+                             {
+                                 platform
+                             }));
         if (release.Id <= 0 || !Constants.Storage.SupportedPlatforms.Contains(platform))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_release"));
         }
 
-        Directory.CreateDirectory(store.WorkPath);
-        Directory.CreateDirectory(store.VersionsPath);
-        RejectLink(store.Home);
-        RejectLink(store.WorkPath);
-        RejectLink(store.VersionsPath);
-        using FileStream operation = AcquireOperationLock();
-        RecoverInterruptedInstalls();
-        string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
-        if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? source)
-            || source.Scheme != "https" || source.Host != "github.com"
-            || !source.AbsolutePath.StartsWith($"/{repository}/releases/download/", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
-        }
+        using FileStream operation = BeginOperation();
+        string repository = GitHubRepository.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
+        ReleasePackage.RequireFromRepository(asset, repository);
         InstalledEditor editor = new( release.Id, release.Tag, platform, "", DateTimeOffset.UtcNow )
         {
             Repository = repository
@@ -47,71 +43,69 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         if (Directory.Exists(destination))
         {
             RejectLink(destination);
-            if (IsRunning(editor))
-            {
-                throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
-            }
+            ThrowIfRunning(editor);
         }
 
-        string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
-        string staging = Path.Combine(work, "extracted");
-        string backup = Path.Combine(work, "previous");
-        Directory.CreateDirectory(work);
-        try
+        using InstallWorkspace workspace = new( store );
+        string archive = Path.Combine(workspace.Work, "editor.zip");
+        await ReleasePackage.DownloadVerifiedAsync(http, asset, archive, progress, token);
+        progress?.Report(new TransferProgress("launcher.download.extracting"));
+        await Task.Run(() => ReleasePackage.ExtractArchive(archive, workspace.Staging, token), token);
+
+        string executable = Directory
+            .EnumerateFiles(workspace.Staging, Platform.ExecutableName(EditorName, platform), SearchOption.AllDirectories)
+            .FirstOrDefault() ?? throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
+        ReleasePackage.MarkExecutable(executable);
+        editor = editor with
         {
-            string archive = Path.Combine(work, "editor.zip");
-            await PackageDownloadService.DownloadVerifiedAsync(http, asset, archive, progress, token);
-            progress?.Report(new TransferProgress("launcher.download.extracting"));
-            await Task.Run(() => ExtractArchive(archive, staging, token), token);
-            string executableName = platform.StartsWith("win-", StringComparison.Ordinal) ? "Prowl.Editor.exe" : "Prowl.Editor";
-            string? executable = Directory.EnumerateFiles(staging, executableName, SearchOption.AllDirectories).FirstOrDefault();
-            if (executable == null)
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
-            }
+            ExecutableRelativePath = Path.GetRelativePath(workspace.Staging, executable)
+        };
 
-            editor = editor with
-            {
-                ExecutableRelativePath = Path.GetRelativePath(staging, executable)
-            };
-            LauncherStore.WriteJson(Path.Combine(staging, "installation.json"), editor);
-            token.ThrowIfCancellationRequested();
-            if (IsRunning(editor))
-            {
-                throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
-            }
-
-            LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
-            DirectoryReplacementService.Swap(staging, destination, backup);
-            if (store.Settings.DefaultEditorKey == null)
-            {
-                store.Settings.DefaultEditorKey = editor.Key;
-                store.Save();
-            }
-
-            progress?.Report(new TransferProgress(Loc.Get("launcher.download.installed", new
-            {
-                version = release.Tag
-            }), 1));
-            return editor;
-        }
-        finally
+        CommitInstall(editor, workspace, destination, token);
+        progress?.Report(new TransferProgress(Loc.Get("launcher.download.installed", new
         {
-            // This is a generated child of Work, never a release-supplied path.
-            // Keep the journal and old installation if rollback or backup cleanup failed.
-            if (Directory.Exists(work) && !Directory.Exists(backup))
-            {
-                Directory.Delete(work, true);
-            }
+            version = release.Tag
+        }), 1));
+        return editor;
+    }
+
+    public void Uninstall(InstalledEditor editor)
+    {
+        using FileStream operation = store.AcquireOperationLock();
+        RecoverInterruptedInstalls();
+        string path = store.InstallPath(editor);
+        if (!Directory.Exists(path))
+        {
+            return;
         }
+
+        if (IsRunning(editor))
+        {
+            throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_uninstall"));
+        }
+
+        RejectLink(store.Home);
+        RejectLink(store.VersionsPath);
+        RejectLink(path);
+        Directory.Delete(path, true);
+        // Projects keep their pinned editor so reinstalling this version restores the association.
+        if (store.Settings.DefaultEditorKey == editor.Key)
+        {
+            store.Settings.DefaultEditorKey = null;
+        }
+        store.Save();
     }
 
     public void RecoverInterruptedOperations()
     {
-        using FileStream operation = AcquireOperationLock();
+        using FileStream operation = store.AcquireOperationLock();
         RecoverInterruptedInstalls();
     }
 
+    /// <summary>
+    ///     Restores previous installations left behind by an interrupted <see cref="CommitInstall" />.
+    ///     Folders that cannot be recovered are retained and logged, never deleted.
+    /// </summary>
     internal void RecoverInterruptedInstalls(Action<string, string>? move = null)
     {
         if (!Directory.Exists(store.WorkPath))
@@ -132,148 +126,49 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
                 continue;
             }
             RejectLink(work);
-            InstalledEditor? editor = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(work, "repair.json"));
+            InstalledEditor? editor = JsonFile.Read<InstalledEditor>(Path.Combine(work, RepairJournal));
             if (editor == null)
             {
                 continue;
             }
-            string backup = Path.Combine(work, "previous");
             try
             {
-                string destination = store.InstallPath(editor);
-                if (Directory.Exists(backup))
-                {
-                    RejectLink(backup);
-                    if (!Directory.Exists(destination))
-                    {
-                        Directory.CreateDirectory(store.VersionsPath);
-                        (move ?? Directory.Move)(backup, destination);
-                    }
-                    else
-                    {
-                        RejectLink(destination);
-                        InstalledEditor? installed = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(destination, "installation.json"));
-                        if (installed != editor || !File.Exists(store.ExecutablePath(installed)))
-                        {
-                            throw new IOException("The interrupted editor repair has an incomplete destination; its backup was retained.");
-                        }
-                        Directory.Delete(backup, true);
-                    }
-                }
+                RestoreBackup(editor, Path.Combine(work, InstallWorkspace.BackupName), move ?? Directory.Move);
                 Directory.Delete(work, true);
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
             {
-                // Never discard a previous installation when recovery cannot finish.
-                try
-                {
-                    File.AppendAllText(Path.Combine(store.Home, "launcher.log"), $"{DateTimeOffset.UtcNow:o} Repair recovery retained {work}: {error}\n");
-                }
-                catch (Exception logError) when (logError is IOException or UnauthorizedAccessException)
-                {
-                }
+                LauncherLog.Append(store.Home, $"Repair recovery retained {work}: {error}");
             }
         }
     }
 
-    public static void ExtractArchive(string archive, string staging, CancellationToken token = default)
+    private void RestoreBackup(InstalledEditor editor, string backup, Action<string, string> move)
     {
-        Directory.CreateDirectory(staging);
-        using ZipArchive zip = ZipFile.OpenRead(archive);
-        long expanded = 0;
-        foreach (ZipArchiveEntry entry in zip.Entries)
-        {
-            token.ThrowIfCancellationRequested();
-            string relative = entry.FullName.Replace('\\', '/');
-            string path = LauncherStore.SafeChildPath(staging, relative);
-            int unixMode = entry.ExternalAttributes >> 16 & 0xffff;
-            int fileType = unixMode & 0xf000;
-            if (fileType != 0 && fileType != 0x8000 && fileType != 0x4000)
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.unsupported_archive_entry"));
-            }
-
-            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.archive_link"));
-            }
-
-            expanded = checked(expanded + entry.Length);
-            if (expanded > Constants.Storage.MaxExpandedArchiveBytes)
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.archive_too_large"));
-            }
-
-            if (relative.EndsWith('/'))
-            {
-                Directory.CreateDirectory(path);
-                continue;
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            using (Stream input = entry.Open())
-            {
-                using (FileStream output = new( path, FileMode.CreateNew ))
-                {
-                    input.CopyTo(output);
-                }
-            }
-
-            if (!OperatingSystem.IsWindows() && unixMode != 0)
-            {
-                File.SetUnixFileMode(path, (UnixFileMode)(unixMode & 0x1ff));
-            }
-        }
-
-        if (!OperatingSystem.IsWindows())
-        {
-            foreach (string executable in Directory.EnumerateFiles(staging, "Prowl.Editor", SearchOption.AllDirectories))
-            {
-                File.SetUnixFileMode(executable, File.GetUnixFileMode(executable) | UnixFileMode.UserExecute);
-            }
-        }
-    }
-
-    public void Uninstall(InstalledEditor editor)
-    {
-        using FileStream operation = AcquireOperationLock();
-        RecoverInterruptedInstalls();
-        string path = store.InstallPath(editor);
-        if (!Directory.Exists(path))
+        if (!Directory.Exists(backup))
         {
             return;
         }
-
-        if (IsRunning(editor))
+        RejectLink(backup);
+        string destination = store.InstallPath(editor);
+        if (!Directory.Exists(destination))
         {
-            throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_uninstall"));
+            Directory.CreateDirectory(store.VersionsPath);
+            move(backup, destination);
+            return;
         }
 
-        RejectLink(store.Home);
-        RejectLink(store.VersionsPath);
-        RejectLink(path);
-        Directory.Delete(path, true);
-        if (store.Settings.DefaultEditorKey == editor.Key)
+        // The swap completed; only discard the backup if the new installation is intact.
+        RejectLink(destination);
+        InstalledEditor? installed = JsonFile.Read<InstalledEditor>(Path.Combine(destination, "installation.json"));
+        if (installed != editor || !File.Exists(store.ExecutablePath(installed)))
         {
-            store.Settings.DefaultEditorKey = null;
-        } // Retain project pins so reinstalling this version restores their association.
-
-        store.Save();
-    }
-
-    private FileStream AcquireOperationLock() => store.AcquireOperationLock();
-
-    // Checks only the folder itself; use DirectoryReplacementService.RejectLinks for a whole tree.
-    private static void RejectLink(string path)
-    {
-        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-        {
-            throw new IOException(Loc.Get("launcher.errors.installation_link"));
+            throw new IOException("The interrupted editor repair has an incomplete destination; its backup was retained.");
         }
+        Directory.Delete(backup, true);
     }
 
-    public bool IsRunning(InstalledEditor editor) =>
-        DirectoryReplacementService.IsRunningUnder("Prowl.Editor", store.InstallPath(editor));
+    public bool IsRunning(InstalledEditor editor) => ProcessHelper.IsRunningUnder(EditorName, store.InstallPath(editor));
 
     public ProcessStartInfo LaunchInfo(InstalledEditor editor, string? project = null)
     {
@@ -301,13 +196,12 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         return info;
     }
 
+    /// <summary>The .NET SDK major version the editor targets, read from its runtimeconfig.</summary>
     public int RequiredSdkMajor(InstalledEditor editor)
     {
-        string path = Path.Combine(Path.GetDirectoryName(store.ExecutablePath(editor))!, "Prowl.Editor.runtimeconfig.json");
+        string path = Path.Combine(Path.GetDirectoryName(store.ExecutablePath(editor))!, EditorName + ".runtimeconfig.json");
         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
-        string tfm = document.RootElement.GetProperty("runtimeOptions")
-            .GetProperty("tfm")
-            .GetString() ?? "net10.0";
+        string tfm = document.RootElement.GetProperty("runtimeOptions").GetProperty("tfm").GetString() ?? "net10.0";
         return int.TryParse(tfm.Replace("net", "").Split('.')[0], out int major) ? major : 10;
     }
 
@@ -315,12 +209,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
     {
         try
         {
-            ProcessStartInfo info = new( "dotnet" )
-            {
-                RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true
-            };
-            info.ArgumentList.Add("--list-sdks");
-            using Process process = Process.Start(info)!;
+            using Process process = Process.Start(ProcessHelper.Captured("dotnet", null, "--list-sdks"))!;
             using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(Constants.Startup.SdkCheckTimeout);
             Task<string> stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
@@ -337,12 +226,107 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
 
             string output = await stdout;
             await stderr;
-            return output.Split('\n')
-                .Any(line => line.TrimStart().StartsWith(major + ".", StringComparison.Ordinal));
+            return output.Split('\n').Any(line => line.TrimStart().StartsWith(major + ".", StringComparison.Ordinal));
         }
-        catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException || e is OperationCanceledException && !token.IsCancellationRequested)
+        catch (Exception e) when (e is Win32Exception or IOException
+                                  || e is OperationCanceledException && !token.IsCancellationRequested)
         {
             return false;
+        }
+    }
+
+    /// <summary>Validates the launcher folders, takes the operation lock and recovers earlier interrupted work.</summary>
+    private FileStream BeginOperation(params string[] extraFolders)
+    {
+        Directory.CreateDirectory(store.WorkPath);
+        Directory.CreateDirectory(store.VersionsPath);
+        foreach (string folder in extraFolders)
+        {
+            Directory.CreateDirectory(folder);
+        }
+        foreach (string folder in new[]
+            {
+                store.Home,
+                store.WorkPath,
+                store.VersionsPath
+            }.Concat(extraFolders))
+        {
+            RejectLink(folder);
+        }
+
+        FileStream operation = store.AcquireOperationLock();
+        try
+        {
+            RecoverInterruptedInstalls();
+            return operation;
+        }
+        catch
+        {
+            operation.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     Moves the staged editor into place. The repair journal lets <see cref="RecoverInterruptedInstalls" />
+    ///     restore the previous installation if the swap is interrupted.
+    /// </summary>
+    private void CommitInstall(InstalledEditor editor, InstallWorkspace workspace, string destination, CancellationToken token)
+    {
+        JsonFile.Write(Path.Combine(workspace.Staging, "installation.json"), editor);
+        token.ThrowIfCancellationRequested();
+        ThrowIfRunning(editor);
+
+        JsonFile.Write(Path.Combine(workspace.Work, RepairJournal), editor);
+        DirectoryReplacement.Swap(workspace.Staging, destination, workspace.Backup);
+        if (store.Settings.DefaultEditorKey == null)
+        {
+            store.Settings.DefaultEditorKey = editor.Key;
+            store.Save();
+        }
+    }
+
+    private void ThrowIfRunning(InstalledEditor editor)
+    {
+        if (IsRunning(editor))
+        {
+            throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
+        }
+    }
+
+    private static void RejectLink(string path)
+    {
+        if (FileSystemHelper.IsLink(path))
+        {
+            throw new IOException(Loc.Get("launcher.errors.installation_link"));
+        }
+    }
+
+    /// <summary>A generated folder under Work holding the download, the staged editor and the swap backup.</summary>
+    private sealed class InstallWorkspace : IDisposable
+    {
+        internal const string BackupName = "previous";
+
+        public string Work
+        {
+            get;
+        }
+        public string Staging => Path.Combine(Work, "extracted");
+        public string Backup => Path.Combine(Work, BackupName);
+
+        public InstallWorkspace(LauncherStore store)
+        {
+            Work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Work);
+        }
+
+        // Keep the journal and old installation if rollback or backup cleanup failed.
+        public void Dispose()
+        {
+            if (Directory.Exists(Work) && !Directory.Exists(Backup))
+            {
+                Directory.Delete(Work, true);
+            }
         }
     }
 }

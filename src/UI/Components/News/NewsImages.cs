@@ -1,5 +1,4 @@
 using Prowl.Aperture;
-
 namespace Prowl.Launcher;
 
 // Downloads happen asynchronously; textures are uploaded by Get on the render thread.
@@ -7,6 +6,17 @@ sealed class NewsImages : IDisposable
 {
     private readonly Dictionary<string, Task<byte[]>> _downloads = [];
     private readonly Dictionary<string, TextureTK?> _textures = [];
+
+    public void Dispose()
+    {
+        foreach (TextureTK? texture in _textures.Values)
+        {
+            texture?.Dispose();
+        }
+
+        _textures.Clear();
+        _downloads.Clear();
+    }
 
     internal TextureTK? Get(NewsService service, NewsPost post, string href, bool allowNetwork,
         CancellationToken token, Action<Exception> log)
@@ -48,16 +58,5 @@ sealed class NewsImages : IDisposable
 
             return null;
         }
-    }
-
-    public void Dispose()
-    {
-        foreach (TextureTK? texture in _textures.Values)
-        {
-            texture?.Dispose();
-        }
-
-        _textures.Clear();
-        _downloads.Clear();
     }
 }

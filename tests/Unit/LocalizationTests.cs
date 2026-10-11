@@ -1,11 +1,9 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-using Prowl.Launcher;
 using Prowl.Rosetta;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [CollectionDefinition("Localization", DisableParallelization = true)]

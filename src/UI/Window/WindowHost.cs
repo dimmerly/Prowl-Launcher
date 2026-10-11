@@ -1,29 +1,38 @@
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
 
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Common.Input;
-using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 
+using Prowl.Aperture;
 using Prowl.PaperUI;
+using Prowl.Quill;
 using Prowl.Vector;
 
+using Image=Prowl.Aperture.Image;
+using PixelFormat=Prowl.Aperture.PixelFormat;
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private LauncherWindow _window = null!;
-    private PaperRenderer _renderer = null!;
-    private Paper _paper = null!;
-    private WindowFrame? _windowFrame;
+
+    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale) : Constants.Defaults.UiScale;
+    private float DisplayScale => _windowScale.Rendering;
+
+    /// <summary>Scale for sizing modals in layout units, guarded against a zero display scale.</summary>
+    private float ModalScale => Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
     private UiContext _context = null!;
     private float _deltaTime;
     private bool _forceClose;
-    private bool _windowResizing;
-    private bool _mouseOverWindow;
     private long _lastScroll;
+    private bool _mouseOverWindow;
+    private Paper _paper = null!;
+    private PaperRenderer _renderer = null!;
+    private LauncherWindow _window = null!;
+    private WindowFrame? _windowFrame;
+    private bool _windowResizing;
     private WindowScale _windowScale = new( 1, 1 );
 
     public void Run(string title, int width, int height)
@@ -41,10 +50,10 @@ public sealed partial class Launcher
         _window.VSync = VSyncMode.On;
         using (Stream iconStream = typeof( Launcher ).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
                                    ?? throw new InvalidDataException("The launcher icon is missing."))
-        using (Aperture.Image icon = Aperture.Image.Load(iconStream,
-            new Aperture.DecodeOptions
+        using (Image icon = Image.Load(iconStream,
+            new DecodeOptions
             {
-                TargetPixelFormat = Aperture.PixelFormat.Rgba8
+                TargetPixelFormat = PixelFormat.Rgba8
             }))
         {
             _window.Icon = new WindowIcon(new OpenTK.Windowing.Common.Input.Image(icon.Width, icon.Height, icon.Pixels.ToArray()));
@@ -70,7 +79,7 @@ public sealed partial class Launcher
 
         _renderer = new PaperRenderer();
         _renderer.Initialize(_window.FramebufferSize.X, _window.FramebufferSize.Y);
-        _paper = new Paper(_renderer, _window.ClientSize.X, _window.ClientSize.Y, new Quill.FontAtlasSettings());
+        _paper = new Paper(_renderer, _window.ClientSize.X, _window.ClientSize.Y, new FontAtlasSettings());
         _paper.SetClipboardHandler(new ClipboardHandler(_window));
         _paper.OnCursorChange += cursor => _window.Cursor = MapCursor(cursor);
         Initialize();
@@ -130,9 +139,6 @@ public sealed partial class Launcher
 
     private void CenterWindow() => _window.CenterWindow();
 
-    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale) : Constants.Defaults.UiScale;
-    private float DisplayScale => _windowScale.Rendering;
-
     private unsafe void UpdateWindowScale()
     {
         GLFW.GetWindowContentScale(_window.WindowPtr, out float contentScale, out _);
@@ -161,12 +167,6 @@ public sealed partial class Launcher
         return false;
     }
 
-    private sealed class ClipboardHandler(LauncherWindow window) : IClipboardHandler
-    {
-        public string GetClipboardText() => window.ClipboardString ?? "";
-        public void SetClipboardText(string text) => window.ClipboardString = text;
-    }
-
     private static MouseCursor MapCursor(PaperCursor cursor) => cursor switch
     {
         PaperCursor.Pointer => MouseCursor.PointingHand,
@@ -180,4 +180,10 @@ public sealed partial class Launcher
         PaperCursor.NotAllowed => MouseCursor.NotAllowed,
         _ => MouseCursor.Default
     };
+
+    private sealed class ClipboardHandler(LauncherWindow window) : IClipboardHandler
+    {
+        public string GetClipboardText() => window.ClipboardString ?? "";
+        public void SetClipboardText(string text) => window.ClipboardString = text;
+    }
 }

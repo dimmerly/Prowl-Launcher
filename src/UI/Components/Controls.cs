@@ -1,7 +1,10 @@
-using Prowl.Rosetta;
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+using Prowl.PaperUI.Markdown;
+using Prowl.Rosetta;
+using Prowl.Scribe;
+using Prowl.Vector.Spatial;
 
 using Color=System.Drawing.Color;
 using TextAlignment=Prowl.PaperUI.TextAlignment;
@@ -13,21 +16,49 @@ public sealed partial class Launcher
     private Color Ink => _appearance.Ink;
     private Color Muted => _appearance.Muted;
 
+    /// <summary>Width available to page content: the window minus the sidebar and the content padding.</summary>
+    private static float ContentWidth(Paper p) => p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 56;
+
+    /// <summary>Wide layouts put card info and actions side by side; narrow ones stack them.</summary>
+    private static bool IsWideLayout(Paper p) => ContentWidth(p) >= 800;
+
+    private MarkdownBuilder StyleMarkdown(MarkdownBuilder markdown) =>
+        markdown.Colors(Ink, Muted, _appearance.Accent, _appearance.Panel, _appearance.Theme.BorderSoft);
+
+    /// <summary>
+    ///     Fills the current element with <paramref name="texture" />, scaled to cover it and centered (cropping the
+    ///     overflow), clipped to the given corner radii.
+    /// </summary>
+    private static void DrawCoverImage(Paper p, TextureTK texture, float topLeft, float topRight, float bottomRight, float bottomLeft) => p.Draw((canvas, rect) =>
+    {
+        float width = rect.Size.X, height = rect.Size.Y;
+        float scale = Math.Max(width / texture.Width, height / texture.Height);
+        float imageWidth = texture.Width * scale, imageHeight = texture.Height * scale;
+        float x = rect.Min.X, y = rect.Min.Y;
+        canvas.SaveState();
+        canvas.SetBrushTexture(texture);
+        canvas.SetBrushTextureTransform(
+            Transform2D.CreateTranslation(x + (width - imageWidth) / 2, y + (height - imageHeight) / 2)
+            * Transform2D.CreateScale(imageWidth, imageHeight));
+        canvas.RoundedRectFilled(x, y, width, height, topLeft, topRight, bottomRight, bottomLeft, Color.White);
+        canvas.RestoreState();
+    });
+
     private void SidebarLink(Paper p, string id, string text, Action action, IOrigamiIcon? icon = null) => NavigationItem(p, id, text, icon ?? LauncherIcons.GitHub, false, action);
-    private void Nav(Paper p, string id, string name, int tab) => NavigationItem(
+    private void Nav(Paper p, string id, string name, LauncherTab tab) => NavigationItem(
         p,
         id,
         name,
         tab switch
         {
-            0 => OrigamiIconSet.Folder,
-            1 => OrigamiIconSet.Layers,
-            3 => LauncherIcons.Play,
+            LauncherTab.Projects => OrigamiIconSet.Folder,
+            LauncherTab.Versions => OrigamiIconSet.Layers,
+            LauncherTab.Samples => LauncherIcons.Play,
             _ => LauncherIcons.Settings
         },
         _tab == tab,
         () => _tab = tab,
-        tab == 1 ? NewerEditorRelease()?.Tag : null
+        tab == LauncherTab.Versions ? NewerEditorRelease()?.Tag : null
     );
     private void NavigationItem(Paper p, string id, string text, IOrigamiIcon icon, bool selected, Action click, string? updateVersion = null)
     {
@@ -59,7 +90,7 @@ public sealed partial class Launcher
         }
     }
 
-    private void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false, Scribe.FontQuality? quality = null)
+    private void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false, FontQuality? quality = null)
     {
         float fontSize = Math.Max(16, size * 1.1f);
         p.Box(id)
@@ -67,7 +98,7 @@ public sealed partial class Launcher
             .IsNotInteractable()
             .Text(Loc.Get(text), bold ? _bold : _font)
             .FontSize(fontSize)
-            .TextQuality(quality ?? (size >= 23 ? Scribe.FontQuality.Ultra : Scribe.FontQuality.Normal))
+            .TextQuality(quality ?? (size >= 23 ? FontQuality.Ultra : FontQuality.Normal))
             .TextColor(color)
             .Alignment(TextAlignment.MiddleLeft);
     }

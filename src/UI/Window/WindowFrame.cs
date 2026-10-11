@@ -1,15 +1,15 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
-
 namespace Prowl.Launcher;
 
 /// <summary>Keeps Windows dragging, resizing, and snapping while the launcher paints its title bar.</summary>
 sealed class WindowFrame : IDisposable
 {
-    private readonly nint _handle;
-    private readonly Func<float> _scale;
     private readonly Func<float> _controlsWidth;
+    private readonly nint _handle;
     private readonly SubclassProcedure _procedure;
     private readonly Action<bool> _resizeChanged;
+    private readonly Func<float> _scale;
 
     public WindowFrame(nint handle, int width, int height, Func<float> scale, Func<float> controlsWidth, Action<bool> resizeChanged)
     {
@@ -20,11 +20,13 @@ sealed class WindowFrame : IDisposable
         _procedure = HandleMessage;
         if (!SetWindowSubclass(handle, _procedure, Constants.WindowsMessages.SubclassId, 0))
         {
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            throw new Win32Exception(Marshal.GetLastWin32Error());
         }
         // Preserve the requested client size when removing the native frame.
         SetWindowPos(handle, 0, 0, 0, width, height, 0x0036);
     }
+
+    public void Dispose() => RemoveWindowSubclass(_handle, _procedure, Constants.WindowsMessages.SubclassId);
 
     private nint HandleMessage(nint handle, uint message, nuint wParam, nint lParam, nuint id, nuint data)
     {
@@ -113,7 +115,28 @@ sealed class WindowFrame : IDisposable
         return DefSubclassProc(handle, message, wParam, lParam);
     }
 
-    public void Dispose() => RemoveWindowSubclass(_handle, _procedure, Constants.WindowsMessages.SubclassId);
+    [DllImport("comctl32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowSubclass(nint handle, SubclassProcedure procedure, nuint id, nuint data);
+    [DllImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RemoveWindowSubclass(nint handle, SubclassProcedure procedure, nuint id);
+    [DllImport("comctl32.dll")]
+    private static extern nint DefSubclassProc(nint handle, uint message, nuint wParam, nint lParam);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(nint handle, nint insertAfter, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint handle, out Rectangle bounds);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsZoomed(nint handle);
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromWindow(nint handle, uint flags);
+    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point(int x, int y)
@@ -144,27 +167,4 @@ sealed class WindowFrame : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate nint SubclassProcedure(nint handle, uint message, nuint wParam, nint lParam, nuint id, nuint data);
-
-    [DllImport("comctl32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowSubclass(nint handle, SubclassProcedure procedure, nuint id, nuint data);
-    [DllImport("comctl32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RemoveWindowSubclass(nint handle, SubclassProcedure procedure, nuint id);
-    [DllImport("comctl32.dll")]
-    private static extern nint DefSubclassProc(nint handle, uint message, nuint wParam, nint lParam);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(nint handle, nint insertAfter, int x, int y, int width, int height, uint flags);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(nint handle, out Rectangle bounds);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsZoomed(nint handle);
-    [DllImport("user32.dll")]
-    private static extern nint MonitorFromWindow(nint handle, uint flags);
-    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
 }

@@ -2,13 +2,20 @@ using System.Diagnostics;
 using System.IO.Pipes;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class EditorConsoleTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "ProwlConsoleTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, true);
+        }
+    }
 
     private EditorConsoleSession Start(params string[] args)
     {
@@ -100,7 +107,7 @@ public sealed class EditorConsoleTests : IDisposable
     [InlineData("\u001b[31mError\u001b[0m\r", "Error")]
     [InlineData("\u001b]0;title\u0007Hello\tworld", "Hello\tworld")]
     public void RemovesTerminalFormatting(string input, string expected)
-        => Assert.Equal(expected, EditorConsoleService.CleanOutput(input));
+        => Assert.Equal(expected, EditorConsoleCollector.CleanOutput(input));
 
     private static async Task Wait(Func<bool> predicate)
     {
@@ -109,14 +116,6 @@ public sealed class EditorConsoleTests : IDisposable
         {
             Assert.True(timer.Elapsed < TimeSpan.FromSeconds(15), "Editor collector did not finish.");
             await Task.Delay(100);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_root))
-        {
-            Directory.Delete(_root, true);
         }
     }
 }

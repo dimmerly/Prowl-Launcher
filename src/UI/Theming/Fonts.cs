@@ -1,13 +1,12 @@
 using System.Reflection;
 
 using Prowl.Scribe;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private FontFile _font = null!;
     private FontFile _bold = null!;
+    private FontFile _font = null!;
 
     private static FontFile LoadFont(string name)
     {

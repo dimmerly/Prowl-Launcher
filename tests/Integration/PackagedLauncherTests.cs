@@ -3,7 +3,6 @@ using System.Net;
 using System.Security.Cryptography;
 
 using Xunit;
-
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]

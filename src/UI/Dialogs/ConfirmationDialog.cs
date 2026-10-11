@@ -1,12 +1,10 @@
-using Prowl.Rosetta;
-
 using System.Diagnostics;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.PaperUI.Markdown;
+using Prowl.Rosetta;
 using Prowl.Scribe;
-
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
@@ -20,7 +18,7 @@ public sealed partial class Launcher
         EditorRelease? changelog = null)
     {
         TaskCompletionSource<bool> completion = new();
-        float scale = Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
+        float scale = ModalScale;
         float screenWidth = _window.FramebufferSize.X / scale;
         float width = Math.Min(changelog == null ? 560 : 840, screenWidth - 48);
         float notesHeight = Math.Max(100, Math.Min(360, _window.FramebufferSize.Y / scale * 0.72f - 200));
@@ -43,7 +41,7 @@ public sealed partial class Launcher
                     {
                         Label(p, "update-changelog-title", "launcher.versions.changelog", 18, Ink, 28, true);
                         Origami.ScrollView(p, "update-changelog-scroll", width - 24, notesHeight)
-                            .SmoothScroll(true)
+                            .SmoothScroll()
                             .WheelStep(72)
                             .Body(() => DrawReleaseNotes(markdown, p));
                     }
@@ -56,7 +54,7 @@ public sealed partial class Launcher
             dialog.Button(Loc.Get("launcher.sdk.get"), () =>
             {
                 Modal.Pop();
-                Open(sdkUrl);
+                ProcessHelper.OpenInShell(sdkUrl);
                 completion.TrySetResult(false);
             });
         }
@@ -83,9 +81,4 @@ public sealed partial class Launcher
             completion.TrySetResult(accepted);
         }
     }
-
-    private static void Open(string value) => Process.Start(new ProcessStartInfo(value)
-    {
-        UseShellExecute = true
-    });
 }
