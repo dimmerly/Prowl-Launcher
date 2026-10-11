@@ -10,14 +10,10 @@ public sealed partial class Launcher(
     string? screenshot = null,
     int initialTab = 0,
     bool offline = false,
-    bool progressPreview = false,
-    bool alertPreview = false,
-    bool notesPreview = false,
-    bool newProjectPreview = false,
-    bool uninstallPreview = false,
-    bool installationPreview = false
+    LauncherPreviews? previews = null
 )
 {
+    private readonly LauncherPreviews _previews = previews ?? new LauncherPreviews();
     private readonly HttpClient _http = new()
     {
         Timeout = Constants.Network.DownloadTimeout
@@ -40,7 +36,7 @@ public sealed partial class Launcher(
 
         InitializeServices();
         ShowPreviewChangelog();
-        _showInstallationPrompt = installationPreview || screenshot == null && LauncherInstallationService.ShouldOffer(store);
+        _showInstallationPrompt = _previews.Installation || screenshot == null && LauncherInstallationService.ShouldOffer(store);
 
         if (StartPreviewOperation())
         {
@@ -132,3 +128,13 @@ public sealed partial class Launcher(
         _launcherUpdateCancellation.Dispose();
     }
 }
+
+/// <summary>Screenshot and development states the launcher can open directly into.</summary>
+public sealed record LauncherPreviews(
+    bool Progress = false,
+    bool Alert = false,
+    bool Notes = false,
+    bool NewProject = false,
+    bool Uninstall = false,
+    bool Installation = false
+);

@@ -28,7 +28,7 @@ public sealed partial class Launcher
         .Button(Loc.Get("launcher.installation.keep_portable"), () =>
         {
             Modal.Pop();
-            if (!installationPreview)
+            if (!_previews.Installation)
             {
                 store.Settings.InstallationPromptHandled = true;
                 store.Save();
@@ -37,7 +37,7 @@ public sealed partial class Launcher
         .Button(Loc.Get("launcher.installation.install"), () =>
         {
             Modal.Pop();
-            if (!installationPreview)
+            if (!_previews.Installation)
             {
                 Start(InstallLauncherAsync, "launcher.installation.installing");
             }

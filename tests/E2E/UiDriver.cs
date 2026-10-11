@@ -207,6 +207,17 @@ sealed class UiDriver(Launcher launcher, string diagnostics)
     internal async Task ClickText(string text)
     {
         await Wait(() => Text(text).IsValid, "Expected visible control: " + text);
+        // Smooth scrolling keeps moving content after the wheel input; clicking mid-animation lets the
+        // press and release land on different elements, so wait until the target stops moving.
+        float? previous = null;
+        await Wait(() =>
+        {
+            ElementHandle target = Text(text);
+            float? y = target.IsValid ? target.Data.Y : null;
+            bool settled = y != null && y == previous;
+            previous = y;
+            return settled;
+        }, "Expected control to stop moving: " + text);
         ElementHandle node = Text(text);
         while (node.IsValid && node.Data.OnClick == null && node.Data.OnPress == null && node.Data.OnTextInput == null)
         {

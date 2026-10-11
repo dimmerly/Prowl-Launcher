@@ -68,7 +68,15 @@ public sealed partial class Launcher
         {
             _operation.Dispose();
             _operation = null;
-            ReloadInstalled();
+            // An exception escaping this async void method would terminate the launcher.
+            try
+            {
+                ReloadInstalled();
+            }
+            catch (Exception exception)
+            {
+                LogError(exception);
+            }
             if (_closeAfterCancel)
             {
                 ForceClose();

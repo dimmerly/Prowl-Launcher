@@ -75,6 +75,19 @@ public sealed class LauncherStore
         _savedSettings = Snapshot(saved);
     }
 
+    // Serializes installs, uninstalls, updates and cleanup across launcher processes.
+    public FileStream AcquireOperationLock()
+    {
+        try
+        {
+            return new FileStream(Path.Combine(Home, "operations.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException error)
+        {
+            throw new IOException(Loc.Get("launcher.errors.operation_in_progress"), error);
+        }
+    }
+
     private FileStream AcquireSettingsLock()
     {
         Stopwatch clock = Stopwatch.StartNew();
@@ -339,7 +352,9 @@ public sealed class LauncherStore
         return fullPath;
     }
 
-    public Project AddProject(string path)
+    public Project AddProject(string path) => AddProject(path, true);
+
+    private Project AddProject(string path, bool save)
     {
         string root = Path.GetFullPath(File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase) ? Path.GetDirectoryName(path)! : path);
         if (!Directory.Exists(Path.Combine(root, "Assets")))
@@ -379,7 +394,10 @@ public sealed class LauncherStore
             Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
         };
         Settings.Projects.Add(project);
-        Save();
+        if (save)
+        {
+            Save();
+        }
         return project;
     }
 
@@ -400,7 +418,7 @@ public sealed class LauncherStore
         {
             try
             {
-                Project? project = Settings.RecentProjectsImported ? Settings.Projects.FirstOrDefault(p => PathsEqual(p.Path, entry.Path)) : AddProject(entry.Path);
+                Project? project = Settings.RecentProjectsImported ? Settings.Projects.FirstOrDefault(p => PathsEqual(p.Path, entry.Path)) : AddProject(entry.Path, false);
                 if (project == null)
                 {
                     continue;

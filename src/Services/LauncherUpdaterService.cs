@@ -1,6 +1,5 @@
 using Prowl.Rosetta;
 
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
@@ -84,12 +83,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         DirectoryReplacementService.RejectLink(store.Home);
         DirectoryReplacementService.RejectLink(UpdatesPath(store));
         DirectoryReplacementService.RejectLink(versions);
-        using FileStream operation = new(
-            Path.Combine(store.Home, "operations.lock"),
-            FileMode.OpenOrCreate,
-            FileAccess.ReadWrite,
-            FileShare.None
-        );
+        using FileStream operation = store.AcquireOperationLock();
         string? executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
         if (executable == null && IsRunning(target))
         {
@@ -131,7 +125,14 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             }
             finally
             {
-                Directory.Delete(work, true);
+                // A locked leftover file must not hide the install result or its real error.
+                try
+                {
+                    Directory.Delete(work, true);
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                {
+                }
             }
         }
 
@@ -142,8 +143,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     {
         // Protect the complete download/start/save handoff, including gaps between those steps.
         using FileStream update = LockUpdates(store);
-        using FileStream operation = new( Path.Combine(store.Home, "operations.lock"),
-            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None );
+        using FileStream operation = store.AcquireOperationLock();
         Settings saved = LauncherStore.ReadJson<Settings>(Path.Combine(store.Home, "settings.json")) ?? store.Settings;
         DirectoryReplacementService.RejectLink(store.Home);
         // Also remove unused copies from the former storage directory.
@@ -238,30 +238,5 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         }
     }
 
-    private static bool IsRunning(string target)
-    {
-        string root = Path.GetFullPath(target) + Path.DirectorySeparatorChar;
-        foreach (Process process in Process.GetProcessesByName("Prowl.Launcher"))
-        {
-            using (process)
-            {
-                try
-                {
-                    if (process.MainModule?.FileName is {} file && file.StartsWith(root,
-                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                    {
-                        return true;
-                    }
-                }
-                catch (InvalidOperationException)
-                {
-                }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
+    private static bool IsRunning(string target) => DirectoryReplacementService.IsRunningUnder("Prowl.Launcher", target);
 }

@@ -48,6 +48,11 @@ static class LauncherScenarios
                 ]
             });
         }
+        if (scenario == "EnablePrereleases")
+        {
+            // Runs online so opting in can trigger the background check; keep the stable update from opening at startup.
+            LauncherUpdateCheckService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
+        }
         if (scenario.StartsWith("Sample", StringComparison.Ordinal))
         {
             fixture.PublishSamples();
@@ -394,8 +399,9 @@ static class LauncherScenarios
                 await ui.Navigate("Samples");
                 f.DelaySampleDownload = true;
                 await ui.ClickText("Hello Prowl");
-                await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"), "Sample download should show progress at the top.");
-                Check(ui.Text("Downloading samples").Data.Y < ui.Text("Hello Prowl").Data.Y, "Download progress must appear above sample cards.");
+                await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"), "Sample download should show progress in the bottom bar.");
+                Check(ui.Text("Downloading samples").Data.Y > ui.Paper.Height / 2f
+                      && ui.Text("Downloading samples").Data.Y > ui.Text("Hello Prowl").Data.Y, "Download progress must appear in the bottom bar, below sample cards.");
                 await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")), "The selected sample should launch after the shared download.");
                 await ui.Wait(() => GetField<object?>(ui.Launcher, "_operation") == null, "Sample startup should finish.");
                 await ui.ClickText("Physics Showcase");

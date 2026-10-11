@@ -10,7 +10,7 @@ namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-    private bool _newProjectPage = newProjectPreview;
+    private bool _newProjectPage = previews?.NewProject == true;
     private string _newProjectName = "";
     private string? _newProjectDirectory;
     private string? _newProjectEditorKey;

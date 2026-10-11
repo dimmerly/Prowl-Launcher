@@ -27,9 +27,9 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
 
         Directory.CreateDirectory(store.WorkPath);
         Directory.CreateDirectory(store.VersionsPath);
-        RejectLinks(store.Home);
-        RejectLinks(store.WorkPath);
-        RejectLinks(store.VersionsPath);
+        RejectLink(store.Home);
+        RejectLink(store.WorkPath);
+        RejectLink(store.VersionsPath);
         using FileStream operation = AcquireOperationLock();
         RecoverInterruptedInstalls();
         string repository = GitHubRepositoryHelper.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
@@ -46,7 +46,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         string destination = store.InstallPath(editor);
         if (Directory.Exists(destination))
         {
-            RejectLinks(destination);
+            RejectLink(destination);
             if (IsRunning(editor))
             {
                 throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_repair"));
@@ -82,29 +82,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
             }
 
             LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
-            if (Directory.Exists(destination))
-            {
-                Directory.Move(destination, backup);
-            }
-
-            try
-            {
-                Directory.Move(staging, destination);
-            }
-            catch
-            {
-                if (Directory.Exists(backup))
-                {
-                    Directory.Move(backup, destination);
-                }
-
-                throw;
-            }
-
-            if (Directory.Exists(backup))
-            {
-                Directory.Delete(backup, true);
-            }
+            DirectoryReplacementService.Swap(staging, destination, backup);
             if (store.Settings.DefaultEditorKey == null)
             {
                 store.Settings.DefaultEditorKey = editor.Key;
@@ -140,11 +118,11 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         {
             return;
         }
-        RejectLinks(store.Home);
-        RejectLinks(store.WorkPath);
+        RejectLink(store.Home);
+        RejectLink(store.WorkPath);
         if (Directory.Exists(store.VersionsPath))
         {
-            RejectLinks(store.VersionsPath);
+            RejectLink(store.VersionsPath);
         }
         foreach (string work in Directory.EnumerateDirectories(store.WorkPath))
         {
@@ -153,7 +131,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
             {
                 continue;
             }
-            RejectLinks(work);
+            RejectLink(work);
             InstalledEditor? editor = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(work, "repair.json"));
             if (editor == null)
             {
@@ -165,7 +143,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
                 string destination = store.InstallPath(editor);
                 if (Directory.Exists(backup))
                 {
-                    RejectLinks(backup);
+                    RejectLink(backup);
                     if (!Directory.Exists(destination))
                     {
                         Directory.CreateDirectory(store.VersionsPath);
@@ -173,7 +151,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
                     }
                     else
                     {
-                        RejectLinks(destination);
+                        RejectLink(destination);
                         InstalledEditor? installed = LauncherStore.ReadJson<InstalledEditor>(Path.Combine(destination, "installation.json"));
                         if (installed != editor || !File.Exists(store.ExecutablePath(installed)))
                         {
@@ -271,9 +249,9 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
             throw new InvalidOperationException(Loc.Get("launcher.errors.close_before_uninstall"));
         }
 
-        RejectLinks(store.Home);
-        RejectLinks(store.VersionsPath);
-        RejectLinks(path);
+        RejectLink(store.Home);
+        RejectLink(store.VersionsPath);
+        RejectLink(path);
         Directory.Delete(path, true);
         if (store.Settings.DefaultEditorKey == editor.Key)
         {
@@ -283,24 +261,10 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         store.Save();
     }
 
-    private FileStream AcquireOperationLock()
-    {
-        try
-        {
-            return new FileStream(
-                Path.Combine(store.Home, "operations.lock"),
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.None
-            );
-        }
-        catch (IOException)
-        {
-            throw new IOException(Loc.Get("launcher.errors.operation_in_progress"));
-        }
-    }
+    private FileStream AcquireOperationLock() => store.AcquireOperationLock();
 
-    private static void RejectLinks(string path)
+    // Checks only the folder itself; use DirectoryReplacementService.RejectLinks for a whole tree.
+    private static void RejectLink(string path)
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
         {
@@ -308,33 +272,8 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         }
     }
 
-    public bool IsRunning(InstalledEditor editor)
-    {
-        string root = store.InstallPath(editor) + Path.DirectorySeparatorChar;
-        foreach (Process process in Process.GetProcessesByName("Prowl.Editor"))
-        {
-            using (process)
-            {
-                try
-                {
-                    string? file = process.MainModule?.FileName;
-                    if (file != null && file.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                    {
-                        return true;
-                    }
-                }
-                catch (InvalidOperationException)
-                {
-                }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
+    public bool IsRunning(InstalledEditor editor) =>
+        DirectoryReplacementService.IsRunningUnder("Prowl.Editor", store.InstallPath(editor));
 
     public ProcessStartInfo LaunchInfo(InstalledEditor editor, string? project = null)
     {

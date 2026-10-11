@@ -12,7 +12,7 @@ public sealed partial class Launcher
 
     private void ShowPreviewChangelog()
     {
-        if (screenshot != null && notesPreview && _releases.FirstOrDefault() is {} previewRelease)
+        if (screenshot != null && _previews.Notes && _releases.FirstOrDefault() is {} previewRelease)
         {
             ShowChangelog(previewRelease);
         }
@@ -25,7 +25,7 @@ public sealed partial class Launcher
             return false;
         }
 
-        if (progressPreview)
+        if (_previews.Progress)
         {
             _operation = new CancellationTokenSource();
             _immediateProgress = true;
@@ -45,13 +45,13 @@ public sealed partial class Launcher
             return true;
         }
 
-        if (alertPreview)
+        if (_previews.Alert)
         {
             Start(PreviewUpdateAlertAsync, "launcher.updates.checking");
             return true;
         }
 
-        if (uninstallPreview && _installed.FirstOrDefault() is {} previewEditor)
+        if (_previews.Uninstall && _installed.FirstOrDefault() is {} previewEditor)
         {
             Start(token => UninstallEditorAsync(previewEditor, token), "launcher.versions.uninstall");
             return true;
@@ -74,7 +74,7 @@ public sealed partial class Launcher
         }
 
         // Capture confirmation previews after the normal progress delay has elapsed.
-        if (uninstallPreview && Stopwatch.GetElapsedTime(_operationStarted).TotalSeconds < 1)
+        if (_previews.Uninstall && Stopwatch.GetElapsedTime(_operationStarted).TotalSeconds < 1)
         {
             return;
         }

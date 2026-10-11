@@ -37,7 +37,7 @@ public sealed partial class EditorInstallerService
         Directory.CreateDirectory(sources);
         foreach (string path in new[] { store.Home, store.WorkPath, store.VersionsPath, sources })
         {
-            RejectLinks(path);
+            RejectLink(path);
         }
         string checkout = Path.Combine(sources, GitHubRepositoryHelper.CacheKey(repository));
         string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
@@ -78,7 +78,7 @@ public sealed partial class EditorInstallerService
             }
             else
             {
-                RejectLinks(checkout);
+                RejectLink(checkout);
                 string changes = await RunAsync("git", checkout, "status", "--porcelain");
                 if (!string.IsNullOrWhiteSpace(changes))
                 {
@@ -132,27 +132,7 @@ public sealed partial class EditorInstallerService
 
             // Use the same repair journal as release installs so an interrupted replacement can recover.
             LauncherStore.WriteJson(Path.Combine(work, "repair.json"), editor);
-            if (Directory.Exists(destination))
-            {
-                RejectLinks(destination);
-                Directory.Move(destination, backup);
-            }
-            try
-            {
-                Directory.Move(staging, destination);
-            }
-            catch
-            {
-                if (Directory.Exists(backup))
-                {
-                    Directory.Move(backup, destination);
-                }
-                throw;
-            }
-            if (Directory.Exists(backup))
-            {
-                Directory.Delete(backup, true);
-            }
+            DirectoryReplacementService.Swap(staging, destination, backup);
             if (store.Settings.DefaultEditorKey == null)
             {
                 store.Settings.DefaultEditorKey = editor.Key;
