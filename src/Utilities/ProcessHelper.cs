@@ -1,5 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+
+using Microsoft.Win32.SafeHandles;
 namespace Prowl.Launcher;
 
 static class ProcessHelper
@@ -40,7 +43,7 @@ static class ProcessHelper
             {
                 try
                 {
-                    if (FileSystemHelper.IsInside(root, process.MainModule?.FileName))
+                    if (FileSystemHelper.IsInside(root, ExecutablePath(process)))
                     {
                         return true;
                     }
@@ -57,6 +60,47 @@ static class ProcessHelper
         }
         return false;
     }
+
+    /// <summary>
+    ///     The executable a process runs, or null once it has exited. Throws <see cref="Win32Exception" /> when the
+    ///     process can't be inspected.
+    /// </summary>
+    private static string? ExecutablePath(Process process)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return process.MainModule?.FileName;
+        }
+
+        // MainModule enumerates modules, which fails while a process is still starting or already exiting.
+        // QueryFullProcessImageName only needs limited query rights and works throughout.
+        const uint QueryLimitedInformation = 0x1000;
+        const int InvalidParameter = 87;
+        using SafeProcessHandle handle = OpenProcess(QueryLimitedInformation, false, process.Id);
+        if (handle.IsInvalid)
+        {
+            int error = Marshal.GetLastPInvokeError();
+            // An invalid process id means it already exited.
+            return error == InvalidParameter ? null : throw new Win32Exception(error);
+        }
+        char[] buffer = new char[32768];
+        int length = buffer.Length;
+        if (!QueryFullProcessImageName(handle, 0, buffer, ref length))
+        {
+            if (process.HasExited)
+            {
+                return null;
+            }
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+        return new string(buffer, 0, length);
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern SafeProcessHandle OpenProcess(uint access, bool inherit, int processId);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "QueryFullProcessImageNameW")]
+    private static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, char[] name, ref int size);
 
     /// <summary>
     ///     A unique pipe name. Absolute Unix pipe paths avoid adding a potentially long TMPDIR and
