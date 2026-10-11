@@ -217,11 +217,17 @@ sealed class EditorCoordinator(
     #region Launching
 
     /// <summary>
-    ///     Starts the editor through a console session and raises <see cref="SessionStarted" />. Offers the SDK
-    ///     download first when the editor's .NET SDK is missing.
+    ///     Starts the editor through a console session and raises <see cref="SessionStarted" />. Asks first when the
+    ///     editor would upgrade the project or can't open it, and offers the SDK download when the editor's .NET SDK
+    ///     is missing.
     /// </summary>
     public async Task LaunchAsync(InstalledEditor editor, Project? project, CancellationToken token)
     {
+        if (project != null && !await ConfirmProjectVersionAsync(project, editor, token))
+        {
+            return;
+        }
+
         int sdk = installer.RequiredSdkMajor(editor);
         if (!await EditorInstallerService.HasSdkAsync(sdk, token) && !await ConfirmMissingSdkAsync(sdk, token))
         {
@@ -241,6 +247,31 @@ sealed class EditorCoordinator(
         }
 
         session.CloseWhenReady = store.Settings.CloseOnEditorLaunch;
+    }
+
+    /// <summary>
+    ///     A newer editor migrates the project (backing it up first), after which older editors can't open it; an
+    ///     older editor refuses the project. Both ask first. Unknown versions on either side open without asking.
+    /// </summary>
+    private async Task<bool> ConfirmProjectVersionAsync(Project project, InstalledEditor editor, CancellationToken token)
+    {
+        if (!ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion saved)
+            || !ProjectVersion.TryParse(editor, out ProjectVersion target)
+            || target.CompareTo(saved) == 0)
+        {
+            return true;
+        }
+
+        object values = new
+        {
+            project = project.Name, saved = saved.ToString(), editor = target.ToString()
+        };
+        bool upgrade = target.CompareTo(saved) > 0;
+        return await dialogs.ConfirmAsync(
+            Loc.Get(upgrade ? "launcher.projects.upgrade_title" : "launcher.projects.downgrade_title", values),
+            Loc.Get(upgrade ? "launcher.projects.upgrade_description" : "launcher.projects.downgrade_description", values),
+            upgrade ? "launcher.projects.upgrade" : "launcher.projects.open_anyway",
+            token);
     }
 
     private Task<bool> ConfirmMissingSdkAsync(int sdk, CancellationToken token) => dialogs.ConfirmAsync(

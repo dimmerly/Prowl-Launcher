@@ -255,5 +255,11 @@
     "launcher.console.no_output": "出力を待機中、または一致する行がありません。",
     "launcher.console.back": "戻る",
     "launcher.console.show_logs": "ログを表示",
-    "launcher.console.logs": "ログ"
+    "launcher.console.logs": "ログ",
+    "launcher.projects.upgrade_title": "{{project}} をアップグレードしますか？",
+    "launcher.projects.upgrade_description": "{{project}} は Prowl {{saved}} で保存されています。{{editor}} で開くとプロジェクトがアップグレードされ、以降は古いエディターで開けなくなります。エディターは先にプロジェクトの Backups フォルダーにバックアップを保存します。",
+    "launcher.projects.upgrade": "アップグレードして開く",
+    "launcher.projects.downgrade_title": "古いエディターで開きますか？",
+    "launcher.projects.downgrade_description": "{{project}} は {{editor}} より新しい Prowl {{saved}} で保存されています。このエディターでは開けません。このプロジェクトには {{saved}} 以降を選択してください。",
+    "launcher.projects.open_anyway": "このまま開く"
 }

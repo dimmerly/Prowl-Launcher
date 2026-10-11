@@ -255,5 +255,11 @@
     "launcher.console.no_output": "Oczekiwanie na wyjście lub brak pasujących wierszy.",
     "launcher.console.back": "Wstecz",
     "launcher.console.show_logs": "Pokaż logi",
-    "launcher.console.logs": "Logi"
+    "launcher.console.logs": "Logi",
+    "launcher.projects.upgrade_title": "Zaktualizować {{project}}?",
+    "launcher.projects.upgrade_description": "{{project}} zapisano w Prowl {{saved}}. Otwarcie w {{editor}} zaktualizuje projekt i starsze edytory nie będą mogły go potem otworzyć. Edytor najpierw zapisze kopię zapasową w folderze Backups projektu.",
+    "launcher.projects.upgrade": "Zaktualizuj i otwórz",
+    "launcher.projects.downgrade_title": "Otworzyć w starszym edytorze?",
+    "launcher.projects.downgrade_description": "{{project}} zapisano w Prowl {{saved}}, nowszym niż {{editor}}. Ten edytor nie może go otworzyć. Wybierz dla tego projektu {{saved}} lub nowszy.",
+    "launcher.projects.open_anyway": "Otwórz mimo to"
 }

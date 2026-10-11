@@ -255,5 +255,11 @@
     "launcher.console.no_output": "Çıktı bekleniyor veya eşleşen satır yok.",
     "launcher.console.back": "Geri",
     "launcher.console.show_logs": "Günlükleri göster",
-    "launcher.console.logs": "Günlükler"
+    "launcher.console.logs": "Günlükler",
+    "launcher.projects.upgrade_title": "{{project}} yükseltilsin mi?",
+    "launcher.projects.upgrade_description": "{{project}}, Prowl {{saved}} ile kaydedildi. {{editor}} ile açmak projeyi yükseltir ve sonrasında eski düzenleyiciler onu açamaz. Düzenleyici önce projenin Backups klasörüne bir yedek kaydeder.",
+    "launcher.projects.upgrade": "Yükselt ve aç",
+    "launcher.projects.downgrade_title": "Daha eski bir düzenleyicide açılsın mı?",
+    "launcher.projects.downgrade_description": "{{project}}, {{editor}} sürümünden daha yeni olan Prowl {{saved}} ile kaydedildi. Bu düzenleyici onu açamaz. Bu proje için {{saved}} veya daha yenisini seçin.",
+    "launcher.projects.open_anyway": "Yine de aç"
 }

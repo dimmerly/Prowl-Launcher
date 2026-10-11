@@ -255,5 +255,11 @@
     "launcher.console.no_output": "En attente de sortie ou aucune ligne correspondante.",
     "launcher.console.back": "Retour",
     "launcher.console.show_logs": "Afficher les journaux",
-    "launcher.console.logs": "Journaux"
+    "launcher.console.logs": "Journaux",
+    "launcher.projects.upgrade_title": "Mettre à niveau {{project}} ?",
+    "launcher.projects.upgrade_description": "{{project}} a été enregistré avec Prowl {{saved}}. L’ouvrir dans {{editor}} met le projet à niveau, et les éditeurs plus anciens ne pourront plus l’ouvrir. L’éditeur enregistre d’abord une sauvegarde dans le dossier Backups du projet.",
+    "launcher.projects.upgrade": "Mettre à niveau et ouvrir",
+    "launcher.projects.downgrade_title": "Ouvrir dans un éditeur plus ancien ?",
+    "launcher.projects.downgrade_description": "{{project}} a été enregistré avec Prowl {{saved}}, plus récent que {{editor}}. Cet éditeur ne peut pas l’ouvrir. Choisissez {{saved}} ou une version plus récente pour ce projet.",
+    "launcher.projects.open_anyway": "Ouvrir quand même"
 }

@@ -255,5 +255,11 @@
     "launcher.console.no_output": "正在等待输出，或没有匹配的行。",
     "launcher.console.back": "返回",
     "launcher.console.show_logs": "显示日志",
-    "launcher.console.logs": "日志"
+    "launcher.console.logs": "日志",
+    "launcher.projects.upgrade_title": "升级 {{project}}？",
+    "launcher.projects.upgrade_description": "{{project}} 使用 Prowl {{saved}} 保存。在 {{editor}} 中打开会升级该项目，之后旧版编辑器将无法打开它。编辑器会先在项目的 Backups 文件夹中保存备份。",
+    "launcher.projects.upgrade": "升级并打开",
+    "launcher.projects.downgrade_title": "在旧版编辑器中打开？",
+    "launcher.projects.downgrade_description": "{{project}} 使用比 {{editor}} 更新的 Prowl {{saved}} 保存，该编辑器无法打开它。请为此项目选择 {{saved}} 或更高版本。",
+    "launcher.projects.open_anyway": "仍然打开"
 }

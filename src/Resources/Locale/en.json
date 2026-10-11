@@ -255,5 +255,11 @@
     "launcher.console.no_output": "Waiting for output, or no matching lines.",
     "launcher.console.back": "Back",
     "launcher.console.show_logs": "Show logs",
-    "launcher.console.logs": "Logs"
+    "launcher.console.logs": "Logs",
+    "launcher.projects.upgrade_title": "Upgrade {{project}}?",
+    "launcher.projects.upgrade_description": "{{project}} was saved with Prowl {{saved}}. Opening it in {{editor}} upgrades the project, and older editors can’t open it afterwards. The editor first saves a backup in the project’s Backups folder.",
+    "launcher.projects.upgrade": "Upgrade & open",
+    "launcher.projects.downgrade_title": "Open in an older editor?",
+    "launcher.projects.downgrade_description": "{{project}} was saved with Prowl {{saved}}, which is newer than {{editor}}. That editor can’t open it. Choose {{saved}} or newer for this project.",
+    "launcher.projects.open_anyway": "Open anyway"
 }

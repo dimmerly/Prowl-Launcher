@@ -255,5 +255,11 @@
     "launcher.console.no_output": "Warten auf Ausgabe oder keine passenden Zeilen.",
     "launcher.console.back": "Zurück",
     "launcher.console.show_logs": "Logs anzeigen",
-    "launcher.console.logs": "Logs"
+    "launcher.console.logs": "Logs",
+    "launcher.projects.upgrade_title": "{{project}} aktualisieren?",
+    "launcher.projects.upgrade_description": "{{project}} wurde mit Prowl {{saved}} gespeichert. Beim Öffnen in {{editor}} wird das Projekt aktualisiert, danach können ältere Editoren es nicht mehr öffnen. Der Editor legt vorher eine Sicherung im Ordner „Backups“ des Projekts an.",
+    "launcher.projects.upgrade": "Aktualisieren & öffnen",
+    "launcher.projects.downgrade_title": "In einem älteren Editor öffnen?",
+    "launcher.projects.downgrade_description": "{{project}} wurde mit Prowl {{saved}} gespeichert, das neuer ist als {{editor}}. Dieser Editor kann es nicht öffnen. Wähle {{saved}} oder neuer für dieses Projekt.",
+    "launcher.projects.open_anyway": "Trotzdem öffnen"
 }

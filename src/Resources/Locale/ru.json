@@ -255,5 +255,11 @@
     "launcher.console.no_output": "Ожидание вывода или нет подходящих строк.",
     "launcher.console.back": "Назад",
     "launcher.console.show_logs": "Показать журнал",
-    "launcher.console.logs": "Журнал"
+    "launcher.console.logs": "Журнал",
+    "launcher.projects.upgrade_title": "Обновить {{project}}?",
+    "launcher.projects.upgrade_description": "{{project}} сохранён в Prowl {{saved}}. При открытии в {{editor}} проект будет обновлён, и более старые редакторы не смогут его открыть. Сначала редактор сохранит резервную копию в папке Backups проекта.",
+    "launcher.projects.upgrade": "Обновить и открыть",
+    "launcher.projects.downgrade_title": "Открыть в более старом редакторе?",
+    "launcher.projects.downgrade_description": "{{project}} сохранён в Prowl {{saved}}, более новой версии, чем {{editor}}. Этот редактор не сможет его открыть. Выберите для проекта {{saved}} или новее.",
+    "launcher.projects.open_anyway": "Всё равно открыть"
 }

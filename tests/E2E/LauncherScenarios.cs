@@ -70,7 +70,7 @@ static class LauncherScenarios
         string[] installedScenarios =
         [
             "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
-            "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
+            "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall", "ProjectVersionPrompts",
             "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (installedScenarios.Contains(scenario))
@@ -79,7 +79,7 @@ static class LauncherScenarios
         }
         string[] projectScenarios =
         [
-            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor",
+            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts",
             "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (projectScenarios.Contains(scenario))
@@ -588,6 +588,27 @@ static class LauncherScenarios
                 await ui.ClickText("v1.1.0");
                 await ui.Wait(() => f.Saved().Projects.Single().EditorKey == _secondEditorKey, "Choosing an editor should persist the project pin.");
                 break;
+            case "ProjectVersionPrompts":
+                SetProjectVersion(_project!, "2.0");
+                await ui.ClickText("Open");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Open in an older editor?"), "A newer project should warn before opening.");
+                Check(ui.HasText("Prowl 2.0, which is newer than 1.0"), "The warning must name both versions.");
+                await ui.ClickText("Cancel");
+                await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Cancelling should end the launch.");
+                Check(!File.Exists(f.LaunchRecord), "Cancelling must not start the editor.");
+
+                SetProjectVersion(_project!, "1.0-preview.4");
+                await ui.ClickText("Open");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Upgrade Alpha Game?"), "An older project should ask before upgrading.");
+                await ui.ClickText("Cancel");
+                await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Cancelling should end the launch.");
+                Check(!File.Exists(f.LaunchRecord), "Declining the upgrade must not start the editor.");
+
+                await ui.ClickText("Open");
+                await ui.ClickText("Upgrade & open");
+                await ui.Wait(() => File.Exists(f.LaunchRecord), "Accepting the upgrade should start the editor.");
+                AssertLaunch(f, _project!.Path);
+                break;
             case "MissingProject":
                 Check(ui.HasText("Folder unavailable"), "Missing projects should be clearly marked.");
                 await ui.ClickText("Open");
@@ -769,6 +790,12 @@ static class LauncherScenarios
         AssertDialogCentered(ui, ui.Text("Switch to stable Prowl Launcher?").IsValid
             ? "Switch to stable Prowl Launcher?" : "Update Prowl Launcher?");
     }
+
+    private static void SetProjectVersion(Project project, string version) => JsonFile.Write(
+        Path.Combine(project.Path, project.Name + ".prowl"), new
+        {
+            name = project.Name, version
+        });
 
     private static void AssertLaunch(LauncherFixture fixture, string project)
     {

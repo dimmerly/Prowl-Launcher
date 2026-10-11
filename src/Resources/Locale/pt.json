@@ -255,5 +255,11 @@
     "launcher.console.no_output": "A aguardar saída ou sem linhas correspondentes.",
     "launcher.console.back": "Voltar",
     "launcher.console.show_logs": "Mostrar registos",
-    "launcher.console.logs": "Registos"
+    "launcher.console.logs": "Registos",
+    "launcher.projects.upgrade_title": "Atualizar {{project}}?",
+    "launcher.projects.upgrade_description": "{{project}} foi salvo com o Prowl {{saved}}. Abri-lo no {{editor}} atualiza o projeto, e editores mais antigos não poderão abri-lo depois. Antes, o editor salva um backup na pasta Backups do projeto.",
+    "launcher.projects.upgrade": "Atualizar e abrir",
+    "launcher.projects.downgrade_title": "Abrir em um editor mais antigo?",
+    "launcher.projects.downgrade_description": "{{project}} foi salvo com o Prowl {{saved}}, mais recente que o {{editor}}. Esse editor não consegue abri-lo. Escolha {{saved}} ou mais recente para este projeto.",
+    "launcher.projects.open_anyway": "Abrir mesmo assim"
 }

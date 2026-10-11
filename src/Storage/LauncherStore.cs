@@ -375,6 +375,19 @@ public sealed class LauncherStore
         return project;
     }
 
+    /// <summary>The engine version a project was last saved with, or null when it has none or can't be read.</summary>
+    public static string? ReadProjectVersion(string root)
+    {
+        try
+        {
+            return Directory.Exists(root) ? ReadProjectMarker(root).Version : null;
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Reads the name and editor version from a project's .prowl file, defaulting to the folder name.</summary>
     private static (string Name, string? Version) ReadProjectMarker(string root)
     {

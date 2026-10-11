@@ -28,6 +28,7 @@ public sealed class UserWorkflowTests
         "SearchProjects",
         "FavoriteProject",
         "ChooseProjectEditor",
+        "ProjectVersionPrompts",
         "MissingProject",
         "CancelFolderPicker",
         "AddExistingProject",
