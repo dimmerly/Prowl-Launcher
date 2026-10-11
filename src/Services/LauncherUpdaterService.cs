@@ -174,7 +174,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         try
         {
             string archive = Path.Combine(work, "launcher.zip");
-            await ReleasePackage.DownloadVerifiedAsync(http, asset, archive, progress, token);
+            await ReleasePackage.DownloadVerifiedAsync(http, asset, archive, progress, token, store.DownloadsPath);
             string extracted = Path.Combine(work, "extracted");
             await Task.Run(() => ReleasePackage.ExtractArchive(archive, extracted, token), token);
             string entry = Directory.EnumerateFiles(extracted, name, SearchOption.AllDirectories).FirstOrDefault()

@@ -274,5 +274,6 @@
     "launcher.uninstall.uninstalling": "正在卸载 Prowl Launcher",
     "launcher.uninstall.failed": "无法移除 {{path}}。请关闭正在使用它的程序后重试。",
     "launcher.projects.opening": "正在打开项目",
-    "launcher.projects.busy": "请先完成当前任务，然后再次打开项目"
+    "launcher.projects.busy": "请先完成当前任务，然后再次打开项目",
+    "launcher.errors.not_enough_space": "磁盘空间不足：需要 {{needed}} GB，可用 {{available}} GB。请释放空间后重试。"
 }

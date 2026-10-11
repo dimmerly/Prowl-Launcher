@@ -274,5 +274,6 @@
     "launcher.uninstall.uninstalling": "Prowl Launcher wird deinstalliert",
     "launcher.uninstall.failed": "{{path}} konnte nicht entfernt werden. Schließe alles, was es verwendet, und versuche es erneut.",
     "launcher.projects.opening": "Projekt wird geöffnet",
-    "launcher.projects.busy": "Schließe die aktuelle Aufgabe ab und öffne das Projekt dann erneut"
+    "launcher.projects.busy": "Schließe die aktuelle Aufgabe ab und öffne das Projekt dann erneut",
+    "launcher.errors.not_enough_space": "Nicht genug Speicherplatz: {{needed}} GB benötigt, {{available}} GB frei. Gib Speicher frei und versuche es erneut."
 }

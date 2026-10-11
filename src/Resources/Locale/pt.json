@@ -274,5 +274,6 @@
     "launcher.uninstall.uninstalling": "Desinstalando o Prowl Launcher",
     "launcher.uninstall.failed": "Não foi possível remover {{path}}. Feche o que estiver usando e tente novamente.",
     "launcher.projects.opening": "Abrindo projeto",
-    "launcher.projects.busy": "Conclua a tarefa atual e abra o projeto novamente"
+    "launcher.projects.busy": "Conclua a tarefa atual e abra o projeto novamente",
+    "launcher.errors.not_enough_space": "Espaço em disco insuficiente: {{needed}} GB necessários, {{available}} GB livres. Libere espaço e tente novamente."
 }

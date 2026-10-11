@@ -274,5 +274,6 @@
     "launcher.uninstall.uninstalling": "Prowl Launcher kaldırılıyor",
     "launcher.uninstall.failed": "{{path}} kaldırılamadı. Onu kullanan her şeyi kapatıp tekrar deneyin.",
     "launcher.projects.opening": "Proje açılıyor",
-    "launcher.projects.busy": "Mevcut işlemi bitirip projeyi yeniden açın"
+    "launcher.projects.busy": "Mevcut işlemi bitirip projeyi yeniden açın",
+    "launcher.errors.not_enough_space": "Yeterli disk alanı yok: {{needed}} GB gerekli, {{available}} GB boş. Yer açıp tekrar deneyin."
 }

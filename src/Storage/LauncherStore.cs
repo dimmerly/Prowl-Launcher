@@ -25,6 +25,9 @@ public sealed class LauncherStore
     public string SettingsPath => Path.Combine(Home, "settings.json");
     public string WorkPath => Path.Combine(Home, "Work");
 
+    /// <summary>Interrupted downloads, kept so the next attempt can resume them.</summary>
+    public string DownloadsPath => Path.Combine(Home, "Downloads");
+
     // The default home shares its Versions folder with the editor; custom homes stay self-contained.
     public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome), FileSystemHelper.PathComparison)
         ? Platform.DefaultVersionsPath

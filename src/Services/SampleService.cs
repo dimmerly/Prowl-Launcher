@@ -218,7 +218,7 @@ sealed class SampleService
         try
         {
             string archive = Path.Combine(staging, "samples.zip");
-            await ReleasePackage.DownloadVerifiedAsync(_http, asset, archive, progress, token);
+            await ReleasePackage.DownloadVerifiedAsync(_http, asset, archive, progress, token, _store.DownloadsPath);
             progress?.Report(new TransferProgress("launcher.samples.extracting"));
             string content = Path.Combine(staging, "content");
             await Task.Run(() => ReleasePackage.ExtractArchive(archive, content, token), token);

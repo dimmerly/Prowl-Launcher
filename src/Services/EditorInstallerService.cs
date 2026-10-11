@@ -48,7 +48,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
 
         using InstallWorkspace workspace = new( store );
         string archive = Path.Combine(workspace.Work, "editor.zip");
-        await ReleasePackage.DownloadVerifiedAsync(http, asset, archive, progress, token);
+        await ReleasePackage.DownloadVerifiedAsync(http, asset, archive, progress, token, store.DownloadsPath);
         progress?.Report(new TransferProgress("launcher.download.extracting"));
         await Task.Run(() => ReleasePackage.ExtractArchive(archive, workspace.Staging, token), token);
 

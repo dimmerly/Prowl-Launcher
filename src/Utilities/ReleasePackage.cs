@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 
 using Prowl.Rosetta;
@@ -28,12 +30,18 @@ static class ReleasePackage
         }
     }
 
+    /// <summary>
+    ///     Downloads <paramref name="asset" /> to <paramref name="archive" /> and verifies its SHA-256 digest. With a
+    ///     <paramref name="partialDirectory" />, an interrupted or cancelled download is kept there (named by its
+    ///     digest) and the next attempt resumes it with a range request.
+    /// </summary>
     public static async Task DownloadVerifiedAsync(
         HttpClient http,
         ReleaseAsset asset,
         string archive,
         IProgress<TransferProgress>? progress = null,
-        CancellationToken token = default
+        CancellationToken token = default,
+        string? partialDirectory = null
     )
     {
         if (!TryGetGitHubUri(asset, out Uri? download))
@@ -45,34 +53,139 @@ static class ReleasePackage
             throw new InvalidDataException(Loc.Get("launcher.errors.missing_digest"));
         }
 
+        string digest = asset.Digest![DigestPrefix.Length..].ToLowerInvariant();
+        string partial = archive;
+        if (partialDirectory != null)
+        {
+            Directory.CreateDirectory(partialDirectory);
+            partial = Path.Combine(partialDirectory, digest + ".part");
+            RemoveStalePartials(partialDirectory, partial);
+        }
+        long existing = partialDirectory != null && File.Exists(partial) ? new FileInfo(partial).Length : 0;
+        if (asset.Size > 0 && existing > asset.Size)
+        {
+            File.Delete(partial);
+            existing = 0;
+        }
+
         progress?.Report(new TransferProgress(Loc.Get("launcher.download.starting", new
         {
             name = asset.Name
-        }), 0));
-        using (HttpResponseMessage response = await http.GetAsync(download, HttpCompletionOption.ResponseHeadersRead, token))
+        }), asset.Size > 0 ? (double)existing / asset.Size : 0));
+        if (asset.Size <= 0 || existing < asset.Size)
         {
-            response.EnsureSuccessStatusCode();
-            long size = response.Content.Headers.ContentLength ?? asset.Size;
-            await using Stream input = await response.Content.ReadAsStreamAsync(token);
-            await using FileStream output = new( archive, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                Constants.Network.TransferBufferSize, true );
-            long received = await CopyWithProgressAsync(input, output, asset.Name, size, progress, token);
-            if (asset.Size > 0 && received != asset.Size)
-            {
-                throw new InvalidDataException(Loc.Get("launcher.errors.incomplete_download"));
-            }
+            RequireFreeSpace(partial, asset.Size - existing);
+            await DownloadAsync(http, download, asset, partial, existing, progress, token);
         }
 
         progress?.Report(new TransferProgress("launcher.download.verifying"));
-        await using (FileStream file = File.OpenRead(archive))
+        string hash;
+        await using (FileStream file = File.OpenRead(partial))
         {
-            string hash = Convert.ToHexString(await SHA256.HashDataAsync(file, token));
-            if (!hash.Equals(asset.Digest![DigestPrefix.Length..], StringComparison.OrdinalIgnoreCase))
+            hash = Convert.ToHexString(await SHA256.HashDataAsync(file, token));
+        }
+        if (!hash.Equals(digest, StringComparison.OrdinalIgnoreCase))
+        {
+            // Don't resume from bytes that can't be trusted.
+            File.Delete(partial);
+            throw new InvalidDataException(Loc.Get("launcher.errors.digest_mismatch"));
+        }
+        if (partial != archive)
+        {
+            File.Move(partial, archive);
+        }
+    }
+
+    private static async Task DownloadAsync(HttpClient http, Uri download, ReleaseAsset asset, string path, long existing,
+        IProgress<TransferProgress>? progress, CancellationToken token)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Get, download);
+        if (existing > 0)
+        {
+            request.Headers.Range = new RangeHeaderValue(existing, null);
+        }
+        using HttpResponseMessage response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+        if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            // The kept bytes no longer match the server's file; start over.
+            File.Delete(path);
+            await DownloadAsync(http, download, asset, path, 0, progress, token);
+            return;
+        }
+        response.EnsureSuccessStatusCode();
+
+        // A server that ignores the range sends the whole file again.
+        bool resumed = existing > 0 && response.StatusCode == HttpStatusCode.PartialContent;
+        long offset = resumed ? existing : 0;
+        long size = response.Content.Headers.ContentLength is {} length ? offset + length : asset.Size;
+        await using Stream input = await response.Content.ReadAsStreamAsync(token);
+        await using FileStream output = new( path, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None,
+            Constants.Network.TransferBufferSize, true );
+        long received = await CopyWithProgressAsync(input, output, asset.Name, offset, size, progress, token);
+        if (asset.Size > 0 && received != asset.Size)
+        {
+            throw new InvalidDataException(Loc.Get("launcher.errors.incomplete_download"));
+        }
+    }
+
+    /// <summary>
+    ///     Throws when the drive holding <paramref name="path" /> has less than <paramref name="bytes" /> free, plus a
+    ///     small margin. Drives whose free space can't be read are allowed; writing then fails as it normally would.
+    /// </summary>
+    internal static void RequireFreeSpace(string path, long bytes)
+    {
+        const long Margin = 64L * 1024 * 1024;
+        if (bytes <= 0 || FreeSpace(path) is not {} available)
+        {
+            return;
+        }
+        long needed = bytes > long.MaxValue - Margin ? long.MaxValue : bytes + Margin;
+        if (available < needed)
+        {
+            throw new IOException(Loc.Get("launcher.errors.not_enough_space", new
             {
-                throw new InvalidDataException(Loc.Get("launcher.errors.digest_mismatch"));
+                needed = Gigabytes(needed), available = Gigabytes(available)
+            }));
+        }
+    }
+
+    /// <summary>Free bytes on the drive or mount holding <paramref name="path" />, or null when unknown.</summary>
+    private static long? FreeSpace(string path)
+    {
+        try
+        {
+            string full = Path.GetFullPath(path);
+            DriveInfo? drive = DriveInfo.GetDrives()
+                .Where(d => d.IsReady && FileSystemHelper.IsInside(d.RootDirectory.FullName, full))
+                .MaxBy(d => d.RootDirectory.FullName.Length);
+            return drive?.AvailableFreeSpace;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Drops partial downloads that nothing resumed within two weeks.</summary>
+    private static void RemoveStalePartials(string directory, string keep)
+    {
+        foreach (string file in Directory.EnumerateFiles(directory, "*.part"))
+        {
+            try
+            {
+                if (file != keep && File.GetLastWriteTimeUtc(file) < DateTime.UtcNow.AddDays(-14))
+                {
+                    File.Delete(file);
+                }
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                // In use by another launcher; leave it.
             }
         }
     }
+
+    private static string Gigabytes(long bytes) => (bytes / 1073741824d).ToString("F1");
 
     /// <summary>
     ///     Extracts a zip into <paramref name="staging" />, rejecting path traversal, links, special files and
@@ -84,6 +197,12 @@ static class ReleasePackage
 
         Directory.CreateDirectory(staging);
         using ZipArchive zip = ZipFile.OpenRead(archive);
+        long declared = zip.Entries.Aggregate(0L, (total, entry) => total > Constants.Storage.MaxExpandedArchiveBytes
+            ? total : total + entry.Length);
+        if (declared <= Constants.Storage.MaxExpandedArchiveBytes)
+        {
+            RequireFreeSpace(staging, declared);
+        }
         long expanded = 0;
         foreach (ZipArchiveEntry entry in zip.Entries)
         {
@@ -139,12 +258,12 @@ static class ReleasePackage
     private static bool TryGetGitHubUri(ReleaseAsset asset, [NotNullWhen(true)] out Uri? uri) =>
         Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out uri) && uri.Scheme == "https" && uri.Host == "github.com";
 
-    private static async Task<long> CopyWithProgressAsync(Stream input, Stream output, string name, long size,
+    private static async Task<long> CopyWithProgressAsync(Stream input, Stream output, string name, long offset, long size,
         IProgress<TransferProgress>? progress, CancellationToken token)
     {
         byte[] buffer = new byte[Constants.Network.TransferBufferSize];
         Stopwatch clock = Stopwatch.StartNew();
-        long received = 0, lastReport = 0;
+        long received = offset, lastReport = 0;
         int count;
         while ((count = await input.ReadAsync(buffer, token)) > 0)
         {
