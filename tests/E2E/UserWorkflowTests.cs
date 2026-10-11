@@ -31,6 +31,7 @@ public sealed class UserWorkflowTests
         "ProjectVersionPrompts",
         "InstallMissingEditor",
         "MissingProject",
+        "LocateMovedProject",
         "CancelFolderPicker",
         "AddExistingProject",
         "OpenProjectFromCommandLine",

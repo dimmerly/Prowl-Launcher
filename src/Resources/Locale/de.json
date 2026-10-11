@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "{{path}} konnte nicht entfernt werden. Schließe alles, was es verwendet, und versuche es erneut.",
     "launcher.projects.opening": "Projekt wird geöffnet",
     "launcher.projects.busy": "Schließe die aktuelle Aufgabe ab und öffne das Projekt dann erneut",
-    "launcher.errors.not_enough_space": "Nicht genug Speicherplatz: {{needed}} GB benötigt, {{available}} GB frei. Gib Speicher frei und versuche es erneut."
+    "launcher.errors.not_enough_space": "Nicht genug Speicherplatz: {{needed}} GB benötigt, {{available}} GB frei. Gib Speicher frei und versuche es erneut.",
+    "launcher.projects.locate": "Suchen…",
+    "launcher.projects.located": "Projekt gefunden",
+    "launcher.errors.project_folder_missing": "Der Ordner dieses Projekts fehlt. Verwende „Suchen…“, um ihn zu finden.",
+    "launcher.errors.project_already_listed": "Dieser Ordner ist bereits in deinen Projekten."
 }

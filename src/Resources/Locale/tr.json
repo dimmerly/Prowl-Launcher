@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "{{path}} kaldırılamadı. Onu kullanan her şeyi kapatıp tekrar deneyin.",
     "launcher.projects.opening": "Proje açılıyor",
     "launcher.projects.busy": "Mevcut işlemi bitirip projeyi yeniden açın",
-    "launcher.errors.not_enough_space": "Yeterli disk alanı yok: {{needed}} GB gerekli, {{available}} GB boş. Yer açıp tekrar deneyin."
+    "launcher.errors.not_enough_space": "Yeterli disk alanı yok: {{needed}} GB gerekli, {{available}} GB boş. Yer açıp tekrar deneyin.",
+    "launcher.projects.locate": "Konumu bul…",
+    "launcher.projects.located": "Proje bulundu",
+    "launcher.errors.project_folder_missing": "Bu projenin klasörü bulunamıyor. Bulmak için Konumu bul… seçeneğini kullanın.",
+    "launcher.errors.project_already_listed": "Bu klasör zaten projelerinizde."
 }

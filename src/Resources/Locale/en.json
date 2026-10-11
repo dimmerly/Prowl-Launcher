@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "Couldn’t remove {{path}}. Close anything using it and try again.",
     "launcher.projects.opening": "Opening project",
     "launcher.projects.busy": "Finish the current task, then open the project again",
-    "launcher.errors.not_enough_space": "Not enough disk space: {{needed}} GB needed, {{available}} GB free. Free up some space and try again."
+    "launcher.errors.not_enough_space": "Not enough disk space: {{needed}} GB needed, {{available}} GB free. Free up some space and try again.",
+    "launcher.projects.locate": "Locate…",
+    "launcher.projects.located": "Project found",
+    "launcher.errors.project_folder_missing": "This project’s folder is missing. Use Locate… to find it.",
+    "launcher.errors.project_already_listed": "That folder is already in your projects."
 }

@@ -72,6 +72,10 @@ sealed class ProjectsView(
                         {
                             menu.Item(Loc.Get("launcher.projects.show_in_folder"), () => ProcessHelper.OpenInShell(project.Path));
                         }
+                        else
+                        {
+                            menu.Item(Loc.Get("launcher.projects.locate"), () => ui.Operations.Start(token => LocateProjectAsync(project, token), "launcher.projects.locate"));
+                        }
 
                         menu.Item(Loc.Get("launcher.projects.copy_path"), () => p.SetClipboard(project.Path));
                         menu.Item(
@@ -151,7 +155,14 @@ sealed class ProjectsView(
                             .Enter())
                         {
                             ui.Button(p, id + "remove", "launcher.projects.remove", token => RemoveProjectAsync(project, token), width: 90);
-                            ui.Button(p, id + "open", "launcher.projects.open", token => OpenProjectAsync(project, token), true, 90);
+                            if (folderExists)
+                            {
+                                ui.Button(p, id + "open", "launcher.projects.open", token => OpenProjectAsync(project, token), true, 90);
+                            }
+                            else
+                            {
+                                ui.Button(p, id + "locate", "launcher.projects.locate", token => LocateProjectAsync(project, token), true, 90);
+                            }
                         }
 
                         string[] keys = editors.Installed.Select(e => e.Key).ToArray();
@@ -215,4 +226,16 @@ sealed class ProjectsView(
     }
 
     private Task OpenProjectAsync(Project project, CancellationToken token) => editors.OpenProjectAsync(project, token);
+
+    /// <summary>Asks where a moved project's folder is now, starting next to where it used to be.</summary>
+    private async Task LocateProjectAsync(Project project, CancellationToken token)
+    {
+        string? previous = Path.GetDirectoryName(project.Path);
+        string start = previous != null && Directory.Exists(previous) ? previous : EditorSettings.ProjectsDirectory();
+        if (await dialogs.PickFolderAsync(start, token) is {} path)
+        {
+            store.RelocateProject(project, path);
+            notifications.Notify("launcher.projects.located", project.Name);
+        }
+    }
 }

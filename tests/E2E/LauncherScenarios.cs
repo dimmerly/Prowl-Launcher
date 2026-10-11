@@ -71,7 +71,7 @@ static class LauncherScenarios
         [
             "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
             "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall", "ProjectVersionPrompts",
-            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure", "OpenProjectFromCommandLine"
+            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure", "OpenProjectFromCommandLine", "LocateMovedProject"
         ];
         if (installedScenarios.Contains(scenario))
         {
@@ -79,7 +79,7 @@ static class LauncherScenarios
         }
         string[] projectScenarios =
         [
-            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts", "InstallMissingEditor",
+            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts", "InstallMissingEditor", "LocateMovedProject",
             "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (projectScenarios.Contains(scenario))
@@ -104,6 +104,11 @@ static class LauncherScenarios
         if (scenario == "MissingProject")
         {
             Directory.Delete(_project!.Path, true);
+        }
+        if (scenario == "LocateMovedProject")
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(MovedProjectPath(fixture))!);
+            Directory.Move(_project!.Path, MovedProjectPath(fixture));
         }
         if (scenario == "RepairEditor" || scenario == "CorruptDownload")
         {
@@ -634,9 +639,22 @@ static class LauncherScenarios
                 break;
             case "MissingProject":
                 Check(ui.HasText("Folder unavailable"), "Missing projects should be clearly marked.");
-                await ui.ClickText("Open");
-                await ui.Wait(() => ui.HasText("Choose an installed editor"), "A missing pin should show an actionable launch error.");
+                Check(ui.HasText("Locate…"), "Missing projects should offer to locate their folder instead of opening.");
                 Check(!File.Exists(f.LaunchRecord), "Unavailable projects must not start an editor.");
+                break;
+            case "LocateMovedProject":
+                Check(ui.HasText("Folder unavailable"), "A moved project should be marked as unavailable.");
+                await ui.ClickText("Locate…");
+                await ui.Wait(() => ui.HasText("Folder:"), "Locate should open the folder picker.");
+                await ui.FillBesideLabel("Folder:", MovedProjectPath(f));
+                await ui.ClickText("Select Folder");
+                await ui.Wait(() => FileSystemHelper.PathsEqual(f.Saved().Projects.Single().Path, MovedProjectPath(f)),
+                    "Locating should save the project's new folder.");
+                Check(f.Saved().Projects.Single().EditorKey == _editor!.Key, "The project must keep its editor.");
+                await ui.Wait(() => !ui.HasText("Folder unavailable") && !ui.HasText("Locate…"), "The project card should be available again.");
+                await ui.ClickText("Open");
+                await ui.Wait(() => File.Exists(f.LaunchRecord), "The located project should open.");
+                AssertLaunch(f, MovedProjectPath(f));
                 break;
             case "CancelFolderPicker":
                 await ui.ClickText("Add project");
@@ -836,6 +854,8 @@ static class LauncherScenarios
     /// <summary>The project path a scenario passes on the launcher's command line, if any.</summary>
     internal static string? CommandLineProject(string scenario) =>
         scenario == "OpenProjectFromCommandLine" ? Path.Combine(_project!.Path, _project.Name + ".prowl") : null;
+
+    private static string MovedProjectPath(LauncherFixture fixture) => Path.Combine(fixture.Projects, "Moved", "Alpha Game");
 
     private static void SetProjectVersion(Project project, string version) => JsonFile.Write(
         Path.Combine(project.Path, project.Name + ".prowl"), new

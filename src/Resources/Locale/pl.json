@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "Nie udało się usunąć {{path}}. Zamknij wszystko, co go używa, i spróbuj ponownie.",
     "launcher.projects.opening": "Otwieranie projektu",
     "launcher.projects.busy": "Zakończ bieżące zadanie, a potem otwórz projekt ponownie",
-    "launcher.errors.not_enough_space": "Za mało miejsca na dysku: potrzeba {{needed}} GB, wolne {{available}} GB. Zwolnij miejsce i spróbuj ponownie."
+    "launcher.errors.not_enough_space": "Za mało miejsca na dysku: potrzeba {{needed}} GB, wolne {{available}} GB. Zwolnij miejsce i spróbuj ponownie.",
+    "launcher.projects.locate": "Wskaż…",
+    "launcher.projects.located": "Znaleziono projekt",
+    "launcher.errors.project_folder_missing": "Brakuje folderu tego projektu. Użyj „Wskaż…”, aby go znaleźć.",
+    "launcher.errors.project_already_listed": "Ten folder jest już na liście projektów."
 }

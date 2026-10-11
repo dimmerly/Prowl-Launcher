@@ -346,6 +346,28 @@ public sealed class LauncherStore
 
     public Project AddProject(string path) => AddProject(path, true);
 
+    /// <summary>
+    ///     Points a project whose folder moved at its new folder (or .prowl file), keeping its editor, favourite and
+    ///     history.
+    /// </summary>
+    public void RelocateProject(Project project, string path)
+    {
+        bool isMarker = File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase);
+        string root = Path.GetFullPath(isMarker ? Path.GetDirectoryName(path)! : path);
+        if (!Directory.Exists(Path.Combine(root, "Assets")))
+        {
+            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_project_folder"));
+        }
+        if (Settings.Projects.Any(p => p != project && FileSystemHelper.PathsEqual(p.Path, root)))
+        {
+            throw new InvalidOperationException(Loc.Get("launcher.errors.project_already_listed"));
+        }
+
+        project.Path = root;
+        project.Name = ReadProjectMarker(root).Name;
+        Save();
+    }
+
     private Project AddProject(string path, bool save)
     {
         bool isMarker = File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase);

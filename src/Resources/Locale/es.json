@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "No se pudo eliminar {{path}}. Cierra lo que lo esté usando e inténtalo de nuevo.",
     "launcher.projects.opening": "Abriendo proyecto",
     "launcher.projects.busy": "Termina la tarea actual y vuelve a abrir el proyecto",
-    "launcher.errors.not_enough_space": "No hay suficiente espacio en disco: se necesitan {{needed}} GB y hay {{available}} GB libres. Libera espacio e inténtalo de nuevo."
+    "launcher.errors.not_enough_space": "No hay suficiente espacio en disco: se necesitan {{needed}} GB y hay {{available}} GB libres. Libera espacio e inténtalo de nuevo.",
+    "launcher.projects.locate": "Localizar…",
+    "launcher.projects.located": "Proyecto encontrado",
+    "launcher.errors.project_folder_missing": "Falta la carpeta de este proyecto. Usa Localizar… para encontrarla.",
+    "launcher.errors.project_already_listed": "Esa carpeta ya está en tus proyectos."
 }

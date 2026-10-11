@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "Impossible de supprimer {{path}}. Fermez ce qui l’utilise et réessayez.",
     "launcher.projects.opening": "Ouverture du projet",
     "launcher.projects.busy": "Terminez la tâche en cours, puis rouvrez le projet",
-    "launcher.errors.not_enough_space": "Espace disque insuffisant : {{needed}} Go nécessaires, {{available}} Go libres. Libérez de l’espace et réessayez."
+    "launcher.errors.not_enough_space": "Espace disque insuffisant : {{needed}} Go nécessaires, {{available}} Go libres. Libérez de l’espace et réessayez.",
+    "launcher.projects.locate": "Localiser…",
+    "launcher.projects.located": "Projet retrouvé",
+    "launcher.errors.project_folder_missing": "Le dossier de ce projet est introuvable. Utilisez Localiser… pour le retrouver.",
+    "launcher.errors.project_already_listed": "Ce dossier figure déjà dans vos projets."
 }

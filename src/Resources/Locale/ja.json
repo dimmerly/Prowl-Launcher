@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "{{path}} を削除できませんでした。使用中のものを閉じてもう一度お試しください。",
     "launcher.projects.opening": "プロジェクトを開いています",
     "launcher.projects.busy": "現在の処理が終わってから、もう一度プロジェクトを開いてください",
-    "launcher.errors.not_enough_space": "ディスク容量が不足しています。必要: {{needed}} GB、空き: {{available}} GB。空き容量を増やしてもう一度お試しください。"
+    "launcher.errors.not_enough_space": "ディスク容量が不足しています。必要: {{needed}} GB、空き: {{available}} GB。空き容量を増やしてもう一度お試しください。",
+    "launcher.projects.locate": "場所を指定…",
+    "launcher.projects.located": "プロジェクトが見つかりました",
+    "launcher.errors.project_folder_missing": "このプロジェクトのフォルダーが見つかりません。「場所を指定…」で探してください。",
+    "launcher.errors.project_already_listed": "そのフォルダーはすでにプロジェクトに含まれています。"
 }

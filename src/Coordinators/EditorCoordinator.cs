@@ -224,6 +224,11 @@ sealed class EditorCoordinator(
     /// </summary>
     public async Task OpenProjectAsync(Project project, CancellationToken token)
     {
+        if (!Directory.Exists(project.Path))
+        {
+            throw new DirectoryNotFoundException(Loc.Get("launcher.errors.project_folder_missing"));
+        }
+
         InstalledEditor? editor = FindInstalled(project.EditorKey);
         if (editor == null && ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion version))
         {

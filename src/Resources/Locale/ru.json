@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "Не удалось удалить {{path}}. Закройте всё, что его использует, и повторите попытку.",
     "launcher.projects.opening": "Открытие проекта",
     "launcher.projects.busy": "Дождитесь завершения текущей задачи и снова откройте проект",
-    "launcher.errors.not_enough_space": "Недостаточно места на диске: нужно {{needed}} ГБ, свободно {{available}} ГБ. Освободите место и повторите попытку."
+    "launcher.errors.not_enough_space": "Недостаточно места на диске: нужно {{needed}} ГБ, свободно {{available}} ГБ. Освободите место и повторите попытку.",
+    "launcher.projects.locate": "Указать…",
+    "launcher.projects.located": "Проект найден",
+    "launcher.errors.project_folder_missing": "Папка этого проекта не найдена. Нажмите «Указать…», чтобы найти её.",
+    "launcher.errors.project_already_listed": "Эта папка уже есть в ваших проектах."
 }

@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "Impossibile rimuovere {{path}}. Chiudi ciò che lo sta usando e riprova.",
     "launcher.projects.opening": "Apertura del progetto",
     "launcher.projects.busy": "Completa l’attività in corso, poi riapri il progetto",
-    "launcher.errors.not_enough_space": "Spazio su disco insufficiente: servono {{needed}} GB, liberi {{available}} GB. Libera spazio e riprova."
+    "launcher.errors.not_enough_space": "Spazio su disco insufficiente: servono {{needed}} GB, liberi {{available}} GB. Libera spazio e riprova.",
+    "launcher.projects.locate": "Individua…",
+    "launcher.projects.located": "Progetto trovato",
+    "launcher.errors.project_folder_missing": "La cartella di questo progetto non è disponibile. Usa Individua… per trovarla.",
+    "launcher.errors.project_already_listed": "Quella cartella è già tra i tuoi progetti."
 }

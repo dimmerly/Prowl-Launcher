@@ -275,5 +275,9 @@
     "launcher.uninstall.failed": "无法移除 {{path}}。请关闭正在使用它的程序后重试。",
     "launcher.projects.opening": "正在打开项目",
     "launcher.projects.busy": "请先完成当前任务，然后再次打开项目",
-    "launcher.errors.not_enough_space": "磁盘空间不足：需要 {{needed}} GB，可用 {{available}} GB。请释放空间后重试。"
+    "launcher.errors.not_enough_space": "磁盘空间不足：需要 {{needed}} GB，可用 {{available}} GB。请释放空间后重试。",
+    "launcher.projects.locate": "定位…",
+    "launcher.projects.located": "已找到项目",
+    "launcher.errors.project_folder_missing": "找不到此项目的文件夹。请使用“定位…”找到它。",
+    "launcher.errors.project_already_listed": "该文件夹已在你的项目中。"
 }
