@@ -145,19 +145,21 @@ sealed class EditorCoordinator(
 
     #region Installations
 
-    public async Task InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
+    public async Task<InstalledEditor> InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
     {
         operations.Title = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing", new
         {
             version = release.Tag
         });
         operations.ImmediateProgress = true;
-        await installer.InstallAsync(release, Platform.Identifier, operations.Transfer(), token, repository);
+        InstalledEditor editor = await installer.InstallAsync(release, Platform.Identifier, operations.Transfer(), token, repository);
         notifications.Notify(repair ? "launcher.versions.repaired" : "launcher.versions.installed",
             Loc.Get("launcher.versions.ready", new
             {
                 version = release.Tag
             }));
+        ReloadInstalled();
+        return editor;
     }
 
     /// <summary>Reinstalls the exact release an editor came from, looked up in its own repository.</summary>
@@ -215,6 +217,70 @@ sealed class EditorCoordinator(
     #endregion
 
     #region Launching
+
+    /// <summary>
+    ///     Opens <paramref name="project" /> in its editor. When that editor isn't installed, uses an installed editor
+    ///     for the project's version, or offers to install the matching release first.
+    /// </summary>
+    public async Task OpenProjectAsync(Project project, CancellationToken token)
+    {
+        InstalledEditor? editor = FindInstalled(project.EditorKey);
+        if (editor == null && ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion version))
+        {
+            editor = _installed.FirstOrDefault(e => !e.IsMain && ProjectVersion.TryParse(e, out ProjectVersion v) && v.CompareTo(version) == 0);
+            if (editor == null)
+            {
+                EditorRelease release = await FindReleaseAsync(version, token)
+                                        ?? throw new InvalidOperationException(Loc.Get("launcher.errors.no_matching_editor", new
+                                        {
+                                            version = version.ToString()
+                                        }));
+                bool accepted = await dialogs.ConfirmAsync(
+                    Loc.Get("launcher.projects.install_editor_title", new
+                    {
+                        version = release.Tag
+                    }),
+                    Loc.Get("launcher.projects.install_editor_description", new
+                    {
+                        project = project.Name, version = release.Tag
+                    }),
+                    "launcher.projects.install_and_open",
+                    token);
+                if (!accepted)
+                {
+                    return;
+                }
+                editor = await InstallAsync(release, token);
+            }
+        }
+        if (editor == null)
+        {
+            throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
+        }
+
+        if (project.EditorKey != editor.Key)
+        {
+            project.EditorKey = editor.Key;
+            store.Save();
+        }
+        await LaunchAsync(editor, project, token);
+    }
+
+    /// <summary>The installable release for <paramref name="version" />, checking GitHub when the cached list has none.</summary>
+    private async Task<EditorRelease?> FindReleaseAsync(ProjectVersion version, CancellationToken token)
+    {
+        EditorRelease? Match() => _releases.FirstOrDefault(release => !release.Draft && release.AssetFor(Platform.Identifier) != null
+                                                                      && ProjectVersion.TryParse(release.Tag, out ProjectVersion v)
+                                                                      && v.CompareTo(version) == 0);
+
+        if (Match() is {} cached)
+        {
+            return cached;
+        }
+        operations.Detail = "launcher.versions.checking_releases";
+        _releases = await github.GetAsync(token);
+        return Match();
+    }
 
     /// <summary>
     ///     Starts the editor through a console session and raises <see cref="SessionStarted" />. Asks first when the

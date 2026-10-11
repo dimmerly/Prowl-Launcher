@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "Обновить и открыть",
     "launcher.projects.downgrade_title": "Открыть в более старом редакторе?",
     "launcher.projects.downgrade_description": "{{project}} сохранён в Prowl {{saved}}, более новой версии, чем {{editor}}. Этот редактор не сможет его открыть. Выберите для проекта {{saved}} или новее.",
-    "launcher.projects.open_anyway": "Всё равно открыть"
+    "launcher.projects.open_anyway": "Всё равно открыть",
+    "launcher.projects.install_editor_title": "Установить {{version}}?",
+    "launcher.projects.install_editor_description": "{{project}} использует Prowl {{version}}, который не установлен. Скачать его с GitHub и открыть проект?",
+    "launcher.projects.install_and_open": "Установить и открыть",
+    "launcher.errors.no_matching_editor": "Нет установленного редактора или выпуска на GitHub для Prowl {{version}}. Выберите редактор для этого проекта."
 }

@@ -214,10 +214,5 @@ sealed class ProjectsView(
         return Task.CompletedTask;
     }
 
-    private Task OpenProjectAsync(Project project, CancellationToken token)
-    {
-        InstalledEditor editor = editors.Installed.FirstOrDefault(editor => editor.Key == project.EditorKey)
-                                 ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
-        return editors.LaunchAsync(editor, project, token);
-    }
+    private Task OpenProjectAsync(Project project, CancellationToken token) => editors.OpenProjectAsync(project, token);
 }

@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "アップグレードして開く",
     "launcher.projects.downgrade_title": "古いエディターで開きますか？",
     "launcher.projects.downgrade_description": "{{project}} は {{editor}} より新しい Prowl {{saved}} で保存されています。このエディターでは開けません。このプロジェクトには {{saved}} 以降を選択してください。",
-    "launcher.projects.open_anyway": "このまま開く"
+    "launcher.projects.open_anyway": "このまま開く",
+    "launcher.projects.install_editor_title": "{{version}} をインストールしますか？",
+    "launcher.projects.install_editor_description": "{{project}} は未インストールの Prowl {{version}} を使用しています。GitHub からダウンロードしてプロジェクトを開きますか？",
+    "launcher.projects.install_and_open": "インストールして開く",
+    "launcher.errors.no_matching_editor": "Prowl {{version}} に一致するインストール済みエディターや GitHub リリースがありません。このプロジェクトのエディターを選択してください。"
 }

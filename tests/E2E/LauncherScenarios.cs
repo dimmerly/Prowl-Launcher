@@ -79,7 +79,7 @@ static class LauncherScenarios
         }
         string[] projectScenarios =
         [
-            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts",
+            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts", "InstallMissingEditor",
             "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (projectScenarios.Contains(scenario))
@@ -607,6 +607,21 @@ static class LauncherScenarios
                 await ui.ClickText("Open");
                 await ui.ClickText("Upgrade & open");
                 await ui.Wait(() => File.Exists(f.LaunchRecord), "Accepting the upgrade should start the editor.");
+                AssertLaunch(f, _project!.Path);
+                break;
+            case "InstallMissingEditor":
+                await ui.ClickText("Open");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Install v1.0.0?"), "A project without its editor should offer to install it.");
+                await ui.ClickText("Cancel");
+                await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Declining should end the operation.");
+                Check(f.Store.InstalledEditors().Count == 0 && !File.Exists(f.LaunchRecord), "Declining must not install or launch anything.");
+
+                await ui.ClickText("Open");
+                await ui.ClickText("Install & open");
+                await ui.Wait(() => File.Exists(f.LaunchRecord), "Accepting should install the editor and open the project.");
+                InstalledEditor installed = f.Store.InstalledEditors().Single();
+                Check(installed.Tag == "v1.0.0", "The release matching the project's version must be installed.");
+                Check(f.Saved().Projects.Single().EditorKey == installed.Key, "The project must be pinned to the installed editor.");
                 AssertLaunch(f, _project!.Path);
                 break;
             case "MissingProject":

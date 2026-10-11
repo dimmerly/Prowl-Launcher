@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "升级并打开",
     "launcher.projects.downgrade_title": "在旧版编辑器中打开？",
     "launcher.projects.downgrade_description": "{{project}} 使用比 {{editor}} 更新的 Prowl {{saved}} 保存，该编辑器无法打开它。请为此项目选择 {{saved}} 或更高版本。",
-    "launcher.projects.open_anyway": "仍然打开"
+    "launcher.projects.open_anyway": "仍然打开",
+    "launcher.projects.install_editor_title": "安装 {{version}}？",
+    "launcher.projects.install_editor_description": "{{project}} 使用未安装的 Prowl {{version}}。从 GitHub 下载并打开项目？",
+    "launcher.projects.install_and_open": "安装并打开",
+    "launcher.errors.no_matching_editor": "没有与 Prowl {{version}} 匹配的已安装编辑器或 GitHub 版本。请为此项目选择编辑器。"
 }

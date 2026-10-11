@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "Zaktualizuj i otwórz",
     "launcher.projects.downgrade_title": "Otworzyć w starszym edytorze?",
     "launcher.projects.downgrade_description": "{{project}} zapisano w Prowl {{saved}}, nowszym niż {{editor}}. Ten edytor nie może go otworzyć. Wybierz dla tego projektu {{saved}} lub nowszy.",
-    "launcher.projects.open_anyway": "Otwórz mimo to"
+    "launcher.projects.open_anyway": "Otwórz mimo to",
+    "launcher.projects.install_editor_title": "Zainstalować {{version}}?",
+    "launcher.projects.install_editor_description": "{{project}} używa Prowl {{version}}, który nie jest zainstalowany. Pobrać go z GitHuba i otworzyć projekt?",
+    "launcher.projects.install_and_open": "Zainstaluj i otwórz",
+    "launcher.errors.no_matching_editor": "Żaden zainstalowany edytor ani wydanie na GitHubie nie pasuje do Prowl {{version}}. Wybierz edytor dla tego projektu."
 }

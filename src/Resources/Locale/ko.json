@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "업그레이드 후 열기",
     "launcher.projects.downgrade_title": "이전 에디터로 열까요?",
     "launcher.projects.downgrade_description": "{{project}}은(는) {{editor}}보다 최신인 Prowl {{saved}}(으)로 저장되었습니다. 이 에디터로는 열 수 없습니다. 이 프로젝트에는 {{saved}} 이상을 선택하세요.",
-    "launcher.projects.open_anyway": "그래도 열기"
+    "launcher.projects.open_anyway": "그래도 열기",
+    "launcher.projects.install_editor_title": "{{version}}을(를) 설치할까요?",
+    "launcher.projects.install_editor_description": "{{project}}은(는) 설치되지 않은 Prowl {{version}}을(를) 사용합니다. GitHub에서 다운로드하고 프로젝트를 열까요?",
+    "launcher.projects.install_and_open": "설치 후 열기",
+    "launcher.errors.no_matching_editor": "Prowl {{version}}과(와) 일치하는 설치된 에디터나 GitHub 릴리스가 없습니다. 이 프로젝트의 에디터를 선택하세요."
 }

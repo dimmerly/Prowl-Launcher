@@ -261,5 +261,9 @@
     "launcher.projects.upgrade": "Yükselt ve aç",
     "launcher.projects.downgrade_title": "Daha eski bir düzenleyicide açılsın mı?",
     "launcher.projects.downgrade_description": "{{project}}, {{editor}} sürümünden daha yeni olan Prowl {{saved}} ile kaydedildi. Bu düzenleyici onu açamaz. Bu proje için {{saved}} veya daha yenisini seçin.",
-    "launcher.projects.open_anyway": "Yine de aç"
+    "launcher.projects.open_anyway": "Yine de aç",
+    "launcher.projects.install_editor_title": "{{version}} yüklensin mi?",
+    "launcher.projects.install_editor_description": "{{project}}, yüklü olmayan Prowl {{version}} sürümünü kullanıyor. GitHub’dan indirip proje açılsın mı?",
+    "launcher.projects.install_and_open": "Yükle ve aç",
+    "launcher.errors.no_matching_editor": "Prowl {{version}} ile eşleşen yüklü bir düzenleyici veya GitHub sürümü yok. Bu proje için bir düzenleyici seçin."
 }
