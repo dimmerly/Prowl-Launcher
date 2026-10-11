@@ -2,6 +2,7 @@ using System.Drawing;
 
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
@@ -9,11 +10,12 @@ using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>
+///     The window's title bar: language picker, optional FPS counter and window controls. Without a native frame
+///     (<paramref name="nativeFrame" /> false) it also drags and maximizes the window.
+/// </summary>
+sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool nativeFrame)
 {
-    private float WindowControlsWidth => (store.Settings.ShowFps ? Constants.Layout.FpsWidth : 0) + Constants.Layout.LanguagePickerWidth + 126;
-
-    private float WindowUiScale => _windowScale.Input;
     private int _fpsFrames;
     private double _fpsSeconds;
     private string _fpsText = "— FPS";
@@ -21,7 +23,13 @@ public sealed partial class Launcher
     private OrigamiTheme? _languageThemeSource;
     private Vector2i _windowDragOffset;
 
-    private void DrawTitleBar(Paper p)
+    /// <summary>True once enough frames have been drawn to show a frame rate.</summary>
+    public bool HasFrameRate => _fpsText != "— FPS";
+
+    /// <summary>Width of the controls on the right, which the native frame must not treat as a drag area.</summary>
+    public static float ControlsWidth(Settings settings) => (settings.ShowFps ? Constants.Layout.FpsWidth : 0) + Constants.Layout.LanguagePickerWidth + 126;
+
+    public void Draw(Paper p)
     {
         using (p.Row("title-bar")
             .PositionType(PositionType.SelfDirected)
@@ -32,48 +40,60 @@ public sealed partial class Launcher
             .Enter())
         {
             ElementBuilder dragArea = p.Box("window-drag-area").Height(Constants.Layout.TitleBarHeight);
-            if (_windowFrame == null)
+            if (!nativeFrame)
             {
                 dragArea.OnDoubleClick(_ => ToggleMaximized())
-                    .OnDragStart(_ => _windowDragOffset = new Vector2i((int)_window.MousePosition.X, (int)_window.MousePosition.Y))
+                    .OnDragStart(_ => _windowDragOffset = new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y))
                     .OnDragging(_ =>
                     {
-                        if (_window.WindowState == WindowState.Normal)
+                        if (window.WindowState == WindowState.Normal)
                         {
-                            _window.Location += new Vector2i((int)_window.MousePosition.X, (int)_window.MousePosition.Y) - _windowDragOffset;
+                            window.Location += new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y) - _windowDragOffset;
                         }
                     });
             }
 
-            using (p.Row("window-controls").Width(WindowControlsWidth).Height(Constants.Layout.TitleBarHeight).Enter())
+            using (p.Row("window-controls").Width(ControlsWidth(store.Settings)).Height(Constants.Layout.TitleBarHeight).Enter())
             {
                 if (store.Settings.ShowFps)
                 {
                     p.Box("fps")
                         .Width(Constants.Layout.FpsWidth)
                         .Height(Constants.Layout.TitleBarHeight)
-                        .Text(_fpsText, _font)
+                        .Text(_fpsText, ui.Font)
                         .FontSize(16)
-                        .TextColor(Muted)
+                        .TextColor(ui.Muted)
                         .Alignment(TextAlignment.MiddleCenter)
                         .IsNotInteractable();
                 }
                 DrawLanguagePicker(p);
                 WindowControl(p, "minimize-window", "launcher.window.minimize", LauncherIcons.Minimize,
-                    () => _window.WindowState = WindowState.Minimized);
-                bool maximized = _window.WindowState == WindowState.Maximized;
+                    () => window.WindowState = WindowState.Minimized);
+                bool maximized = window.WindowState == WindowState.Maximized;
                 WindowControl(p, "maximize-window", maximized ? "launcher.window.restore" : "launcher.window.maximize",
                     maximized ? OrigamiIconSet.Duplicate : OrigamiIconSet.Expand, ToggleMaximized);
-                WindowControl(p, "close-window", "launcher.common.close", OrigamiIconSet.Close, () => _window.Close(), true);
+                WindowControl(p, "close-window", "launcher.common.close", OrigamiIconSet.Close, () => window.Close(), true);
             }
+        }
+    }
+
+    public void CountFrame(float delta)
+    {
+        _fpsSeconds += delta;
+        _fpsFrames++;
+        if (_fpsSeconds >= 0.5)
+        {
+            _fpsText = $"{_fpsFrames / _fpsSeconds:F0} FPS";
+            _fpsSeconds = 0;
+            _fpsFrames = 0;
         }
     }
 
     private void DrawLanguagePicker(Paper p)
     {
-        if (_languageThemeSource != _appearance.Theme)
+        if (_languageThemeSource != ui.Appearance.Theme)
         {
-            _languageThemeSource = _appearance.Theme;
+            _languageThemeSource = ui.Appearance.Theme;
             _languageTheme = _languageThemeSource.Clone();
             _languageTheme.BorderStrong = Color.Transparent;
         }
@@ -93,11 +113,11 @@ public sealed partial class Launcher
             .Display(code => LocaleHelper.Names[Array.IndexOf(LocaleHelper.Codes, code)])
             .CustomTrigger(context =>
             {
-                Color color = p.IsParentHovered || context.IsOpen ? Ink : Muted;
+                Color color = p.IsParentHovered || context.IsOpen ? ui.Ink : ui.Muted;
                 p.Box("language-globe").Width(20).Margin(8, 4, 0, 0)
                     .IsNotInteractable().Icon(p, OrigamiIconSet.Globe, color, size: 15);
                 p.Box("language-code").Width(UnitValue.StretchOne)
-                    .IsNotInteractable().Text(locale.ToUpperInvariant(), _font)
+                    .IsNotInteractable().Text(locale.ToUpperInvariant(), ui.Font)
                     .FontSize(13).TextColor(color).Alignment(TextAlignment.MiddleCenter);
                 p.Box("language-chevron").Width(16).Margin(4, 8, 0, 0)
                     .IsNotInteractable()
@@ -113,25 +133,10 @@ public sealed partial class Launcher
             .Cursor(PaperCursor.Pointer)
             .Tooltip(Loc.Get(label))
             .OnClick(_ => action())
-            .Icon(p, icon, Ink, size: 16);
-        button.Hovered.BackgroundColor(close ? _appearance.Theme.Red.C500 : _appearance.Theme.Hover);
+            .Icon(p, icon, ui.Ink, size: 16);
+        button.Hovered.BackgroundColor(close ? ui.Appearance.Theme.Red.C500 : ui.Appearance.Theme.Hover);
     }
 
-    private void ToggleMaximized()
-    {
-        LauncherWindow window = _window;
+    private void ToggleMaximized() =>
         window.WindowState = window.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-    }
-
-    private void UpdateFps(float delta)
-    {
-        _fpsSeconds += delta;
-        _fpsFrames++;
-        if (_fpsSeconds >= 0.5)
-        {
-            _fpsText = $"{_fpsFrames / _fpsSeconds:F0} FPS";
-            _fpsSeconds = 0;
-            _fpsFrames = 0;
-        }
-    }
 }

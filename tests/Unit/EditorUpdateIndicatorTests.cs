@@ -22,7 +22,7 @@ public sealed class EditorUpdateIndicatorTests
     [InlineData("v0.9.0", false, true, false)]
     public void IndicatorRespectsTheSelectedChannelAndVersionOrder(string tag, bool preview, bool includePreviews, bool expected)
     {
-        EditorRelease? update = Launcher.FindEditorUpdate([Release(tag, preview)], [Installed("v1.0.0")], Repository, Platform, includePreviews);
+        EditorRelease? update = EditorController.FindEditorUpdate([Release(tag, preview)], [Installed("v1.0.0")], Repository, Platform, includePreviews);
         Assert.Equal(expected, update != null);
     }
 
@@ -32,41 +32,41 @@ public sealed class EditorUpdateIndicatorTests
     [InlineData("v1.0.0-preview-9", "v1.0.0-preview-10")]
     [InlineData("v0.0.0", "v0.0.1")]
     [InlineData("v1.0.0-preview.10", "v1.0.0")]
-    public void HistoricalTagsAndPrereleaseNumbersCompareCorrectly(string installed, string available) => Assert.NotNull(Launcher.FindEditorUpdate([Release(available, available.Contains('-'))], [Installed(installed)], Repository, Platform, true));
+    public void HistoricalTagsAndPrereleaseNumbersCompareCorrectly(string installed, string available) => Assert.NotNull(EditorController.FindEditorUpdate([Release(available, available.Contains('-'))], [Installed(installed)], Repository, Platform, true));
 
     [Fact]
     public void OnlyTheNewestInstalledVersionIsTheBaseline()
     {
-        Assert.Null(Launcher.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.0.0"), Installed("v1.2.0")], Repository, Platform, true));
-        Assert.Null(Launcher.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.2.0-preview.1")], Repository, Platform, false));
-        Assert.Null(Launcher.FindEditorUpdate([Release("v1.0.0-preview-9", true)], [Installed("v1.0.0-preview-10")], Repository, Platform, true));
+        Assert.Null(EditorController.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.0.0"), Installed("v1.2.0")], Repository, Platform, true));
+        Assert.Null(EditorController.FindEditorUpdate([Release("v1.1.0")], [Installed("v1.2.0-preview.1")], Repository, Platform, false));
+        Assert.Null(EditorController.FindEditorUpdate([Release("v1.0.0-preview-9", true)], [Installed("v1.0.0-preview-10")], Repository, Platform, true));
     }
 
     [Fact]
     public void TheNewestEligibleReleaseIsSelectedRegardlessOfPublicationOrder()
     {
         EditorRelease update = Release("v1.2.0");
-        Assert.Same(update, Launcher.FindEditorUpdate([update, Release("v1.1.0")], [Installed("v1.0.0")], Repository, Platform, false));
+        Assert.Same(update, EditorController.FindEditorUpdate([update, Release("v1.1.0")], [Installed("v1.0.0")], Repository, Platform, false));
     }
 
     [Fact]
     public void InstallingTheReleaseClearsTheIndicator()
     {
         EditorRelease release = Release("v1.1.0");
-        Assert.NotNull(Launcher.FindEditorUpdate([release], [Installed("v1.0.0")], Repository, Platform, false));
-        Assert.Null(Launcher.FindEditorUpdate([release], [Installed("v1.0.0"), Installed("v1.1.0")], Repository, Platform, false));
+        Assert.NotNull(EditorController.FindEditorUpdate([release], [Installed("v1.0.0")], Repository, Platform, false));
+        Assert.Null(EditorController.FindEditorUpdate([release], [Installed("v1.0.0"), Installed("v1.1.0")], Repository, Platform, false));
     }
 
     [Fact]
-    public void DraftsUnsupportedPlatformsAndInvalidVersionsDoNotShowAnIndicator() => Assert.Null(Launcher.FindEditorUpdate([Release("v2.0.0", draft: true), Release("v2.0.0", platform: "linux-x64"), Release("unknown")],
+    public void DraftsUnsupportedPlatformsAndInvalidVersionsDoNotShowAnIndicator() => Assert.Null(EditorController.FindEditorUpdate([Release("v2.0.0", draft: true), Release("v2.0.0", platform: "linux-x64"), Release("unknown")],
         [Installed("v1.0.0")], Repository, Platform, true));
 
     [Fact]
     public void OtherRepositoriesPlatformsAndFirstTimeInstallsDoNotShowAnUpdateIndicator()
     {
         EditorRelease[] releases = [Release("v2.0.0")];
-        Assert.Null(Launcher.FindEditorUpdate(releases, [], Repository, Platform, true));
-        Assert.Null(Launcher.FindEditorUpdate(releases, [Installed("v1.0.0", "someone/another-editor"), Installed("v1.0.0", platform: "linux-x64")],
+        Assert.Null(EditorController.FindEditorUpdate(releases, [], Repository, Platform, true));
+        Assert.Null(EditorController.FindEditorUpdate(releases, [Installed("v1.0.0", "someone/another-editor"), Installed("v1.0.0", platform: "linux-x64")],
             Repository, Platform, true));
     }
 }

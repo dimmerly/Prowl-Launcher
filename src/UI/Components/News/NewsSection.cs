@@ -1,16 +1,24 @@
 using System.Diagnostics;
 
-using OpenTK.Mathematics;
-
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.PaperUI.Markdown;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+using Prowl.Vector;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>The news strip below the project list: paged preview cards that open full posts.</summary>
+sealed class NewsSection(
+    LauncherStore store,
+    Controls ui,
+    HttpClient http,
+    Action<Exception> logError,
+    CancellationToken background,
+    bool offline,
+    bool capturing
+) : IDisposable
 {
     private const double NewsSlideDuration = 0.24;
 
@@ -32,6 +40,12 @@ public sealed partial class Launcher
     private NewsPost? _newsSelected;
     private long _newsSlideStarted;
 
+    public void Dispose()
+    {
+        _newsImages.Dispose();
+        _newsThumbnails.Dispose();
+    }
+
     private void ChangeNewsPage(int page)
     {
         if (NewsSliding || page == _newsPage)
@@ -44,9 +58,9 @@ public sealed partial class Launcher
         _newsSlideStarted = Stopwatch.GetTimestamp();
     }
 
-    private void DrawNewsSection(Paper p)
+    public void Draw(Paper p)
     {
-        p.Box("news-divider").Height(1).BackgroundColor(_appearance.Theme.BorderSoft).IsNotInteractable();
+        p.Box("news-divider").Height(1).BackgroundColor(ui.Appearance.Theme.BorderSoft).IsNotInteractable();
         using (p.Column("projects-news").Height(UnitValue.Auto).Gap(8).Enter())
         {
             DrawNews(p);
@@ -60,7 +74,7 @@ public sealed partial class Launcher
             _newsRepository = store.Settings.LauncherRepository;
             _newsImages.Dispose();
             _newsThumbnails.Dispose();
-            _news = new NewsService(_http, store, _newsRepository, NewsService.DevelopmentDirectory());
+            _news = new NewsService(http, store, _newsRepository, NewsService.DevelopmentDirectory());
             _newsPosts = _news.ReadCache();
             _newsPage = 0;
             _newsSlideStarted = 0;
@@ -85,7 +99,7 @@ public sealed partial class Launcher
             _newsRequested = false;
         }
 
-        if (!_newsRequested && !_newsLoading && (_news?.IsLocal == true || !offline && screenshot == null))
+        if (!_newsRequested && !_newsLoading && (_news?.IsLocal == true || !offline && !capturing))
         {
             _ = RefreshNewsAsync();
         }
@@ -93,17 +107,17 @@ public sealed partial class Launcher
         DrawNewsPreviewCards(p);
         if (_newsPosts.Count == 0 && !_newsLoading && !_newsFailed)
         {
-            Label(p, "news-empty", "launcher.news.empty", 18, Muted, 36);
+            ui.Label(p, "news-empty", "launcher.news.empty", 18, ui.Muted, 36);
         }
 
         if (_newsLoading)
         {
-            Label(p, "news-loading", "launcher.news.loading", 18, Muted, 36);
+            ui.Label(p, "news-loading", "launcher.news.loading", 18, ui.Muted, 36);
         }
 
         if (_newsFailed)
         {
-            Label(p, "news-error", "launcher.news.error", 18, Muted, 48);
+            ui.Label(p, "news-error", "launcher.news.error", 18, ui.Muted, 48);
         }
     }
 
@@ -116,7 +130,7 @@ public sealed partial class Launcher
             return;
         }
 
-        float available = Math.Max(1, ContentWidth(p));
+        float available = Math.Max(1, Controls.ContentWidth(p));
         bool hasMore = lastPage > 0;
         float sideSpace = hasMore ? 28 : 0;
         using (p.Box("news-previews").Height(88).Enter())
@@ -182,8 +196,8 @@ public sealed partial class Launcher
             {
                 ElementBuilder card = p.Row("news-preview-" + post.File).Width(width).Height(88)
                     .Padding(0).Gap(0).AlignItems(LayoutAlignment.Center)
-                    .BackgroundColor(_appearance.Card).BorderColor(_appearance.Theme.BorderSoft).BorderWidth(1)
-                    .Rounded(_appearance.Theme.Metrics.ContainerRounding).Clip().Cursor(PaperCursor.Pointer)
+                    .BackgroundColor(ui.Appearance.Card).BorderColor(ui.Appearance.Theme.BorderSoft).BorderWidth(1)
+                    .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding).Clip().Cursor(PaperCursor.Pointer)
                     .OnClick(click =>
                     {
                         if (!_newsLoading && !NewsSliding)
@@ -196,13 +210,13 @@ public sealed partial class Launcher
                     card.IsNotInteractable();
                 }
 
-                card.Hovered.BackgroundColor(_appearance.Theme.Hover);
+                card.Hovered.BackgroundColor(ui.Appearance.Theme.Hover);
                 using (card.Enter())
                 {
                     if (width >= 260 && !string.IsNullOrWhiteSpace(post.Thumbnail) && _news != null)
                     {
                         TextureTK? thumbnail = _newsThumbnails.Get(_news, post, post.Thumbnail,
-                            !offline && screenshot == null, _backgroundCancellation.Token, LogError);
+                            !offline && !capturing, background, logError);
                         if (thumbnail != null)
                         {
                             DrawNewsThumbnail(p, thumbnail);
@@ -211,7 +225,7 @@ public sealed partial class Launcher
                     using (p.Column("info").Height(88).Padding(12).Gap(2).IsNotInteractable().Enter())
                     {
                         p.Box("title").Height(UnitValue.Auto).MaxHeight(40).Clip().IsNotInteractable()
-                            .Text(post.Title, _bold).FontSize(18).TextColor(Ink).Wrap(TextWrapMode.Wrap);
+                            .Text(post.Title, ui.Bold).FontSize(18).TextColor(ui.Ink).Wrap(TextWrapMode.Wrap);
                         p.Box("byline-space").Height(UnitValue.Stretch()).IsNotInteractable();
                         DrawNewsByline(p, post, 13);
                     }
@@ -222,11 +236,11 @@ public sealed partial class Launcher
 
     private void DrawNewsThumbnail(Paper p, TextureTK texture)
     {
-        float rounding = _appearance.Theme.Metrics.ContainerRounding;
+        float rounding = ui.Appearance.Theme.Metrics.ContainerRounding;
         using (p.Box("thumbnail").Size(96, 88).Clip().IsNotInteractable().Enter())
         {
             // Only the card's left corners are rounded; the text sits to the right.
-            DrawCoverImage(p, texture, rounding, 0, 0, rounding);
+            Controls.DrawCoverImage(p, texture, rounding, 0, 0, rounding);
         }
     }
 
@@ -236,15 +250,15 @@ public sealed partial class Launcher
         {
             string author = string.IsNullOrWhiteSpace(post.Author) ? "" : post.Author;
             p.Box("author").Height(UnitValue.Auto).Clip().IsNotInteractable()
-                .Text(author, _font).FontSize(fontSize).TextColor(Muted);
+                .Text(author, ui.Font).FontSize(fontSize).TextColor(ui.Muted);
             p.Box("date").Width(UnitValue.Auto).Height(UnitValue.Auto).IsNotInteractable()
-                .Text(RelativeDate.Format(post.Date), _font).FontSize(fontSize).TextColor(Muted);
+                .Text(RelativeDate.Format(post.Date), ui.Font).FontSize(fontSize).TextColor(ui.Muted);
         }
     }
 
     private void NewsText(Paper p, string id, string text, bool heading = false) =>
-        p.Box(id).Height(UnitValue.Auto).IsNotInteractable().Text(text, heading ? _bold : _font)
-            .FontSize(heading ? 19 : 16).TextColor(heading ? Ink : Muted).Wrap(TextWrapMode.Wrap);
+        p.Box(id).Height(UnitValue.Auto).IsNotInteractable().Text(text, heading ? ui.Bold : ui.Font)
+            .FontSize(heading ? 19 : 16).TextColor(heading ? ui.Ink : ui.Muted).Wrap(TextWrapMode.Wrap);
 
     private async Task RefreshNewsAsync()
     {
@@ -260,7 +274,7 @@ public sealed partial class Launcher
         _newsFailed = false;
         try
         {
-            IReadOnlyList<NewsPost> posts = await service.GetIndexAsync(_backgroundCancellation.Token);
+            IReadOnlyList<NewsPost> posts = await service.GetIndexAsync(background);
             if (_news == service)
             {
                 _newsPosts = posts;
@@ -268,7 +282,7 @@ public sealed partial class Launcher
                 _newsThumbnails.Dispose();
             }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (background.IsCancellationRequested)
         {
         }
         catch (Exception error)
@@ -278,7 +292,7 @@ public sealed partial class Launcher
                 _newsFailed = true;
                 _newsNextCheck = DateTime.UtcNow.AddMinutes(1);
             }
-            LogError(error);
+            logError(error);
         }
         finally
         {
@@ -301,7 +315,7 @@ public sealed partial class Launcher
         _newsFailed = false;
         try
         {
-            string markdown = await service.GetPostAsync(post, !offline && screenshot == null, _backgroundCancellation.Token);
+            string markdown = await service.GetPostAsync(post, !offline && !capturing, background);
             if (_news == service && _newsSelected == post)
             {
                 string content = markdown.TrimStart();
@@ -310,9 +324,9 @@ public sealed partial class Launcher
                     int lineEnd = content.IndexOf('\n');
                     markdown = lineEnd < 0 ? "" : content[(lineEnd + 1)..];
                 }
-                _newsMarkdown = new MarkdownBuilder(_font).Fonts(bold: _bold).FontSize(18).Source(markdown)
-                    .Images(href => _newsImages.Get(service, post, href, !offline && screenshot == null,
-                        _backgroundCancellation.Token, LogError)!)
+                _newsMarkdown = new MarkdownBuilder(ui.Font).Fonts(bold: ui.Bold).FontSize(18).Source(markdown)
+                    .Images(href => _newsImages.Get(service, post, href, !offline && !capturing,
+                        background, logError)!)
                     .OnLink(href =>
                     {
                         if (Uri.TryCreate(service.Page(post.File), href, out Uri? uri) && uri.Scheme is "https" or "http")
@@ -323,7 +337,7 @@ public sealed partial class Launcher
                 ShowNewsArticle(post, _newsMarkdown);
             }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (background.IsCancellationRequested)
         {
         }
         catch (Exception error)
@@ -332,7 +346,7 @@ public sealed partial class Launcher
             {
                 _newsFailed = true;
             }
-            LogError(error);
+            logError(error);
         }
         finally
         {
@@ -342,16 +356,15 @@ public sealed partial class Launcher
 
     private void ShowNewsArticle(NewsPost post, MarkdownBuilder markdown)
     {
-        Vector2i framebuffer = _window.FramebufferSize;
-        float scale = ModalScale;
-        float width = Math.Min(920, framebuffer.X / scale - 48);
-        float height = Math.Max(100, Math.Min(600, framebuffer.Y / scale * 0.8f - 150));
+        Float2 screen = ui.ScreenSize;
+        float width = Math.Min(920, screen.X - 48);
+        float height = Math.Max(100, Math.Min(600, screen.Y * 0.8f - 150));
         Origami.Modal(post.Title).Width(width)
             .CenteredContent(p => Origami.ScrollView(p, "news-article-scroll", width - 24, height)
                 .OverlayScrollbars(false).Padding(0, 20, 0, 0)
                 .ColSpacing(8).SmoothScroll().WheelStep(72).Body(() =>
                 {
-                    StyleMarkdown(markdown).Build(p, "news-article-" + post.File);
+                    ui.StyleMarkdown(markdown).Build(p, "news-article-" + post.File);
                 }))
             .Button(Loc.Get("launcher.common.close"), Modal.Pop, OrigamiVariant.Primary)
             .Show();

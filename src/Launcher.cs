@@ -2,8 +2,14 @@ using System.Reflection;
 
 using Prowl.OrigamiUI;
 using Prowl.Rosetta;
+using Prowl.Scribe;
+using Prowl.Vector;
 namespace Prowl.Launcher;
 
+/// <summary>
+///     The launcher application: owns the window, the services and the views, and wires them together. Views and
+///     controllers are separate classes that receive only what they use.
+/// </summary>
 public sealed partial class Launcher(
     LauncherStore store,
     string? screenshot = null,
@@ -17,25 +23,55 @@ public sealed partial class Launcher(
     {
         Timeout = Constants.Network.DownloadTimeout
     };
-    private readonly CancellationTokenSource _launcherUpdateCancellation = new();
+    private readonly Navigation _navigation = new(initialTab);
     private readonly LauncherPreviews _previews = previews ?? new LauncherPreviews();
-    private LauncherAppearance _appearance = null!;
 
-    private GitHubReleasesService _github = null!;
-    private EditorInstallerService _installer = null!;
-    private SampleService _samples = null!;
+    private LauncherAppearance _appearance = null!;
+    private FontFile _bold = null!;
+    private Dialogs _dialogs = null!;
+    private EditorController _editors = null!;
+    private FontFile _font = null!;
+    private InstallationDialog _installation = null!;
+    private LaunchView _launchView = null!;
+    private LogsDialog _logs = null!;
+    private NewsSection _news = null!;
+    private NotificationCenter _notifications = null!;
+    private OperationPanel _operationPanel = null!;
+    private OperationRunner _operations = null!;
+    private ProjectsView _projects = null!;
+    private SamplesView _samples = null!;
+    private SettingsView _settings = null!;
+    private Sidebar _sidebar = null!;
+    private TitleBar _titleBar = null!;
+    private Controls _ui = null!;
+    private LauncherUpdateController _updates = null!;
+    private VersionsView _versions = null!;
+
+    // Exposed for the E2E tests, which drive the real launcher.
+    internal OperationRunner Operations => _operations;
+    internal NotificationCenter Notifications => _notifications;
+    internal EditorController Editors => _editors;
+    internal NewsSection News => _news;
+    internal SamplesView Samples => _samples;
+    internal LogsDialog Logs => _logs;
+    internal LauncherAppearance Appearance => _appearance;
+
+    private bool Capturing => screenshot != null;
 
     private void Initialize()
     {
-        InitializeAppearance();
+        _font = Fonts.Load("Geist-Regular.ttf");
+        _bold = Fonts.Load("Geist-Bold.ttf");
+        _appearance = new LauncherAppearance(store.Home, _font, _bold);
         InitializeLocalization();
 
         CenterWindow();
-        _window.IsVisible = screenshot == null;
+        _window.IsVisible = !Capturing;
 
+        CreateComponents();
         InitializeServices();
         ShowPreviewChangelog();
-        _showInstallationPrompt = _previews.Installation || screenshot == null && LauncherInstallationService.ShouldOffer(store);
+        _installation.Pending = _previews.Installation || !Capturing && LauncherInstallationService.ShouldOffer(store);
 
         if (StartPreviewOperation())
         {
@@ -44,23 +80,16 @@ public sealed partial class Launcher(
 
         if (!offline)
         {
-            _ = RefreshInBackgroundAsync();
-            if (screenshot == null)
+            _ = _editors.RefreshInBackgroundAsync(_backgroundCancellation.Token);
+            if (!Capturing)
             {
-                _ = CheckLauncherInBackgroundAsync();
+                _ = _updates.CheckInBackgroundAsync();
             }
         }
-        else if (screenshot == null)
+        else if (!Capturing)
         {
-            Notify("launcher.network.offline", "launcher.network.offline_description", ToastType.Info);
+            _notifications.Notify("launcher.network.offline", "launcher.network.offline_description", ToastType.Info);
         }
-    }
-
-    private void InitializeAppearance()
-    {
-        _font = LoadFont("Geist-Regular.ttf");
-        _bold = LoadFont("Geist-Bold.ttf");
-        _appearance = new LauncherAppearance(store.Home, _font, _bold);
     }
 
     private void InitializeLocalization()
@@ -76,19 +105,51 @@ public sealed partial class Launcher(
             .SetFallbackLocale(Constants.Defaults.Locale)
             .SetLocale(locale)
             .AddProvider(new EmbeddedResourceProvider(Assembly.GetExecutingAssembly(), "Prowl.Launcher.Locale")));
-        _newProjectName = Loc.Get("launcher.projects.untitled");
-        LoadLanguageFonts();
+        Fonts.AddLanguageFallbacks(_paper);
+    }
+
+    /// <summary>Builds the services, controllers and views. Localization must be configured first.</summary>
+    private void CreateComponents()
+    {
+        CancellationToken background = _backgroundCancellation.Token;
+        _notifications = new NotificationCenter(_appearance);
+        _operations = new OperationRunner(_notifications, LogError);
+        _ui = new Controls(_appearance, _font, _bold, _operations,
+            () => new Float2(_window.FramebufferSize.X / ModalScale, _window.FramebufferSize.Y / ModalScale));
+        _dialogs = new Dialogs(_ui);
+
+        _editors = new EditorController(store, _http, new GitHubReleasesService(_http, store),
+            new EditorInstallerService(_http, store), _operations, _dialogs, _notifications, LogError);
+        _updates = new LauncherUpdateController(_http, store, _operations, _dialogs, _notifications, LogError,
+            !offline && !Capturing);
+
+        _titleBar = new TitleBar(store, _ui, _window, _windowFrame != null);
+        _sidebar = new Sidebar(store, _ui, _navigation, _editors);
+        _operationPanel = new OperationPanel(_ui);
+        _installation = new InstallationDialog(store, _ui, _previews.Installation);
+        _logs = new LogsDialog(_ui, _editors);
+        _news = new NewsSection(store, _ui, _http, LogError, background, offline, Capturing);
+        _projects = new ProjectsView(store, _ui, _dialogs, _editors, _notifications, _logs,
+            new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
+        _versions = new VersionsView(store, _ui, _dialogs, _editors);
+        _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, background, offline, Capturing);
+        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _backgroundCancellation);
+        _launchView = new LaunchView(_ui, _navigation, _editors, _logs, _titleBar);
+
+        _operations.Finished += _editors.ReloadInstalled;
+        _operations.CloseRequested += ForceClose;
+        _editors.SessionStarted += _ =>
+        {
+            _logs.Reset();
+            _navigation.Tab = LauncherTab.Launch;
+        };
     }
 
     private void InitializeServices()
     {
-        _github = new GitHubReleasesService(_http, store);
-        _installer = new EditorInstallerService(_http, store);
-        _samples = new SampleService(_http, store);
-
         try
         {
-            _installer.RecoverInterruptedOperations();
+            _editors.RecoverInterruptedOperations();
         }
         catch (IOException error)
         {
@@ -96,7 +157,7 @@ public sealed partial class Launcher(
         }
 
         store.ImportRecentProjects();
-        ReloadInstalled();
+        _editors.ReloadInstalled();
 
         // A newly downloaded child starts before activation. A forwarded active copy
         // can clean up immediately, even though it also uses a startup health check.
@@ -104,38 +165,56 @@ public sealed partial class Launcher(
             || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
                                                               && FileSystemHelper.PathsEqual(active, current))
         {
-            CleanupLauncherUpdates();
+            _updates.Cleanup();
         }
 
-        _releases = GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository) ?? [];
+        _editors.LoadCachedReleases();
     }
+
+    /// <summary>
+    ///     Polls console sessions each frame. When the selected editor becomes ready the launcher either closes
+    ///     (if configured) or returns from the launch view.
+    /// </summary>
+    private void RefreshEditorConsoles()
+    {
+        foreach (EditorConsoleSession session in _editors.Sessions)
+        {
+            session.Refresh();
+            if (session.State.Ready == null || session.ReadyHandled || _operations.Busy)
+            {
+                continue;
+            }
+            session.ReadyHandled = true;
+            if (session.CloseWhenReady && session.Active)
+            {
+                session.CloseWhenReady = false;
+                ForceClose();
+                return;
+            }
+            if (_navigation.Tab == LauncherTab.Launch && _editors.SelectedSession == session)
+            {
+                if (Modal.IsOpen)
+                {
+                    Modal.Pop();
+                }
+                _navigation.Tab = LauncherTab.Projects;
+            }
+        }
+    }
+
+    private void LogError(Exception exception) => LauncherLog.Append(store.Home, exception);
 
     private void Closing()
     {
-        foreach (EditorConsoleSession session in _editorSessions)
-        {
-            session.Dispose();
-        }
-        _sampleThumbnails.Dispose();
-        _newsImages.Dispose();
-        _newsThumbnails.Dispose();
+        _editors?.Dispose();
+        _samples?.Dispose();
+        _news?.Dispose();
         _backgroundCancellation.Cancel();
-        _launcherUpdateCancellation.Cancel();
-        _operation?.Dispose();
+        _updates?.Dispose();
+        _operations?.Dispose();
         _http.Dispose();
         _backgroundCancellation.Dispose();
-        _launcherUpdateCancellation.Dispose();
     }
-}
-
-/// <summary>The page shown in the main area. <see cref="Launch" /> is the full-screen editor launch view.</summary>
-public enum LauncherTab
-{
-    Projects,
-    Versions,
-    Settings,
-    Samples,
-    Launch
 }
 
 /// <summary>Screenshot and development states the launcher can open directly into.</summary>

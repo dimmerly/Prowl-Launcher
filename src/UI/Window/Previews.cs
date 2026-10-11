@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using OpenTK.Graphics.OpenGL4;
 
 using Prowl.Aperture;
@@ -8,54 +6,54 @@ using Prowl.Rosetta;
 using PixelFormat=OpenTK.Graphics.OpenGL4.PixelFormat;
 namespace Prowl.Launcher;
 
+/// <summary>Screenshot capture and the preview states it can open into.</summary>
 public sealed partial class Launcher
 {
     private int _frames;
 
     private void ShowPreviewChangelog()
     {
-        if (screenshot != null && _previews.Notes && _releases.FirstOrDefault() is {} previewRelease)
+        if (Capturing && _previews.Notes && _editors.Releases.FirstOrDefault() is {} previewRelease)
         {
-            ShowChangelog(previewRelease);
+            _dialogs.ShowChangelog(previewRelease);
         }
     }
 
     private bool StartPreviewOperation()
     {
-        if (screenshot == null)
+        if (!Capturing)
         {
             return false;
         }
 
         if (_previews.Progress)
         {
-            _operation = new CancellationTokenSource();
-            _immediateProgress = true;
-            _operationTitle = Loc.Get("launcher.versions.installing", new
-            {
-                version = "v1.0-preview-4"
-            });
-            _operationDetail = Loc.Get("launcher.download.progress", new
-            {
-                name = Loc.Get("launcher.common.editor"),
-                progress = Loc.Get("launcher.download.transferred", new
+            _operations.ShowPreview(
+                Loc.Get("launcher.versions.installing", new
                 {
-                    received = "21.0", total = "50.0"
-                })
-            });
-            _fraction = 0.42;
+                    version = "v1.0-preview-4"
+                }),
+                Loc.Get("launcher.download.progress", new
+                {
+                    name = Loc.Get("launcher.common.editor"),
+                    progress = Loc.Get("launcher.download.transferred", new
+                    {
+                        received = "21.0", total = "50.0"
+                    })
+                }),
+                0.42);
             return true;
         }
 
         if (_previews.Alert)
         {
-            Start(PreviewUpdateAlertAsync, "launcher.updates.checking");
+            _operations.Start(PreviewUpdateAlertAsync, "launcher.updates.checking");
             return true;
         }
 
-        if (_previews.Uninstall && _installed.FirstOrDefault() is {} previewEditor)
+        if (_previews.Uninstall && _editors.Installed.FirstOrDefault() is {} previewEditor)
         {
-            Start(token => UninstallEditorAsync(previewEditor, token), "launcher.versions.uninstall");
+            _operations.Start(token => _editors.UninstallAsync(previewEditor, token), "launcher.versions.uninstall");
             return true;
         }
 
@@ -65,18 +63,18 @@ public sealed partial class Launcher
     private async Task PreviewUpdateAlertAsync(CancellationToken token)
     {
         await Task.Delay(100, token);
-        Notify("launcher.updates.up_to_date", "launcher.updates.launcher_no_updates");
+        _notifications.Notify("launcher.updates.up_to_date", "launcher.updates.launcher_no_updates");
     }
 
     private void CaptureScreenshot()
     {
-        if (screenshot == null || ++_frames < 30 || _fpsText == "— FPS")
+        if (!Capturing || ++_frames < 30 || !_titleBar.HasFrameRate)
         {
             return;
         }
 
         // Capture confirmation previews after the normal progress delay has elapsed.
-        if (_previews.Uninstall && Stopwatch.GetElapsedTime(_operationStarted).TotalSeconds < 1)
+        if (_previews.Uninstall && _operations.Elapsed.TotalSeconds < 1)
         {
             return;
         }
@@ -92,7 +90,7 @@ public sealed partial class Launcher
         }
 
         using Image image = Image.FromPixels(flipped, width, height, Aperture.PixelFormat.Rgba8);
-        image.Save(screenshot);
+        image.Save(screenshot!);
         ForceClose();
     }
 }

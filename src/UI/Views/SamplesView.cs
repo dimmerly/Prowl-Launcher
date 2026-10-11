@@ -7,45 +7,61 @@ using Prowl.Rosetta;
 using Prowl.Scribe;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>The sample catalog: run a sample, and update the sample bundle when a newer one exists.</summary>
+sealed class SamplesView(
+    LauncherStore store,
+    Controls ui,
+    NotificationCenter notifications,
+    SampleService samples,
+    Action<Exception> logError,
+    CancellationToken background,
+    bool offline,
+    bool capturing
+) : IDisposable
 {
     private readonly SampleThumbnail _sampleThumbnails = new();
     private string? _launchingSampleId;
     private bool _sampleUpdateAvailable;
     private bool _sampleUpdateChecking;
     private string? _sampleUpdatesCheckedRepository;
-    private void DrawSamplesHeadingActions(Paper p)
+
+    /// <summary>True while a sample starts; its card shows a spinner instead of the progress panel.</summary>
+    public bool Launching => _launchingSampleId != null;
+
+    public void Dispose() => _sampleThumbnails.Dispose();
+
+    public void DrawHeadingActions(Paper p)
     {
-        if (_sampleUpdateAvailable && _samples.IsCached
+        if (_sampleUpdateAvailable && samples.IsCached
                                    && _sampleUpdatesCheckedRepository == store.Settings.LauncherRepository)
         {
-            Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
+            ui.Button(p, "update-samples", "launcher.samples.update", UpdateSamplesAsync, width: 220);
         }
     }
 
-    private void DrawSamples(Paper p)
+    public void Draw(Paper p)
     {
-        if (!offline && screenshot == null && !Busy && _samples.IsCached && !_sampleUpdateChecking
+        if (!offline && !capturing && !ui.Busy && samples.IsCached && !_sampleUpdateChecking
             && _sampleUpdatesCheckedRepository != store.Settings.LauncherRepository)
         {
             _ = CheckSamplesInBackgroundAsync();
         }
 
-        IReadOnlyList<Sample> samples = _samples.Catalog;
-        if (samples.Count == 0)
+        IReadOnlyList<Sample> catalog = samples.Catalog;
+        if (catalog.Count == 0)
         {
             return;
         }
 
         // Leave eight pixels on each edge for the hover scale to expand inside the scroll clip.
         float available = p.ScreenRect.Size.X - Constants.Layout.SidebarWidth - 72;
-        int columns = Math.Clamp((int)((available + Constants.Layout.SampleGap) / 260), 1, samples.Count);
+        int columns = Math.Clamp((int)((available + Constants.Layout.SampleGap) / 260), 1, catalog.Count);
         float cardWidth = Math.Clamp((available - Constants.Layout.SampleGap * (columns - 1)) / columns, 1, 280);
-        for (int first = 0; first < samples.Count; first += columns)
+        for (int first = 0; first < catalog.Count; first += columns)
         {
             using (p.Row("sample-row-" + first).Height(cardWidth).Gap(Constants.Layout.SampleGap).Enter())
             {
-                foreach (Sample sample in samples.Skip(first).Take(columns))
+                foreach (Sample sample in catalog.Skip(first).Take(columns))
                 {
                     DrawSampleCard(p, sample, cardWidth);
                 }
@@ -56,22 +72,22 @@ public sealed partial class Launcher
     private void DrawSampleCard(Paper p, Sample sample, float width)
     {
         string id = "sample-" + sample.Id;
-        bool runnable = _samples.IsAvailable(sample);
-        float rounding = _appearance.Theme.Metrics.ContainerRounding;
+        bool runnable = samples.IsAvailable(sample);
+        float rounding = ui.Appearance.Theme.Metrics.ContainerRounding;
         ElementBuilder card = p.Column(id).Width(width).Height(width)
             .Gap(0).Rounded(rounding).Clip()
             .JustifyContent(LayoutJustification.End)
-            .BackgroundColor(_appearance.Card)
-            .BorderColor(_appearance.Theme.BorderSoft).BorderWidth(1)
+            .BackgroundColor(ui.Appearance.Card)
+            .BorderColor(ui.Appearance.Theme.BorderSoft).BorderWidth(1)
             .Tooltip(runnable ? sample.Name : Loc.Get("launcher.samples.unavailable"))
             .OnClick(_ =>
             {
-                if (!Busy && runnable)
+                if (!ui.Busy && runnable)
                 {
-                    Start(token => RunSampleAsync(sample, token), "launcher.samples.run");
+                    ui.Operations.Start(token => RunSampleAsync(sample, token), "launcher.samples.run");
                 }
             });
-        if (runnable && !Busy)
+        if (runnable && !ui.Busy)
         {
             card.Cursor(PaperCursor.Pointer);
             card.Transition(GuiProp.ScaleX, 0.16f).Transition(GuiProp.ScaleY, 0.16f);
@@ -85,7 +101,7 @@ public sealed partial class Launcher
                 TextureTK? texture = _sampleThumbnails.Get(sample);
                 if (texture is not null)
                 {
-                    DrawCoverImage(p, texture, rounding, rounding, rounding, rounding);
+                    Controls.DrawCoverImage(p, texture, rounding, rounding, rounding, rounding);
                 }
             }
             float captionHeight = Math.Max(80, width * 0.25f);
@@ -99,13 +115,13 @@ public sealed partial class Launcher
                 .IsNotInteractable().Enter())
             {
                 p.Box(id + "title").Height(UnitValue.Auto).IsNotInteractable()
-                    .Text(sample.Name, _bold).FontSize(21).TextColor(Color.White)
+                    .Text(sample.Name, ui.Bold).FontSize(21).TextColor(Color.White)
                     .Wrap(TextWrapMode.Wrap);
                 string description = runnable ? sample.Description : Loc.Get("launcher.samples.unavailable");
                 if (!string.IsNullOrWhiteSpace(description))
                 {
                     p.Box(id + "description").Height(UnitValue.Auto).IsNotInteractable()
-                        .Text(description, _font)
+                        .Text(description, ui.Font)
                         .FontSize(17).TextColor(Color.FromArgb(235, 239, 246)).Wrap(TextWrapMode.Wrap);
                 }
             }
@@ -131,15 +147,15 @@ public sealed partial class Launcher
         _launchingSampleId = sample.Id;
         try
         {
-            _immediateProgress = !_samples.IsCached;
-            if (_immediateProgress)
+            ui.Operations.ImmediateProgress = !samples.IsCached;
+            if (ui.Operations.ImmediateProgress)
             {
-                _operationTitle = "launcher.samples.downloading";
+                ui.Operations.Title = "launcher.samples.downloading";
             }
-            await _samples.EnsureDownloadedAsync(Transfer(), token, !offline);
-            _immediateProgress = false;
-            _operationTitle = "launcher.samples.run";
-            await _samples.RunAsync(sample, Transfer(), token, !offline);
+            await samples.EnsureDownloadedAsync(ui.Operations.Transfer(), token, !offline);
+            ui.Operations.ImmediateProgress = false;
+            ui.Operations.Title = "launcher.samples.run";
+            await samples.RunAsync(sample, ui.Operations.Transfer(), token, !offline);
         }
         finally
         {
@@ -154,18 +170,18 @@ public sealed partial class Launcher
         _sampleUpdateChecking = true;
         try
         {
-            bool available = await _samples.HasUpdateAsync(_backgroundCancellation.Token);
-            if (!_backgroundCancellation.IsCancellationRequested && store.Settings.LauncherRepository == repository)
+            bool available = await samples.HasUpdateAsync(background);
+            if (!background.IsCancellationRequested && store.Settings.LauncherRepository == repository)
             {
                 _sampleUpdateAvailable = available;
             }
         }
-        catch (OperationCanceledException) when (_backgroundCancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (background.IsCancellationRequested)
         {
         }
         catch (Exception error)
         {
-            LogError(error);
+            logError(error);
         }
         finally
         {
@@ -176,10 +192,10 @@ public sealed partial class Launcher
 
     private async Task UpdateSamplesAsync(CancellationToken token)
     {
-        _immediateProgress = true;
-        _operationTitle = "launcher.samples.downloading";
-        await _samples.EnsureDownloadedAsync(Transfer(), token, checkForUpdates: true);
+        ui.Operations.ImmediateProgress = true;
+        ui.Operations.Title = "launcher.samples.downloading";
+        await samples.EnsureDownloadedAsync(ui.Operations.Transfer(), token, checkForUpdates: true);
         _sampleUpdateAvailable = false;
-        Notify("launcher.samples.updated", "launcher.samples.subtitle");
+        notifications.Notify("launcher.samples.updated", "launcher.samples.subtitle");
     }
 }

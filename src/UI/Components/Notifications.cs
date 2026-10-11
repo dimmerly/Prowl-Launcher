@@ -8,13 +8,17 @@ using Prowl.Rosetta;
 using Prowl.Scribe;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>Toasts. <see cref="Notify" /> is safe from any thread; showing and drawing happen on the UI thread.</summary>
+sealed class NotificationCenter(LauncherAppearance appearance)
 {
     private readonly List<NotificationToast> _activeToasts = [];
     private readonly ConcurrentQueue<(string Title, string Message, ToastType Type)> _notifications = new();
     private int _nextToastId;
 
-    private void ShowPendingNotifications()
+    /// <summary>Queues a toast. <paramref name="title" /> and <paramref name="message" /> may be localization keys.</summary>
+    public void Notify(string title, string message, ToastType type = ToastType.Success) => _notifications.Enqueue((title, message, type));
+
+    public void ShowPending()
     {
         while (_notifications.TryDequeue(out (string Title, string Message, ToastType Type) notification))
         {
@@ -35,9 +39,9 @@ public sealed partial class Launcher
         }
     }
 
-    private void DrawNotifications(Paper p, bool progressVisible)
+    public void Draw(Paper p, float deltaTime, bool progressVisible)
     {
-        OrigamiTheme theme = _appearance.Theme;
+        OrigamiTheme theme = appearance.Theme;
         OrigamiMetrics metrics = theme.Metrics;
         if (theme.Font is not {} font)
         {
@@ -46,7 +50,7 @@ public sealed partial class Launcher
         for (int i = _activeToasts.Count - 1; i >= 0; i--)
         {
             NotificationToast toast = _activeToasts[i];
-            toast.Remaining -= _deltaTime;
+            toast.Remaining -= deltaTime;
             if (toast.Remaining <= 0)
             {
                 _activeToasts.RemoveAt(i);
@@ -127,8 +131,6 @@ public sealed partial class Launcher
             }
         }
     }
-
-    private void Notify(string title, string message, ToastType type = ToastType.Success) => _notifications.Enqueue((title, message, type));
 
     private sealed class NotificationToast(int id, string title, string message, ToastType type, float duration)
     {

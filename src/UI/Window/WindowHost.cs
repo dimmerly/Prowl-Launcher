@@ -7,6 +7,7 @@ using OpenTK.Windowing.Common.Input;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 
 using Prowl.Aperture;
+using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.Quill;
 using Prowl.Vector;
@@ -18,7 +19,7 @@ namespace Prowl.Launcher;
 public sealed partial class Launcher
 {
 
-    private float UiScale => float.IsFinite(store.Settings.UiScale) ? Math.Clamp(store.Settings.UiScale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale) : Constants.Defaults.UiScale;
+    private float UiScale => WindowScale.ClampInterfaceScale(store.Settings.UiScale);
     private float DisplayScale => _windowScale.Rendering;
 
     /// <summary>Scale for sizing modals in layout units, guarded against a zero display scale.</summary>
@@ -64,8 +65,8 @@ public sealed partial class Launcher
                 GLFW.GetWin32Window(_window.WindowPtr),
                 _window.ClientSize.X,
                 _window.ClientSize.Y,
-                () => WindowUiScale,
-                () => WindowControlsWidth,
+                () => _windowScale.Input,
+                () => TitleBar.ControlsWidth(store.Settings),
                 resizing =>
                 {
                     _windowResizing = resizing;
@@ -92,7 +93,7 @@ public sealed partial class Launcher
         UpdateWindowScale();
         _context.Pump();
         RefreshEditorConsoles();
-        OfferPendingLauncherUpdate();
+        _updates.OfferPending(Modal.IsOpen || _installation.Pending);
         UpdateFrameRate();
     }
 
@@ -104,12 +105,12 @@ public sealed partial class Launcher
         }
 
         bool scrolling = _lastScroll != 0 && Stopwatch.GetElapsedTime(_lastScroll).TotalSeconds < 1;
-        _window.UpdateFrequency = _window.IsFocused || _mouseOverWindow || _windowResizing || scrolling || screenshot != null ? 0 : 5;
+        _window.UpdateFrequency = _window.IsFocused || _mouseOverWindow || _windowResizing || scrolling || Capturing ? 0 : 5;
     }
 
     private void RenderWindow(float delta)
     {
-        UpdateFps(delta);
+        _titleBar.CountFrame(delta);
         GL.Viewport(0, 0, _window.FramebufferSize.X, _window.FramebufferSize.Y);
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
@@ -157,13 +158,13 @@ public sealed partial class Launcher
 
     private bool HandleCloseRequested()
     {
-        if (!Busy)
+        if (!_operations.Busy)
         {
             return true;
         }
 
-        _closeAfterCancel = true;
-        _operation?.Cancel();
+        _operations.CloseWhenDone = true;
+        _operations.Cancel();
         return false;
     }
 

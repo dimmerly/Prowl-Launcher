@@ -1,14 +1,13 @@
 using System.Reflection;
 
+using Prowl.PaperUI;
 using Prowl.Scribe;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+static class Fonts
 {
-    private FontFile _bold = null!;
-    private FontFile _font = null!;
-
-    private static FontFile LoadFont(string name)
+    /// <summary>Loads an embedded font, e.g. <c>Geist-Regular.ttf</c>.</summary>
+    public static FontFile Load(string name)
     {
         Assembly assembly = Assembly.GetExecutingAssembly();
         string resource = assembly.GetManifestResourceNames()
@@ -17,7 +16,8 @@ public sealed partial class Launcher
         return new FontFile(stream);
     }
 
-    private void LoadLanguageFonts()
+    /// <summary>Adds installed CJK-capable system fonts as fallbacks so every language renders.</summary>
+    public static void AddLanguageFallbacks(Paper paper)
     {
         string[] families =
         [
@@ -31,10 +31,10 @@ public sealed partial class Launcher
             "Noto Sans CJK",
             "Noto Sans"
         ];
-        foreach (FontFile font in _paper.EnumerateSystemFonts()
+        foreach (FontFile font in paper.EnumerateSystemFonts()
             .Where(f => families.Contains(f.FamilyName, StringComparer.OrdinalIgnoreCase) && f.Style == FontStyle.Regular))
         {
-            _paper.AddFallbackFont(font);
+            paper.AddFallbackFont(font);
         }
     }
 }

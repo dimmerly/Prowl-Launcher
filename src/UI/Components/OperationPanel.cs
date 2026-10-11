@@ -7,42 +7,12 @@ using TextAlignment=Prowl.PaperUI.TextAlignment;
 
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>The bottom progress panel for the current <see cref="OperationRunner" /> operation.</summary>
+sealed class OperationPanel(Controls ui)
 {
+    private OperationRunner Operations => ui.Operations;
 
-    private void DrawOperationHeader(Paper p)
-    {
-        bool cancelling = _operation?.IsCancellationRequested == true;
-        using (p.Row("operation-header")
-            .Height(Constants.Layout.OperationHeight - 11)
-            .Padding(28, 28, 4, 0)
-            .Gap(12)
-            .AlignItems(LayoutAlignment.Center)
-            .Enter())
-        {
-            using (p.Column("operation-info").Height(UnitValue.Auto).AlignSelf(LayoutAlignment.Start).Gap(0).Clip().Enter())
-            {
-                Label(p, "operation-title", cancelling ? "launcher.operations.cancelling" : _operationTitle, 16, Ink, 28, true);
-                Label(p, "operation-detail", _operationDetail, 12, Muted, 22);
-            }
-            p.Box("operation-percent")
-                .Width(100)
-                .Height(28)
-                .IsNotInteractable()
-                .Text(_fraction is double fraction ? $"{Math.Clamp(fraction, 0, 1):P0}" : Loc.Get("launcher.operations.working"), _bold)
-                .FontSize(18)
-                .TextColor(_appearance.Accent)
-                .Alignment(TextAlignment.MiddleRight);
-            Origami.Button(p, "cancel", Loc.Get("launcher.common.cancel"))
-                .Width(108)
-                .Height(40)
-                .Disabled(cancelling)
-                .OnClick(() => _operation?.Cancel())
-                .Show();
-        }
-    }
-
-    private void DrawOperation(Paper p)
+    public void Draw(Paper p)
     {
         const float trackThickness = 10;
         using (p.Column("operation-panel")
@@ -52,19 +22,19 @@ public sealed partial class Launcher
             .Width(Math.Max(1, p.ScreenRect.Size.X - Constants.Layout.SidebarWidth))
             .Height(Constants.Layout.OperationHeight)
             .Gap(0)
-            .BackgroundColor(_appearance.Panel)
+            .BackgroundColor(ui.Appearance.Panel)
             .Enter())
         {
             p.Box("operation-divider")
                 .Height(1)
-                .BackgroundColor(_appearance.Theme.BorderSoft)
+                .BackgroundColor(ui.Appearance.Theme.BorderSoft)
                 .IsNotInteractable();
-            DrawOperationHeader(p);
+            DrawHeader(p);
 
             using (p.Box("operation-track").Height(trackThickness).Clip().IsNotInteractable().Enter())
             {
                 // Origami centers its track in a header-height row; crop that row to the track.
-                float progressHeight = Math.Max(trackThickness, _appearance.Theme.Metrics.HeaderHeight);
+                float progressHeight = Math.Max(trackThickness, ui.Appearance.Theme.Metrics.HeaderHeight);
                 using (p.Column("operation-track-content")
                     .PositionType(PositionType.SelfDirected)
                     .Top((trackThickness - progressHeight) / 2)
@@ -72,14 +42,46 @@ public sealed partial class Launcher
                     .Height(progressHeight)
                     .Enter())
                 {
-                    Origami.ProgressBar(p, "operation-progress", (float)(_fraction ?? 0))
-                        .Indeterminate(_fraction == null)
+                    Origami.ProgressBar(p, "operation-progress", (float)(Operations.Fraction ?? 0))
+                        .Indeterminate(Operations.Fraction == null)
                         .Thickness(trackThickness)
                         .Square()
-                        .FillColor(_appearance.Accent)
+                        .FillColor(ui.Appearance.Accent)
                         .Show();
                 }
             }
+        }
+    }
+
+    private void DrawHeader(Paper p)
+    {
+        bool cancelling = Operations.Cancelling;
+        using (p.Row("operation-header")
+            .Height(Constants.Layout.OperationHeight - 11)
+            .Padding(28, 28, 4, 0)
+            .Gap(12)
+            .AlignItems(LayoutAlignment.Center)
+            .Enter())
+        {
+            using (p.Column("operation-info").Height(UnitValue.Auto).AlignSelf(LayoutAlignment.Start).Gap(0).Clip().Enter())
+            {
+                ui.Label(p, "operation-title", cancelling ? "launcher.operations.cancelling" : Operations.Title, 16, ui.Ink, 28, true);
+                ui.Label(p, "operation-detail", Operations.Detail, 12, ui.Muted, 22);
+            }
+            p.Box("operation-percent")
+                .Width(100)
+                .Height(28)
+                .IsNotInteractable()
+                .Text(Operations.Fraction is double fraction ? $"{Math.Clamp(fraction, 0, 1):P0}" : Loc.Get("launcher.operations.working"), ui.Bold)
+                .FontSize(18)
+                .TextColor(ui.Appearance.Accent)
+                .Alignment(TextAlignment.MiddleRight);
+            Origami.Button(p, "cancel", Loc.Get("launcher.common.cancel"))
+                .Width(108)
+                .Height(40)
+                .Disabled(cancelling)
+                .OnClick(Operations.Cancel)
+                .Show();
         }
     }
 }

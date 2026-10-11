@@ -8,7 +8,15 @@ using Color=System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>Appearance, preferences, launcher updates and storage, and the release repositories.</summary>
+sealed class SettingsView(
+    LauncherStore store,
+    Controls ui,
+    NotificationCenter notifications,
+    EditorController editors,
+    LauncherUpdateController updates,
+    CancellationTokenSource background
+)
 {
     private string? _launcherRepositoryDraft;
     private string _launcherStorageSize = "—";
@@ -17,23 +25,23 @@ public sealed partial class Launcher
     private Task? _storageSizeRefresh;
     private void DrawRepositorySettings(Paper p)
     {
-        using (Card(p, "repository-settings"))
+        using (ui.Card(p, "repository-settings"))
         {
-            Label(p, "repositories-title", "launcher.settings.repositories", 19, Ink, 28, true);
-            Label(
+            ui.Label(p, "repositories-title", "launcher.settings.repositories", 19, ui.Ink, 28, true);
+            ui.Label(
                 p,
                 "repositories-info",
                 "launcher.settings.repository_description",
                 13,
-                Muted,
+                ui.Muted,
                 26
             );
             _prowlRepositoryDraft ??= store.Settings.ProwlRepository;
-            Label(p, "prowl-repository-label", "launcher.settings.prowl_releases", 14, Ink, 26);
+            ui.Label(p, "prowl-repository-label", "launcher.settings.prowl_releases", 14, ui.Ink, 26);
             Origami.TextField(p, "prowl-repository", _prowlRepositoryDraft, value => _prowlRepositoryDraft = value).Show();
 
             _launcherRepositoryDraft ??= store.Settings.LauncherRepository;
-            Label(p, "launcher-repository-label", "launcher.settings.launcher_releases", 14, Ink, 26);
+            ui.Label(p, "launcher-repository-label", "launcher.settings.launcher_releases", 14, ui.Ink, 26);
             Origami.TextField(p, "launcher-repository", _launcherRepositoryDraft, value => _launcherRepositoryDraft = value).Show();
             using (p.Row("repository-actions")
                 .Height(UnitValue.Auto)
@@ -41,24 +49,24 @@ public sealed partial class Launcher
                 .Gap(8)
                 .Enter())
             {
-                Button(p, "save-repositories", "launcher.settings.save_repositories", SaveRepositoriesAsync, true, 170);
-                Button(p, "reset-repositories", "launcher.settings.official_repository", ResetRepositoryDraftsAsync, width: 165);
+                ui.Button(p, "save-repositories", "launcher.settings.save_repositories", SaveRepositoriesAsync, true, 170);
+                ui.Button(p, "reset-repositories", "launcher.settings.official_repository", ResetRepositoryDraftsAsync, width: 165);
             }
         }
     }
 
-    private void DrawSettings(Paper p)
+    public void Draw(Paper p)
     {
         RefreshStorageSizeIfDue();
-        using (Card(p, "appearance-settings"))
+        using (ui.Card(p, "appearance-settings"))
         {
-            Label(p, "appearance-title", "launcher.settings.appearance", 19, Ink, 28, true);
-            Label(
+            ui.Label(p, "appearance-title", "launcher.settings.appearance", 19, ui.Ink, 28, true);
+            ui.Label(
                 p,
                 "appearance-info",
                 "launcher.settings.appearance_description",
                 13,
-                Muted,
+                ui.Muted,
                 26
             );
             using (p.Row("interface-size-row")
@@ -66,11 +74,11 @@ public sealed partial class Launcher
                 .Gap(12)
                 .Enter())
             {
-                Label(p, "interface-size-label", "launcher.settings.interface_size", 14, Ink, 44);
+                ui.Label(p, "interface-size-label", "launcher.settings.interface_size", 14, ui.Ink, 44);
                 Origami.Dropdown(
                         p,
                         "interface-size",
-                        (int)Math.Round(UiScale * 100),
+                        (int)Math.Round(WindowScale.ClampInterfaceScale(store.Settings.UiScale) * 100),
                         value =>
                         {
                             store.Settings.UiScale = value / 100f;
@@ -98,9 +106,9 @@ public sealed partial class Launcher
                 .Gap(12)
                 .Enter())
             {
-                Label(p, "preset-label", "launcher.settings.theme", 14, Ink, 34);
+                ui.Label(p, "preset-label", "launcher.settings.theme", 14, ui.Ink, 34);
                 string[] names = ThemePresets.All.Select(preset => preset.Name).ToArray();
-                Origami.Dropdown(p, "theme-preset", _appearance.Data.Name, name => _appearance.UsePreset(name), names)
+                Origami.Dropdown(p, "theme-preset", ui.Appearance.Data.Name, name => ui.Appearance.UsePreset(name), names)
                     .Width(260)
                     .Show();
             }
@@ -110,11 +118,11 @@ public sealed partial class Launcher
                 .Gap(12)
                 .Enter())
             {
-                Label(p, "roundness-label", "launcher.settings.roundness", 14, Ink, 34);
-                Origami.Slider(p, "theme-roundness", _appearance.Data.Roundness, value =>
+                ui.Label(p, "roundness-label", "launcher.settings.roundness", 14, ui.Ink, 34);
+                Origami.Slider(p, "theme-roundness", ui.Appearance.Data.Roundness, value =>
                     {
-                        _appearance.Data.Roundness = MathF.Round(value, 2);
-                        _appearance.Save();
+                        ui.Appearance.Data.Roundness = MathF.Round(value, 2);
+                        ui.Appearance.Save();
                     }, 0, 20)
                     .Format("F2")
                     .Width(260)
@@ -125,14 +133,14 @@ public sealed partial class Launcher
                 p,
                 "accent-color",
                 "launcher.settings.accent",
-                _appearance.Data.Purple.Primary,
-                value => CustomizeRamp(_appearance.Data.Purple, value)
+                ui.Appearance.Data.Purple.Primary,
+                value => CustomizeRamp(ui.Appearance.Data.Purple, value)
             );
             ColorSetting(
                 p,
                 "logo-color",
                 "launcher.settings.logo_color",
-                store.Settings.LogoColor ?? ColorRamp.ColorToHex(Ink),
+                store.Settings.LogoColor ?? ColorRamp.ColorToHex(ui.Ink),
                 value =>
                 {
                     store.Settings.LogoColor = value;
@@ -143,26 +151,26 @@ public sealed partial class Launcher
                 p,
                 "panel-color",
                 "launcher.settings.panels",
-                _appearance.Data.Neutral.Primary,
-                value => CustomizeRamp(_appearance.Data.Neutral, value)
+                ui.Appearance.Data.Neutral.Primary,
+                value => CustomizeRamp(ui.Appearance.Data.Neutral, value)
             );
             ColorSetting(
                 p,
                 "text-color",
                 "launcher.settings.text",
-                _appearance.Data.Ink.Primary,
-                value => CustomizeRamp(_appearance.Data.Ink, value)
+                ui.Appearance.Data.Ink.Primary,
+                value => CustomizeRamp(ui.Appearance.Data.Ink, value)
             );
             ColorSetting(
                 p,
                 "background-color",
                 "launcher.settings.background",
-                ColorRamp.ColorToHex(_appearance.Background),
+                ColorRamp.ColorToHex(ui.Appearance.Background),
                 value =>
                 {
-                    _appearance.Data.BackgroundStyle = EditorBackgroundStyle.Color;
-                    _appearance.Data.BackgroundColorA = value;
-                    _appearance.Save();
+                    ui.Appearance.Data.BackgroundStyle = EditorBackgroundStyle.Color;
+                    ui.Appearance.Data.BackgroundColorA = value;
+                    ui.Appearance.Save();
                 }
             );
             using (p.Row("appearance-actions")
@@ -175,7 +183,7 @@ public sealed partial class Launcher
                     .Width(190)
                     .Height(40)
                     .LeadingIcon(OrigamiIconSet.Pencil)
-                    .OnClick(_appearance.UseEditorTheme)
+                    .OnClick(ui.Appearance.UseEditorTheme)
                     .Show();
                 Origami.Button(p, "reset-theme", Loc.Get("launcher.settings.reset_to_default"))
                     .Width(190)
@@ -186,9 +194,9 @@ public sealed partial class Launcher
             }
         }
 
-        using (Card(p, "launch-settings"))
+        using (ui.Card(p, "launch-settings"))
         {
-            Label(p, "launch-settings-title", "launcher.settings.preferences", 19, Ink, 28, true);
+            ui.Label(p, "launch-settings-title", "launcher.settings.preferences", 19, ui.Ink, 28, true);
             Origami.Switch(p, "close-on-editor-launch", store.Settings.CloseOnEditorLaunch, value =>
                 {
                     store.Settings.CloseOnEditorLaunch = value;
@@ -207,32 +215,32 @@ public sealed partial class Launcher
                 .Show();
         }
 
-        using (Card(p, "launcher-settings"))
+        using (ui.Card(p, "launcher-settings"))
         {
             using (p.Row("launcher-storage-heading").Height(28).Enter())
             {
-                Label(p, "launcher-settings-title", "launcher.settings.updates_and_storage", 19, Ink, 28, true);
+                ui.Label(p, "launcher-settings-title", "launcher.settings.updates_and_storage", 19, ui.Ink, 28, true);
                 p.Box("launcher-file-size")
                     .Width(110)
                     .Height(28)
                     .IsNotInteractable()
-                    .Text(_launcherStorageSize, _font)
+                    .Text(_launcherStorageSize, ui.Font)
                     .FontSize(16)
-                    .TextColor(Muted)
+                    .TextColor(ui.Muted)
                     .Alignment(TextAlignment.MiddleRight);
             }
-            Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
+            ui.Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
             {
                 version = VersionHelper.LauncherVersion, platform = Platform.Identifier
-            }), 13, Muted, 24);
+            }), 13, ui.Muted, 24);
 
-            Origami.Toggle(p, "launcher-auto-update", store.Settings.LauncherAutoUpdate, SetLauncherAutoUpdate)
+            Origami.Toggle(p, "launcher-auto-update", store.Settings.LauncherAutoUpdate, updates.SetAutoUpdate)
                 .LabelLeft(Loc.Get("launcher.settings.launcher_auto_update"))
-                .Stretch().Disabled(Busy).Show();
+                .Stretch().Disabled(ui.Busy).Show();
 
-            Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, SetLauncherPrereleases)
+            Origami.Toggle(p, "launcher-prereleases", store.Settings.LauncherPrereleases, updates.SetPrereleases)
                 .LabelLeft(Loc.Get("launcher.settings.launcher_prereleases"))
-                .Stretch().Disabled(Busy).Show();
+                .Stretch().Disabled(ui.Busy).Show();
 
             using (p.Row("launcher-settings-actions")
                 .Height(UnitValue.Auto)
@@ -240,8 +248,8 @@ public sealed partial class Launcher
                 .Gap(8)
                 .Enter())
             {
-                Button(p, "launcher-update", "launcher.updates.check", UpdateLauncherAsync, width: 160);
-                Button(
+                ui.Button(p, "launcher-update", "launcher.updates.check", updates.UpdateAsync, width: 160);
+                ui.Button(
                     p,
                     "data-folder",
                     "launcher.settings.open_data_folder",
@@ -262,7 +270,7 @@ public sealed partial class Launcher
     {
         ramp.Primary = value;
         ramp.OverrideAll = false;
-        _appearance.Save();
+        ui.Appearance.Save();
     }
 
     private void ColorSetting(Paper p, string id, string label, string hex, Action<string> changed)
@@ -272,7 +280,7 @@ public sealed partial class Launcher
             .Gap(12)
             .Enter())
         {
-            Label(p, id + "-label", label, 14, Ink, 34);
+            ui.Label(p, id + "-label", label, 14, ui.Ink, 34);
             Color color = ColorRamp.ParseHex(hex);
             Origami.ColorField(
                     p,
@@ -304,7 +312,7 @@ public sealed partial class Launcher
 
     private async Task RefreshStorageSizeAsync()
     {
-        CancellationToken token = _backgroundCancellation.Token;
+        CancellationToken token = background.Token;
         try
         {
             long bytes = await Task.Run(() => DirectorySize(store.Home, token), token);
@@ -346,17 +354,17 @@ public sealed partial class Launcher
         string prowl = GitHubRepository.Normalize(_prowlRepositoryDraft ?? store.Settings.ProwlRepository);
         string launcher = GitHubRepository.Normalize(_launcherRepositoryDraft ?? store.Settings.LauncherRepository);
         // Results from the old repositories must not land after the switch.
-        _backgroundCancellation.Cancel();
+        background.Cancel();
 
         store.Settings.ProwlRepository = prowl;
         store.Settings.LauncherRepository = launcher;
         _prowlRepositoryDraft = prowl;
         _launcherRepositoryDraft = launcher;
         store.Save();
-        _releases = [];
+        editors.ClearReleases();
 
-        Notify("launcher.settings.repository_saved", prowl);
-        await RefreshAsync(token, false);
+        notifications.Notify("launcher.settings.repository_saved", prowl);
+        await editors.RefreshAsync(token, false);
     }
 
     private Task ResetRepositoryDraftsAsync(CancellationToken token)
@@ -372,6 +380,6 @@ public sealed partial class Launcher
         store.Settings.UiScale = defaults.UiScale;
         store.Settings.LogoColor = defaults.LogoColor;
         store.Save();
-        _appearance.ResetToDefault();
+        ui.Appearance.ResetToDefault();
     }
 }

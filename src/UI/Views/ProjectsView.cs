@@ -4,41 +4,53 @@ using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>The project list with its toolbar, or the new-project form while that is open.</summary>
+sealed class ProjectsView(
+    LauncherStore store,
+    Controls ui,
+    Dialogs dialogs,
+    EditorController editors,
+    NotificationCenter notifications,
+    LogsDialog logs,
+    NewProjectView newProject
+)
 {
     private string _search = "";
-    private void DrawProjects(Paper p)
+
+    public bool ShowingNewProject => newProject.IsOpen;
+
+    public void Draw(Paper p)
     {
-        if (_newProjectPage)
+        if (newProject.IsOpen)
         {
-            DrawNewProject(p);
+            newProject.Draw(p);
             return;
         }
 
-        Label(p, "projects-title", "launcher.projects.title", 18, Ink, 30, true);
+        ui.Label(p, "projects-title", "launcher.projects.title", 18, ui.Ink, 30, true);
         Project[] projects = store.Settings.Projects.Where(project => (project.Name + project.Path).Contains(_search, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(project => project.Favorite)
             .ThenByDescending(project => project.LastOpened)
             .ToArray();
         if (projects.Length == 0)
         {
-            using (Card(p, "empty"))
+            using (ui.Card(p, "empty"))
             {
-                Label(
+                ui.Label(
                     p,
                     "empty-title",
                     _search.Length > 0 ? "launcher.projects.no_matches" : "launcher.projects.empty_title",
                     23,
-                    Ink,
+                    ui.Ink,
                     42,
                     true
                 );
-                Label(
+                ui.Label(
                     p,
                     "empty-help",
                     "launcher.projects.empty_description",
                     14,
-                    Muted,
+                    ui.Muted,
                     30
                 );
             }
@@ -48,8 +60,8 @@ public sealed partial class Launcher
         {
             string id = "project-" + project.Path;
             bool folderExists = Directory.Exists(project.Path);
-            bool wide = IsWideLayout(p);
-            using (VersionCard(p, id))
+            bool wide = Controls.IsWideLayout(p);
+            using (ui.VersionCard(p, id))
             {
                 Origami.RightClickMenu(
                     p,
@@ -91,12 +103,12 @@ public sealed partial class Launcher
                         .Clip()
                         .Enter())
                     {
-                        Label(p, id + "name", project.Name, 19, Ink, 28, true);
+                        ui.Label(p, id + "name", project.Name, 19, ui.Ink, 28, true);
                         ElementBuilder path = p.Box(id + "path")
                             .Height(24)
-                            .Text(project.Path, _font)
+                            .Text(project.Path, ui.Font)
                             .FontSize(16)
-                            .TextColor(Muted)
+                            .TextColor(ui.Muted)
                             .Alignment(TextAlignment.MiddleLeft);
                         if (folderExists)
                         {
@@ -109,7 +121,7 @@ public sealed partial class Launcher
                                         ProcessHelper.OpenInShell(project.Path);
                                     }
                                 });
-                            path.Hovered.TextColor(_appearance.Accent);
+                            path.Hovered.TextColor(ui.Appearance.Accent);
                         }
                         else
                         {
@@ -117,12 +129,12 @@ public sealed partial class Launcher
                         }
                         if (project.LastOpened != default)
                         {
-                            Label(p, id + "last-opened", RelativeDate.FormatElapsed(project.LastOpened), 12, Muted, 22);
+                            ui.Label(p, id + "last-opened", RelativeDate.FormatElapsed(project.LastOpened), 12, ui.Muted, 22);
                         }
 
                         if (!folderExists)
                         {
-                            Label(p, id + "missing", "launcher.projects.folder_unavailable", 12, _appearance.Theme.Red.C500, 24);
+                            ui.Label(p, id + "missing", "launcher.projects.folder_unavailable", 12, ui.Appearance.Theme.Red.C500, 24);
                         }
                     }
 
@@ -138,11 +150,11 @@ public sealed partial class Launcher
                             .JustifyContent(LayoutJustification.End)
                             .Enter())
                         {
-                            Button(p, id + "remove", "launcher.projects.remove", token => RemoveProjectAsync(project, token), width: 90);
-                            Button(p, id + "open", "launcher.projects.open", token => OpenProjectAsync(project, token), true, 90);
+                            ui.Button(p, id + "remove", "launcher.projects.remove", token => RemoveProjectAsync(project, token), width: 90);
+                            ui.Button(p, id + "open", "launcher.projects.open", token => OpenProjectAsync(project, token), true, 90);
                         }
 
-                        string[] keys = _installed.Select(e => e.Key).ToArray();
+                        string[] keys = editors.Installed.Select(e => e.Key).ToArray();
                         Origami.Dropdown(
                                 p,
                                 id + "editor",
@@ -154,9 +166,9 @@ public sealed partial class Launcher
                                 },
                                 keys
                             )
-                            .Display(key => _installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
+                            .Display(key => editors.Installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
                             .Width(UnitValue.Stretch())
-                            .IsItemEnabled(_ => !Busy)
+                            .IsItemEnabled(_ => !ui.Busy)
                             .Show();
                     }
                 }
@@ -164,11 +176,33 @@ public sealed partial class Launcher
         }
     }
 
+    public void DrawToolbar(Paper p)
+    {
+        using (p.Row("toolbar").Height(44).Gap(10).Enter())
+        {
+            ui.Button(p, "add", "launcher.projects.add", AddProjectAsync, true, 125);
+            ui.Button(p, "new", "launcher.projects.new", newProject.ToggleAsync, width: 138);
+            p.Box("toolbar-spacer");
+
+            bool hasLogs = editors.Sessions.Any(session => session.Lines.Count > 0);
+            if (hasLogs)
+            {
+                Origami.Button(p, "project-logs", Loc.Get("launcher.console.logs"))
+                    .Width(76).Height(40).Variant(OrigamiVariant.Subtle).OnClick(logs.Show).Show();
+            }
+            float searchWidth = Math.Clamp(Controls.ContentWidth(p) - 380 - (hasLogs ? 86 : 0), 140, 240);
+            Origami.TextField(p, "search", _search, value => _search = value)
+                .Width(searchWidth)
+                .Placeholder(Loc.Get("launcher.projects.search"))
+                .Show();
+        }
+    }
+
     private async Task AddProjectAsync(CancellationToken token)
     {
-        if (await PickFolderAsync(EditorSettings.ProjectsDirectory(), token) is {} path)
+        if (await dialogs.PickFolderAsync(EditorSettings.ProjectsDirectory(), token) is {} path)
         {
-            Notify("launcher.projects.added", store.AddProject(path).Name);
+            notifications.Notify("launcher.projects.added", store.AddProject(path).Name);
         }
     }
 
@@ -176,14 +210,14 @@ public sealed partial class Launcher
     {
         store.Settings.Projects.Remove(project);
         store.Save();
-        Notify("launcher.projects.removed", "launcher.projects.files_unchanged", ToastType.Info);
+        notifications.Notify("launcher.projects.removed", "launcher.projects.files_unchanged", ToastType.Info);
         return Task.CompletedTask;
     }
 
     private Task OpenProjectAsync(Project project, CancellationToken token)
     {
-        InstalledEditor editor = _installed.FirstOrDefault(editor => editor.Key == project.EditorKey)
+        InstalledEditor editor = editors.Installed.FirstOrDefault(editor => editor.Key == project.EditorKey)
                                  ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
-        return LaunchAsync(editor, project, token);
+        return editors.LaunchAsync(editor, project, token);
     }
 }

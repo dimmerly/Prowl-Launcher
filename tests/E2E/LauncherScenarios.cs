@@ -155,10 +155,9 @@ static class LauncherScenarios
             case "ToastsAboveProgress":
                 using (CancellationTokenSource operation = new())
                 {
-                    SetField(ui.Launcher, "_operation", operation);
-                    SetField(ui.Launcher, "_immediateProgress", true);
-                    ConcurrentQueue<(string Title, string Message, ToastType Type)> progressNotifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
-                    progressNotifications.Enqueue(("Toast above progress", "Cancel remains accessible", ToastType.Error));
+                    SetField(ui.Launcher.Operations, "_operation", operation);
+                    ui.Launcher.Operations.ImmediateProgress = true;
+                    ui.Launcher.Notifications.Notify("Toast above progress", "Cancel remains accessible", ToastType.Error);
                     await ui.Frame(2);
                     ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
                     float toastTop = progressToast.Data.Y;
@@ -166,7 +165,7 @@ static class LauncherScenarios
                         "Toasts must stay above the entire progress panel.");
                     await ui.ClickText("Cancel");
                     Check(operation.IsCancellationRequested, "Cancel must remain clickable while a toast is visible.");
-                    SetField(ui.Launcher, "_operation", null!);
+                    SetField(ui.Launcher.Operations, "_operation", null!);
                     await ui.Frame(2);
                     progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
                     Check(Math.Abs(progressToast.Data.Y - toastTop - Constants.Layout.OperationHeight) < 1,
@@ -174,9 +173,8 @@ static class LauncherScenarios
                 }
                 break;
             case "DismissToasts":
-                ConcurrentQueue<(string Title, string Message, ToastType Type)> notifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
-                notifications.Enqueue(("Dismiss this toast", "First notification", ToastType.Success));
-                notifications.Enqueue(("Keep this toast", "Second notification", ToastType.Error));
+                ui.Launcher.Notifications.Notify("Dismiss this toast", "First notification", ToastType.Success);
+                ui.Launcher.Notifications.Notify("Keep this toast", "Second notification", ToastType.Error);
                 await ui.Frame(2);
                 ElementHandle toastCard = ui.Text("Dismiss this toast").GetParentHandle().GetParentHandle().GetParentHandle();
                 ElementHandle closeToast = ui.Nodes().Single(n => n.GetParentHandle().GetParentHandle() == toastCard && n.Data.OnClick != null);
@@ -187,12 +185,11 @@ static class LauncherScenarios
                 await ui.Wait(() => !ui.HasText("Keep this toast"), "Undismissed toasts must still expire automatically.");
                 break;
             case "ToastAutoSize":
-                ConcurrentQueue<(string Title, string Message, ToastType Type)> sizingNotifications = GetField<ConcurrentQueue<(string Title, string Message, ToastType Type)>>(ui.Launcher, "_notifications");
                 string longVersion = "main-c988840fc2807f11e3cf1720f60490a1d9a01234";
                 string longMessage = string.Join(" ", Enumerable.Repeat("A longer notification must wrap within the window.", 12));
-                sizingNotifications.Enqueue(("Short toast", "Done", ToastType.Error));
-                sizingNotifications.Enqueue(("Editor uninstalled", longVersion, ToastType.Error));
-                sizingNotifications.Enqueue(("Wrapping toast", longMessage, ToastType.Error));
+                ui.Launcher.Notifications.Notify("Short toast", "Done", ToastType.Error);
+                ui.Launcher.Notifications.Notify("Editor uninstalled", longVersion, ToastType.Error);
+                ui.Launcher.Notifications.Notify("Wrapping toast", longMessage, ToastType.Error);
                 await ui.Frame(2);
                 ElementHandle shortCard = ui.Text("Short toast").GetParentHandle().GetParentHandle();
                 ElementHandle versionCard = ui.Text("Editor uninstalled").GetParentHandle().GetParentHandle();
@@ -215,7 +212,7 @@ static class LauncherScenarios
                 }
                 ElementHandle versionText = ui.Text(longVersion);
                 Check(versionText.Data.LayoutWidth >= ui.Paper.MeasureText(longVersion,
-                        GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.FontSizeSmall,
+                        ui.Launcher.Appearance.Theme.Metrics.FontSizeSmall,
                         versionText.Data.Font).X - 1,
                     "The version identifier must fit fully within its text area.");
                 ElementHandle wrappingClose = ui.Nodes().Single(n => n.GetParentHandle() == wrappingCard && n.Data.OnClick != null);
@@ -227,7 +224,7 @@ static class LauncherScenarios
                     "A dynamically sized toast must dismiss independently.");
                 break;
             case "ReadLocalNews":
-                GetField<LauncherAppearance>(ui.Launcher, "_appearance").Theme.Metrics.ContainerRounding = 12;
+                ui.Launcher.Appearance.Theme.Metrics.ContainerRounding = 12;
                 string newsFixture = Path.Combine(AppContext.BaseDirectory, "NewsFixture");
                 string localNewsRoot = Path.Combine(f.Root, "news");
                 foreach (string file in Directory.EnumerateFiles(newsFixture, "*", SearchOption.AllDirectories))
@@ -238,14 +235,14 @@ static class LauncherScenarios
                 }
                 NewsService localNews = new( f.Http, f.Store, f.Store.Settings.LauncherRepository,
                     localNewsRoot );
-                SetField(ui.Launcher, "_newsRepository", f.Store.Settings.LauncherRepository);
-                SetField(ui.Launcher, "_news", localNews);
-                SetField(ui.Launcher, "_newsPosts", localNews.ReadCache());
+                SetField(ui.Launcher.News, "_newsRepository", f.Store.Settings.LauncherRepository);
+                SetField(ui.Launcher.News, "_news", localNews);
+                SetField(ui.Launcher.News, "_newsPosts", localNews.ReadCache());
                 await ui.Navigate("Projects");
                 await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The local index should be readable while offline.");
                 Check(ui.Text("Markdown showcase (test post)").Data.Y > ui.Text("News placement project").Data.Y,
                     "News must appear below the project list.");
-                NewsImages thumbnails = GetField<NewsImages>(ui.Launcher, "_newsThumbnails");
+                NewsImages thumbnails = GetField<NewsImages>(ui.Launcher.News, "_newsThumbnails");
                 await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(thumbnails, "_textures").Values.Any(texture => texture != null),
                     "The optional thumbnail should load from the local news directory.");
                 await ui.Frame(3);
@@ -286,10 +283,10 @@ static class LauncherScenarios
                     "Author and date must share a line with the date on the right.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-news.png"));
                 Check(!ui.Text("Refresh").IsValid && !ui.Text("News").IsValid, "The footer must not need a heading or refresh control.");
-                await ui.Wait(() => !GetField<bool>(ui.Launcher, "_newsLoading"), "Local refresh should finish without a network request.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher.News, "_newsLoading"), "Local refresh should finish without a network request.");
                 await ui.ClickText("Markdown showcase (test post)");
                 await ui.Wait(() => ui.HasText("This is a test post"), "The local Markdown article should render.");
-                NewsImages images = GetField<NewsImages>(ui.Launcher, "_newsImages");
+                NewsImages images = GetField<NewsImages>(ui.Launcher.News, "_newsImages");
                 await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Count(texture => texture != null) == 2,
                     "Both relative local screenshots should become real textures.");
                 Check(GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Where(texture => texture != null)
@@ -325,7 +322,7 @@ static class LauncherScenarios
                     "The footer should show only the three latest posts.");
                 await ui.Wait(() => !ui.Text("Offline").IsValid, "The startup toast must clear the archive link before clicking.");
                 await ui.ClickText("Older posts");
-                Check(GetField<long>(ui.Launcher, "_newsSlideStarted") != 0,
+                Check(GetField<long>(ui.Launcher.News, "_newsSlideStarted") != 0,
                     "Paging must start a slide transition.");
                 await ui.Wait(() => ui.HasText("Archived update 4"), "The next page must show older posts.");
                 await ui.Frame();
@@ -409,7 +406,7 @@ static class LauncherScenarios
                 Check(ui.Text("Downloading samples").Data.Y > ui.Paper.Height / 2f
                       && ui.Text("Downloading samples").Data.Y > ui.Text("Hello Prowl").Data.Y, "Download progress must appear in the bottom bar, below sample cards.");
                 await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")), "The selected sample should launch after the shared download.");
-                await ui.Wait(() => GetField<object?>(ui.Launcher, "_operation") == null, "Sample startup should finish.");
+                await ui.Wait(() => !ui.Launcher.Operations.Busy, "Sample startup should finish.");
                 await ui.ClickText("Physics Showcase");
                 await ui.Wait(() => File.ReadAllLines(Path.Combine(f.Home, "sample-launch.log")).Length == 2, "A second sample should use the shared local runtime.");
                 Check(f.SampleDownloads == 1, "All sample cards must share one download.");
@@ -426,7 +423,7 @@ static class LauncherScenarios
                 break;
             case "SampleAlreadyLatest":
                 await ui.Navigate("Samples");
-                await ui.Wait(() => !GetField<bool>(ui.Launcher, "_sampleUpdateChecking"), "The background sample check should finish.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher.Samples, "_sampleUpdateChecking"), "The background sample check should finish.");
                 await ui.Frame(10);
                 Check(!ui.HasText("Update samples"), "The update button must be hidden without a newer bundle.");
                 Check(f.SampleDownloads == 1, "Checking for updates must not download anything.");
@@ -540,10 +537,10 @@ static class LauncherScenarios
                 await ui.ClickText("Close");
                 await ui.ClickText("Back");
                 await ui.ClickText("Open");
-                await ui.Wait(() => GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions").Count == 2
+                await ui.Wait(() => ui.Launcher.Editors.Sessions.Count == 2
                                     && ui.HasText("Exit code: 7"), "A second launch should retain both failed sessions.");
                 await ui.ClickText("Show logs");
-                List<EditorConsoleSession> sessions = GetField<List<EditorConsoleSession>>(ui.Launcher, "_editorSessions");
+                List<EditorConsoleSession> sessions = ui.Launcher.Editors.Sessions.ToList();
                 string SessionLabel(EditorConsoleSession item) =>
                     $"{sessions.IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
                 await ui.ClickText(SessionLabel(sessions[1]));
@@ -562,9 +559,9 @@ static class LauncherScenarios
                 Check(menuLayer > dialogLayer, "The session menu must render above the dialog and search field.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-session-menu.png"));
                 await ui.Click(firstOption);
-                await ui.Wait(() => GetField<EditorConsoleSession>(ui.Launcher, "_selectedLogSession") == sessions[0],
+                await ui.Wait(() => GetField<EditorConsoleSession>(ui.Launcher.Logs, "_selectedLogSession") == sessions[0],
                     "Session menu choices must receive clicks above the search field.");
-                Check(GetField<EditorConsoleSession>(ui.Launcher, "_selectedEditorSession") == sessions[1],
+                Check(ui.Launcher.Editors.SelectedSession == sessions[1],
                     "Browsing older logs must preserve the current launch session.");
                 break;
             case "RemoveProject":
@@ -795,7 +792,7 @@ static class LauncherScenarios
         if (scenario == "CloseOnEditorLaunch")
         {
             Check(fixture.Saved().Projects.Single().LastOpened != default, "Close-on-launch must still persist project history.");
-            Check(GetField<List<EditorConsoleSession>>(launcher, "_editorSessions").Any(session => session.State.Ready != null),
+            Check(launcher.Editors.Sessions.Any(session => session.State.Ready != null),
                 "Close-on-launch must wait for readiness rather than just starting the process.");
         }
     }

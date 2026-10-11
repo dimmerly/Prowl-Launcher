@@ -6,21 +6,29 @@ using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
-public sealed partial class Launcher
+/// <summary>Console output of the editors started from this launcher, with search and a problems filter.</summary>
+sealed class LogsDialog(Controls ui, EditorController editors)
 {
     private bool _logsProblemsOnly;
     private string _logsSearch = "";
     private EditorConsoleSession? _selectedLogSession;
 
-    private void ShowLogsDialog()
+    /// <summary>Clears the search and filter, as for a newly launched editor.</summary>
+    public void Reset()
     {
-        if (_selectedEditorSession == null || Modal.IsOpen)
+        _logsSearch = "";
+        _logsProblemsOnly = false;
+    }
+
+    public void Show()
+    {
+        if (editors.SelectedSession == null || Modal.IsOpen)
         {
             return;
         }
-        _selectedLogSession = _selectedEditorSession;
-        float width = Math.Clamp(_window.FramebufferSize.X / DisplayScale - 48, 25, 1000);
-        float height = Math.Clamp(_window.FramebufferSize.Y / DisplayScale - 180, 1, 600);
+        _selectedLogSession = editors.SelectedSession;
+        float width = Math.Clamp(ui.ScreenSize.X - 48, 25, 1000);
+        float height = Math.Clamp(ui.ScreenSize.Y - 180, 1, 600);
         Origami.Modal(Loc.Get("launcher.console.title"))
             .Width(width)
             .CenteredContent(p => DrawLogs(p, width - 24, height))
@@ -37,7 +45,7 @@ public sealed partial class Launcher
 
         using (p.Column("editor-console-view").Size(width, height).Gap(12).Enter())
         {
-            if (_editorSessions.Count > 1)
+            if (editors.Sessions.Count > 1)
             {
                 int parentLayer = 0;
                 for (ElementHandle parent = p.CurrentParent; parent.IsValid; parent = parent.GetParentHandle())
@@ -46,12 +54,12 @@ public sealed partial class Launcher
                 }
                 int firstElement = p.ElementCount;
                 Origami.Dropdown(p, "console-session-picker", session.Id,
-                        key => _selectedLogSession = _editorSessions.Single(s => s.Id == key),
-                        _editorSessions.Select(s => s.Id).ToArray())
+                        key => _selectedLogSession = editors.Sessions.Single(s => s.Id == key),
+                        editors.Sessions.Select(s => s.Id).ToArray())
                     .Display(key =>
                     {
-                        EditorConsoleSession item = _editorSessions.Single(s => s.Id == key);
-                        return $"{_editorSessions.IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+                        EditorConsoleSession item = editors.Sessions.Single(s => s.Id == key);
+                        return $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
                     })
                     .Show();
                 // Origami 3.6.7 uses absolute overlay layers for dropdowns. Rebase them
@@ -72,15 +80,15 @@ public sealed partial class Launcher
                 Origami.Button(p, "console-problems", Loc.Get(_logsProblemsOnly ? "launcher.console.all_output" : "launcher.console.problems"))
                     .Width(170).OnClick(() => _logsProblemsOnly = !_logsProblemsOnly).Show();
                 Origami.Button(p, "console-copy", Loc.Get("launcher.console.copy"))
-                    .Width(115).OnClick(() => _window.ClipboardString = string.Join(Environment.NewLine,
-                        session.Lines.Select(line => $"[{line.Time.ToLocalTime():HH:mm:ss}] {line.Text}"))).Show();
+                    .Width(115).OnClick(() => p.SetClipboard(string.Join(Environment.NewLine,
+                        session.Lines.Select(line => $"[{line.Time.ToLocalTime():HH:mm:ss}] {line.Text}")))).Show();
                 p.Box("logs-disclaimer").Width(20).Height(40)
-                    .Text("\u24d8", _font).FontSize(15).TextColor(Muted)
+                    .Text("\u24d8", ui.Font).FontSize(15).TextColor(ui.Muted)
                     .Alignment(TextAlignment.MiddleCenter)
                     .Tooltip(Loc.Get("launcher.console.latest_first"));
             }
             Origami.ScrollView(p, "console-output-" + session.Id, width,
-                    Math.Max(0, height - 52 - (_editorSessions.Count > 1 ? 52 : 0)))
+                    Math.Max(0, height - 52 - (editors.Sessions.Count > 1 ? 52 : 0)))
                 .OverlayScrollbars(false).Padding(12).SmoothScroll().WheelStep(72).ColSpacing(2)
                 .Body(() =>
                 {
@@ -95,13 +103,13 @@ public sealed partial class Launcher
                         }
                         shown++;
                         p.Box("console-line-" + i).Height(26).Clip()
-                            .Text($"{line.Time.ToLocalTime():HH:mm:ss}  {line.Text}", _font).FontSize(15)
-                            .TextColor(line.IsError ? Color.IndianRed : line.IsWarning ? Color.Goldenrod : Ink)
+                            .Text($"{line.Time.ToLocalTime():HH:mm:ss}  {line.Text}", ui.Font).FontSize(15)
+                            .TextColor(line.IsError ? Color.IndianRed : line.IsWarning ? Color.Goldenrod : ui.Ink)
                             .Tooltip(line.Text);
                     }
                     if (shown == 0)
                     {
-                        Label(p, "console-no-output", "launcher.console.no_output", 14, Muted, 32);
+                        ui.Label(p, "console-no-output", "launcher.console.no_output", 14, ui.Muted, 32);
                     }
                 });
         }
