@@ -266,6 +266,7 @@
     "launcher.projects.install_editor_description": "{{project}} 使用未安装的 Prowl {{version}}。从 GitHub 下载并打开项目？",
     "launcher.projects.install_and_open": "安装并打开",
     "launcher.errors.no_matching_editor": "没有与 Prowl {{version}} 匹配的已安装编辑器或 GitHub 版本。请为此项目选择编辑器。",
+    "launcher.installation.button": "安装启动器…",
     "launcher.uninstall.button": "卸载启动器…",
     "launcher.uninstall.title": "卸载 Prowl Launcher？",
     "launcher.uninstall.description": "这将移除已安装的启动器、其快捷方式和已下载的启动器更新，然后将其关闭。已安装的编辑器和你的项目会保留。",

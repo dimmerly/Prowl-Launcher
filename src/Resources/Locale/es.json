@@ -266,6 +266,7 @@
     "launcher.projects.install_editor_description": "{{project}} usa Prowl {{version}}, que no está instalado. ¿Descargarlo de GitHub y abrir el proyecto?",
     "launcher.projects.install_and_open": "Instalar y abrir",
     "launcher.errors.no_matching_editor": "Ningún editor instalado ni versión de GitHub coincide con Prowl {{version}}. Elige un editor para este proyecto.",
+    "launcher.installation.button": "Instalar launcher…",
     "launcher.uninstall.button": "Desinstalar launcher…",
     "launcher.uninstall.title": "¿Desinstalar Prowl Launcher?",
     "launcher.uninstall.description": "Esto elimina el launcher instalado, sus accesos directos y las actualizaciones descargadas, y luego lo cierra. Los editores instalados y tus proyectos se conservan.",

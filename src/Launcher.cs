@@ -143,7 +143,7 @@ public sealed partial class Launcher(
             new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
         _versions = new VersionsView(store, _ui, _dialogs, _editors);
         _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, _background, offline, Capturing);
-        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _uninstall, _background);
+        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _installation, _uninstall, _background);
         _launchView = new LaunchView(_ui, _navigation, _editors, _logs, _titleBar);
 
         _operations.Finished += _editors.ReloadInstalled;

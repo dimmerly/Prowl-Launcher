@@ -266,6 +266,7 @@
     "launcher.projects.install_editor_description": "{{project}} uses Prowl {{version}}, which isn’t installed. Download it from GitHub and open the project?",
     "launcher.projects.install_and_open": "Install & open",
     "launcher.errors.no_matching_editor": "No installed editor or GitHub release matches Prowl {{version}}. Choose an editor for this project.",
+    "launcher.installation.button": "Install launcher…",
     "launcher.uninstall.button": "Uninstall launcher…",
     "launcher.uninstall.title": "Uninstall Prowl Launcher?",
     "launcher.uninstall.description": "This removes the installed launcher, its shortcuts and downloaded launcher updates, then closes it. Installed editors and your projects are kept.",

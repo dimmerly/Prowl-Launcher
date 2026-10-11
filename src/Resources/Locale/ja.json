@@ -266,6 +266,7 @@
     "launcher.projects.install_editor_description": "{{project}} は未インストールの Prowl {{version}} を使用しています。GitHub からダウンロードしてプロジェクトを開きますか？",
     "launcher.projects.install_and_open": "インストールして開く",
     "launcher.errors.no_matching_editor": "Prowl {{version}} に一致するインストール済みエディターや GitHub リリースがありません。このプロジェクトのエディターを選択してください。",
+    "launcher.installation.button": "ランチャーをインストール…",
     "launcher.uninstall.button": "ランチャーをアンインストール…",
     "launcher.uninstall.title": "Prowl Launcher をアンインストールしますか？",
     "launcher.uninstall.description": "インストールされたランチャー、そのショートカット、ダウンロード済みのランチャー更新を削除してから終了します。インストール済みのエディターとプロジェクトは残ります。",

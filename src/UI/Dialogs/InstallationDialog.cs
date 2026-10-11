@@ -5,7 +5,7 @@ using Prowl.Scribe;
 namespace Prowl.Launcher;
 
 /// <summary>
-///     The first-run prompt to install the launcher or keep it portable. A <paramref name="preview" /> shows
+///     The first-run prompt to install the launcher or keep it portable, also shown from Settings. A <paramref name="preview" /> shows
 ///     the prompt without acting on either choice.
 /// </summary>
 sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
@@ -26,7 +26,10 @@ sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
         Show();
     }
 
-    private void Show() => Origami.Modal(Loc.Get("launcher.installation.title"))
+    /// <summary>True when this launcher isn't installed and can install itself.</summary>
+    public bool Available => LauncherInstallationService.CanInstall(store);
+
+    public void Show() => Origami.Modal(Loc.Get("launcher.installation.title"))
         .Width(Math.Min(520, ui.ScreenSize.X - 48))
         .CenteredContent(p =>
         {

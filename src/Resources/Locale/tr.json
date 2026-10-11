@@ -266,6 +266,7 @@
     "launcher.projects.install_editor_description": "{{project}}, yüklü olmayan Prowl {{version}} sürümünü kullanıyor. GitHub’dan indirip proje açılsın mı?",
     "launcher.projects.install_and_open": "Yükle ve aç",
     "launcher.errors.no_matching_editor": "Prowl {{version}} ile eşleşen yüklü bir düzenleyici veya GitHub sürümü yok. Bu proje için bir düzenleyici seçin.",
+    "launcher.installation.button": "Başlatıcıyı yükle…",
     "launcher.uninstall.button": "Başlatıcıyı kaldır…",
     "launcher.uninstall.title": "Prowl Launcher kaldırılsın mı?",
     "launcher.uninstall.description": "Bu işlem yüklü başlatıcıyı, kısayollarını ve indirilen başlatıcı güncellemelerini kaldırır, ardından başlatıcıyı kapatır. Yüklü düzenleyiciler ve projeleriniz korunur.",

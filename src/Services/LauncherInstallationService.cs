@@ -21,9 +21,12 @@ sealed class LauncherInstallationService(LauncherStore store)
     internal static bool IsSelfInstallBuild { get; } = typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
         .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true");
 
-    internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled
-                                                             && IsSelfInstallBuild
-                                                             && SourcePath() != null;
+    internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled && CanInstall(store);
+
+    /// <summary>True when this is a released build that isn't installed yet.</summary>
+    internal static bool CanInstall(LauncherStore store) => store.Settings.InstalledLauncherExecutable == null
+                                                            && IsSelfInstallBuild
+                                                            && SourcePath() != null;
 
     internal static string InstallRoot(LauncherStore store)
     {
@@ -103,11 +106,12 @@ sealed class LauncherInstallationService(LauncherStore store)
     {
         IReadOnlyList<string> paths = InstalledPaths(store, removeData, DesktopDirectory(),
             OperatingSystem.IsWindows() ? Environment.GetFolderPath(Environment.SpecialFolder.Programs) : ApplicationsDirectory());
+        // Reset even when the settings are deleted, so a later save can't bring the installation back.
+        store.Settings.InstalledLauncherExecutable = null;
+        store.Settings.LauncherExecutable = null;
+        store.Settings.InstallationPromptHandled = false;
         if (!removeData)
         {
-            store.Settings.InstalledLauncherExecutable = null;
-            store.Settings.LauncherExecutable = null;
-            store.Settings.InstallationPromptHandled = false;
             store.Save();
         }
         if (OperatingSystem.IsWindows())
@@ -222,10 +226,13 @@ sealed class LauncherInstallationService(LauncherStore store)
     private static void DeleteAfterExit(IReadOnlyList<string> paths)
     {
         string quoted = string.Join(",", paths.Select(path => "'" + path.Replace("'", "''") + "'"));
+        // PowerShell removes nothing when its working directory is inside a target, and the launcher's
+        // working directory is usually its own folder.
         ProcessStartInfo cleanup = new("powershell.exe")
         {
             CreateNoWindow = true,
-            UseShellExecute = false
+            UseShellExecute = false,
+            WorkingDirectory = Path.GetTempPath()
         };
         foreach (string argument in new[]
                  {
