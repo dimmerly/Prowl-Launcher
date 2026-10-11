@@ -10,7 +10,7 @@ using TextWrapMode=Prowl.Scribe.TextWrapMode;
 namespace Prowl.Launcher;
 
 /// <summary>Installed editors, the source build and the releases available to install.</summary>
-sealed class VersionsView(LauncherStore store, Controls ui, Dialogs dialogs, EditorController editors)
+sealed class VersionsView(LauncherStore store, Controls ui, Dialogs dialogs, EditorCoordinator editors)
 {
     public void Draw(Paper p)
     {

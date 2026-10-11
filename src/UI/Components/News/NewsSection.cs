@@ -15,7 +15,7 @@ sealed class NewsSection(
     Controls ui,
     HttpClient http,
     Action<Exception> logError,
-    CancellationToken background,
+    BackgroundWork background,
     bool offline,
     bool capturing
 ) : IDisposable
@@ -216,7 +216,7 @@ sealed class NewsSection(
                     if (width >= 260 && !string.IsNullOrWhiteSpace(post.Thumbnail) && _news != null)
                     {
                         TextureTK? thumbnail = _newsThumbnails.Get(_news, post, post.Thumbnail,
-                            !offline && !capturing, background, logError);
+                            !offline && !capturing, background.Token, logError);
                         if (thumbnail != null)
                         {
                             DrawNewsThumbnail(p, thumbnail);
@@ -268,13 +268,14 @@ sealed class NewsSection(
         }
 
         NewsService service = _news;
+        CancellationToken token = background.Token;
         _newsRequested = true;
         _newsNextCheck = DateTime.UtcNow.AddMinutes(_news?.IsLocal == true ? 0 : 15);
         _newsLoading = true;
         _newsFailed = false;
         try
         {
-            IReadOnlyList<NewsPost> posts = await service.GetIndexAsync(background);
+            IReadOnlyList<NewsPost> posts = await service.GetIndexAsync(token);
             if (_news == service)
             {
                 _newsPosts = posts;
@@ -282,8 +283,13 @@ sealed class NewsSection(
                 _newsThumbnails.Dispose();
             }
         }
-        catch (OperationCanceledException) when (background.IsCancellationRequested)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
+            // Background work was restarted; refresh again with the new token.
+            if (_news == service)
+            {
+                _newsRequested = false;
+            }
         }
         catch (Exception error)
         {
@@ -308,6 +314,7 @@ sealed class NewsSection(
         }
 
         NewsService service = _news;
+        CancellationToken token = background.Token;
         _newsSelected = post;
         _newsImages.Dispose();
         _newsMarkdown = null;
@@ -315,7 +322,7 @@ sealed class NewsSection(
         _newsFailed = false;
         try
         {
-            string markdown = await service.GetPostAsync(post, !offline && !capturing, background);
+            string markdown = await service.GetPostAsync(post, !offline && !capturing, token);
             if (_news == service && _newsSelected == post)
             {
                 string content = markdown.TrimStart();
@@ -326,7 +333,7 @@ sealed class NewsSection(
                 }
                 _newsMarkdown = new MarkdownBuilder(ui.Font).Fonts(bold: ui.Bold).FontSize(18).Source(markdown)
                     .Images(href => _newsImages.Get(service, post, href, !offline && !capturing,
-                        background, logError)!)
+                        background.Token, logError)!)
                     .OnLink(href =>
                     {
                         if (Uri.TryCreate(service.Page(post.File), href, out Uri? uri) && uri.Scheme is "https" or "http")
@@ -337,7 +344,7 @@ sealed class NewsSection(
                 ShowNewsArticle(post, _newsMarkdown);
             }
         }
-        catch (OperationCanceledException) when (background.IsCancellationRequested)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
         }
         catch (Exception error)

@@ -7,10 +7,10 @@ using TextAlignment=Prowl.PaperUI.TextAlignment;
 
 namespace Prowl.Launcher;
 
-/// <summary>The bottom progress panel for the current <see cref="OperationRunner" /> operation.</summary>
+/// <summary>The bottom progress panel for the current <see cref="OperationCoordinator" /> operation.</summary>
 sealed class OperationPanel(Controls ui)
 {
-    private OperationRunner Operations => ui.Operations;
+    private OperationCoordinator Operations => ui.Operations;
 
     public void Draw(Paper p)
     {

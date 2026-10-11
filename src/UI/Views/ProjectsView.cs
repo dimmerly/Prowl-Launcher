@@ -9,7 +9,7 @@ sealed class ProjectsView(
     LauncherStore store,
     Controls ui,
     Dialogs dialogs,
-    EditorController editors,
+    EditorCoordinator editors,
     NotificationCenter notifications,
     LogsDialog logs,
     NewProjectView newProject

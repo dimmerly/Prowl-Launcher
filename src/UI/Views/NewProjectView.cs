@@ -12,7 +12,7 @@ sealed class NewProjectView(
     LauncherStore store,
     Controls ui,
     Dialogs dialogs,
-    EditorController editors,
+    EditorCoordinator editors,
     NotificationCenter notifications,
     bool openInitially = false
 )

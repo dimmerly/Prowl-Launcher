@@ -13,12 +13,12 @@ using TextAlignment=Prowl.PaperUI.TextAlignment;
 namespace Prowl.Launcher;
 
 /// <summary>The launcher's styled building blocks, shared by every view.</summary>
-sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bold, OperationRunner operations, Func<Float2> screenSize)
+sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bold, OperationCoordinator operations, Func<Float2> screenSize)
 {
     public LauncherAppearance Appearance => appearance;
     public FontFile Font => font;
     public FontFile Bold => bold;
-    public OperationRunner Operations => operations;
+    public OperationCoordinator Operations => operations;
     public bool Busy => operations.Busy;
     public Color Ink => appearance.Ink;
     public Color Muted => appearance.Muted;

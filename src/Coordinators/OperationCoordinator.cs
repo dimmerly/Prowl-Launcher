@@ -8,7 +8,7 @@ namespace Prowl.Launcher;
 ///     The single foreground operation (install, launch, update, ...). Only one runs at a time; it drives the
 ///     bottom progress panel and reports failures as toasts.
 /// </summary>
-sealed class OperationRunner(NotificationCenter notifications, Action<Exception> logError) : IDisposable
+sealed class OperationCoordinator(NotificationCenter notifications, Action<Exception> logError) : IDisposable
 {
     private CancellationTokenSource? _operation;
     private long _started;
@@ -136,7 +136,7 @@ sealed class OperationRunner(NotificationCenter notifications, Action<Exception>
         return new UserWait(this);
     }
 
-    private sealed class UserWait(OperationRunner owner) : IDisposable
+    private sealed class UserWait(OperationCoordinator owner) : IDisposable
     {
         private bool _disposed;
 

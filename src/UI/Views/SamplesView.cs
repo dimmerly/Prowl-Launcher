@@ -14,7 +14,7 @@ sealed class SamplesView(
     NotificationCenter notifications,
     SampleService samples,
     Action<Exception> logError,
-    CancellationToken background,
+    BackgroundWork background,
     bool offline,
     bool capturing
 ) : IDisposable
@@ -167,16 +167,17 @@ sealed class SamplesView(
     private async Task CheckSamplesInBackgroundAsync()
     {
         string repository = store.Settings.LauncherRepository;
+        CancellationToken token = background.Token;
         _sampleUpdateChecking = true;
         try
         {
-            bool available = await samples.HasUpdateAsync(background);
-            if (!background.IsCancellationRequested && store.Settings.LauncherRepository == repository)
+            bool available = await samples.HasUpdateAsync(token);
+            if (!token.IsCancellationRequested && store.Settings.LauncherRepository == repository)
             {
                 _sampleUpdateAvailable = available;
             }
         }
-        catch (OperationCanceledException) when (background.IsCancellationRequested)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
         }
         catch (Exception error)
@@ -186,7 +187,11 @@ sealed class SamplesView(
         finally
         {
             _sampleUpdateChecking = false;
-            _sampleUpdatesCheckedRepository = repository;
+            // A cancelled check is retried with the new token on the next frame.
+            if (!token.IsCancellationRequested)
+            {
+                _sampleUpdatesCheckedRepository = repository;
+            }
         }
     }
 

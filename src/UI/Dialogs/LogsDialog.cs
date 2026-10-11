@@ -7,7 +7,7 @@ using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 /// <summary>Console output of the editors started from this launcher, with search and a problems filter.</summary>
-sealed class LogsDialog(Controls ui, EditorController editors)
+sealed class LogsDialog(Controls ui, EditorCoordinator editors)
 {
     private bool _logsProblemsOnly;
     private string _logsSearch = "";

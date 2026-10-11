@@ -3,12 +3,12 @@ using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 /// <summary>Editor releases and installations: install, repair, uninstall, build from source and launch.</summary>
-sealed class EditorController(
+sealed class EditorCoordinator(
     LauncherStore store,
     HttpClient http,
     GitHubReleasesService github,
     EditorInstallerService installer,
-    OperationRunner operations,
+    OperationCoordinator operations,
     Dialogs dialogs,
     NotificationCenter notifications,
     Action<Exception> logError

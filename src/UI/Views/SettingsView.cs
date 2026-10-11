@@ -13,9 +13,9 @@ sealed class SettingsView(
     LauncherStore store,
     Controls ui,
     NotificationCenter notifications,
-    EditorController editors,
-    LauncherUpdateController updates,
-    CancellationTokenSource background
+    EditorCoordinator editors,
+    LauncherUpdateCoordinator updates,
+    BackgroundWork background
 )
 {
     private string? _launcherRepositoryDraft;
@@ -354,7 +354,7 @@ sealed class SettingsView(
         string prowl = GitHubRepository.Normalize(_prowlRepositoryDraft ?? store.Settings.ProwlRepository);
         string launcher = GitHubRepository.Normalize(_launcherRepositoryDraft ?? store.Settings.LauncherRepository);
         // Results from the old repositories must not land after the switch.
-        background.Cancel();
+        background.Restart();
 
         store.Settings.ProwlRepository = prowl;
         store.Settings.LauncherRepository = launcher;

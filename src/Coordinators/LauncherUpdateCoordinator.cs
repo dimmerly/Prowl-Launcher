@@ -2,10 +2,10 @@ using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 /// <summary>The launcher's own updates: background checks, the update prompt and the restart handoff.</summary>
-sealed class LauncherUpdateController(
+sealed class LauncherUpdateCoordinator(
     HttpClient http,
     LauncherStore store,
-    OperationRunner operations,
+    OperationCoordinator operations,
     Dialogs dialogs,
     NotificationCenter notifications,
     Action<Exception> logError,

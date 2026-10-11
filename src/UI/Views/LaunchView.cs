@@ -7,7 +7,7 @@ using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 /// <summary>The full-screen view shown while an editor starts.</summary>
-sealed class LaunchView(Controls ui, Navigation navigation, EditorController editors, LogsDialog logs, TitleBar titleBar)
+sealed class LaunchView(Controls ui, Navigation navigation, EditorCoordinator editors, LogsDialog logs, TitleBar titleBar)
 {
     public void Draw(Paper p, float width, float height)
     {

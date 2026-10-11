@@ -8,7 +8,7 @@ namespace Prowl.Launcher;
 
 /// <summary>
 ///     The launcher application: owns the window, the services and the views, and wires them together. Views and
-///     controllers are separate classes that receive only what they use.
+///     coordinators are separate classes that receive only what they use.
 /// </summary>
 public sealed partial class Launcher(
     LauncherStore store,
@@ -18,7 +18,7 @@ public sealed partial class Launcher(
     LauncherPreviews? previews = null
 )
 {
-    private readonly CancellationTokenSource _backgroundCancellation = new();
+    private readonly BackgroundWork _background = new();
     private readonly HttpClient _http = new()
     {
         Timeout = Constants.Network.DownloadTimeout
@@ -29,7 +29,7 @@ public sealed partial class Launcher(
     private LauncherAppearance _appearance = null!;
     private FontFile _bold = null!;
     private Dialogs _dialogs = null!;
-    private EditorController _editors = null!;
+    private EditorCoordinator _editors = null!;
     private FontFile _font = null!;
     private InstallationDialog _installation = null!;
     private LaunchView _launchView = null!;
@@ -37,20 +37,20 @@ public sealed partial class Launcher(
     private NewsSection _news = null!;
     private NotificationCenter _notifications = null!;
     private OperationPanel _operationPanel = null!;
-    private OperationRunner _operations = null!;
+    private OperationCoordinator _operations = null!;
     private ProjectsView _projects = null!;
     private SamplesView _samples = null!;
     private SettingsView _settings = null!;
     private Sidebar _sidebar = null!;
     private TitleBar _titleBar = null!;
     private Controls _ui = null!;
-    private LauncherUpdateController _updates = null!;
+    private LauncherUpdateCoordinator _updates = null!;
     private VersionsView _versions = null!;
 
     // Exposed for the E2E tests, which drive the real launcher.
-    internal OperationRunner Operations => _operations;
+    internal OperationCoordinator Operations => _operations;
     internal NotificationCenter Notifications => _notifications;
-    internal EditorController Editors => _editors;
+    internal EditorCoordinator Editors => _editors;
     internal NewsSection News => _news;
     internal SamplesView Samples => _samples;
     internal LogsDialog Logs => _logs;
@@ -80,7 +80,7 @@ public sealed partial class Launcher(
 
         if (!offline)
         {
-            _ = _editors.RefreshInBackgroundAsync(_backgroundCancellation.Token);
+            _ = _editors.RefreshInBackgroundAsync(_background.Token);
             if (!Capturing)
             {
                 _ = _updates.CheckInBackgroundAsync();
@@ -108,19 +108,18 @@ public sealed partial class Launcher(
         Fonts.AddLanguageFallbacks(_paper);
     }
 
-    /// <summary>Builds the services, controllers and views. Localization must be configured first.</summary>
+    /// <summary>Builds the services, coordinators and views. Localization must be configured first.</summary>
     private void CreateComponents()
     {
-        CancellationToken background = _backgroundCancellation.Token;
         _notifications = new NotificationCenter(_appearance);
-        _operations = new OperationRunner(_notifications, LogError);
+        _operations = new OperationCoordinator(_notifications, LogError);
         _ui = new Controls(_appearance, _font, _bold, _operations,
             () => new Float2(_window.FramebufferSize.X / ModalScale, _window.FramebufferSize.Y / ModalScale));
         _dialogs = new Dialogs(_ui);
 
-        _editors = new EditorController(store, _http, new GitHubReleasesService(_http, store),
+        _editors = new EditorCoordinator(store, _http, new GitHubReleasesService(_http, store),
             new EditorInstallerService(_http, store), _operations, _dialogs, _notifications, LogError);
-        _updates = new LauncherUpdateController(_http, store, _operations, _dialogs, _notifications, LogError,
+        _updates = new LauncherUpdateCoordinator(_http, store, _operations, _dialogs, _notifications, LogError,
             !offline && !Capturing);
 
         _titleBar = new TitleBar(store, _ui, _window, _windowFrame != null);
@@ -128,12 +127,12 @@ public sealed partial class Launcher(
         _operationPanel = new OperationPanel(_ui);
         _installation = new InstallationDialog(store, _ui, _previews.Installation);
         _logs = new LogsDialog(_ui, _editors);
-        _news = new NewsSection(store, _ui, _http, LogError, background, offline, Capturing);
+        _news = new NewsSection(store, _ui, _http, LogError, _background, offline, Capturing);
         _projects = new ProjectsView(store, _ui, _dialogs, _editors, _notifications, _logs,
             new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
         _versions = new VersionsView(store, _ui, _dialogs, _editors);
-        _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, background, offline, Capturing);
-        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _backgroundCancellation);
+        _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, _background, offline, Capturing);
+        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _background);
         _launchView = new LaunchView(_ui, _navigation, _editors, _logs, _titleBar);
 
         _operations.Finished += _editors.ReloadInstalled;
@@ -209,11 +208,10 @@ public sealed partial class Launcher(
         _editors?.Dispose();
         _samples?.Dispose();
         _news?.Dispose();
-        _backgroundCancellation.Cancel();
+        _background.Dispose();
         _updates?.Dispose();
         _operations?.Dispose();
         _http.Dispose();
-        _backgroundCancellation.Dispose();
     }
 }
 

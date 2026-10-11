@@ -7,7 +7,7 @@ using Color=System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
-sealed class Sidebar(LauncherStore store, Controls ui, Navigation navigation, EditorController editors)
+sealed class Sidebar(LauncherStore store, Controls ui, Navigation navigation, EditorCoordinator editors)
 {
     private LauncherAppearance Appearance => ui.Appearance;
 
