@@ -39,7 +39,6 @@ public sealed partial class EditorInstallerService
         {
             RejectLinks(path);
         }
-        string checkout = Path.Combine(sources, GitHubRepositoryHelper.CacheKey(repository));
         string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
         string staging = Path.Combine(work, "extracted");
         string backup = Path.Combine(work, "previous");
@@ -68,28 +67,28 @@ public sealed partial class EditorInstallerService
 
         try
         {
-            if (!Directory.Exists(checkout))
+            if (!Directory.Exists(sources))
             {
                 progress?.Report(new("launcher.versions.main_cloning"));
                 string cloned = Path.Combine(work, "source");
                 await RunAsync("git", work, "clone", "--branch", "main", "--single-branch",
                     "https://github.com/" + repository + ".git", cloned);
-                Directory.Move(cloned, checkout);
+                Directory.Move(cloned, sources);
             }
             else
             {
-                RejectLinks(checkout);
-                string changes = await RunAsync("git", checkout, "status", "--porcelain");
+                RejectLinks(sources);
+                string changes = await RunAsync("git", sources, "status", "--porcelain");
                 if (!string.IsNullOrWhiteSpace(changes))
                 {
                     throw new IOException(Loc.Get("launcher.versions.main_dirty"));
                 }
 
-                await RunAsync("git", checkout, "switch", "main");
+                await RunAsync("git", sources, "switch", "main");
                 progress?.Report(new("launcher.versions.main_pulling"));
-                await RunAsync("git", checkout, "pull", "--ff-only", "origin", "main");
+                await RunAsync("git", sources, "pull", "--ff-only", "origin", "main");
             }
-            string commit = (await RunAsync("git", checkout, "rev-parse", "HEAD")).Trim();
+            string commit = (await RunAsync("git", sources, "rev-parse", "HEAD")).Trim();
             if (!Regex.IsMatch(commit, @"\A[0-9a-f]{40}\z"))
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
@@ -108,11 +107,11 @@ public sealed partial class EditorInstallerService
                 return new SourceBuildResult(installed, AlreadyInstalled: true);
             }
 
-            await RunAsync("git", checkout, "submodule", "sync", "--recursive");
-            await RunAsync("git", checkout, "submodule", "update", "--init", "--recursive");
+            await RunAsync("git", sources, "submodule", "sync", "--recursive");
+            await RunAsync("git", sources, "submodule", "update", "--init", "--recursive");
 
             progress?.Report(new("launcher.versions.main_building"));
-            await RunAsync("dotnet", checkout, "publish", "Prowl.Editor/Prowl.Editor.csproj",
+            await RunAsync("dotnet", sources, "publish", "Prowl.Editor/Prowl.Editor.csproj",
                 "-c", "Release", "-r", platform, "--self-contained", "false", "-o", staging);
             if (!File.Exists(Path.Combine(staging, editor.ExecutableRelativePath)))
             {
