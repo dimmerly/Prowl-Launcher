@@ -265,5 +265,12 @@
     "launcher.projects.install_editor_title": "{{version}} yüklensin mi?",
     "launcher.projects.install_editor_description": "{{project}}, yüklü olmayan Prowl {{version}} sürümünü kullanıyor. GitHub’dan indirip proje açılsın mı?",
     "launcher.projects.install_and_open": "Yükle ve aç",
-    "launcher.errors.no_matching_editor": "Prowl {{version}} ile eşleşen yüklü bir düzenleyici veya GitHub sürümü yok. Bu proje için bir düzenleyici seçin."
+    "launcher.errors.no_matching_editor": "Prowl {{version}} ile eşleşen yüklü bir düzenleyici veya GitHub sürümü yok. Bu proje için bir düzenleyici seçin.",
+    "launcher.uninstall.button": "Başlatıcıyı kaldır…",
+    "launcher.uninstall.title": "Prowl Launcher kaldırılsın mı?",
+    "launcher.uninstall.description": "Bu işlem yüklü başlatıcıyı, kısayollarını ve indirilen başlatıcı güncellemelerini kaldırır, ardından başlatıcıyı kapatır. Yüklü düzenleyiciler ve projeleriniz korunur.",
+    "launcher.uninstall.remove_data": "Başlatıcı ayarlarını ve önbelleklerini de sil",
+    "launcher.uninstall.confirm": "Kaldır",
+    "launcher.uninstall.uninstalling": "Prowl Launcher kaldırılıyor",
+    "launcher.uninstall.failed": "{{path}} kaldırılamadı. Onu kullanan her şeyi kapatıp tekrar deneyin."
 }

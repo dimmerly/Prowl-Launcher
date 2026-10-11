@@ -25,6 +25,7 @@ public sealed partial class Launcher
         _notifications.ShowPending();
         Origami.BeginFrame(p, _deltaTime);
         _installation.ShowIfPending();
+        _uninstall.ShowIfPending();
 
         if (_navigation.Tab == LauncherTab.Launch)
         {

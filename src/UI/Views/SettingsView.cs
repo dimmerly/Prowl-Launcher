@@ -15,6 +15,7 @@ sealed class SettingsView(
     NotificationCenter notifications,
     EditorCoordinator editors,
     LauncherUpdateCoordinator updates,
+    UninstallDialog uninstall,
     BackgroundWork background
 )
 {
@@ -260,6 +261,14 @@ sealed class SettingsView(
                     },
                     width: 155
                 );
+                if (uninstall.Available)
+                {
+                    ui.Button(p, "uninstall-launcher", "launcher.uninstall.button", _ =>
+                    {
+                        uninstall.Show();
+                        return Task.CompletedTask;
+                    }, width: 170);
+                }
             }
         }
 

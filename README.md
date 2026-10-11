@@ -12,6 +12,9 @@ Download the launcher from [GitHub Releases](https://github.com/dimmerly/Prowl-L
 
 On first launch, choose **Install** or **Keep portable**. The launcher includes .NET; no SDK is needed to run it.
 
+To uninstall, use **Uninstall launcher…** in Settings, or Prowl Launcher in Windows' Installed apps. Installed editors
+and projects are kept; launcher settings and caches are only deleted if you choose to.
+
 Preview downloads are unsigned on Windows and not notarized on macOS unless preview signing is enabled, so your OS may
 ask you to allow the app. Stable releases require signing and macOS notarization; maintainers must configure
 the [release signing credentials](docs/release-signing.md).

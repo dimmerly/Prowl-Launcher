@@ -265,5 +265,12 @@
     "launcher.projects.install_editor_title": "{{version}} installieren?",
     "launcher.projects.install_editor_description": "{{project}} verwendet Prowl {{version}}, das nicht installiert ist. Von GitHub herunterladen und das Projekt öffnen?",
     "launcher.projects.install_and_open": "Installieren & öffnen",
-    "launcher.errors.no_matching_editor": "Kein installierter Editor und kein GitHub-Release passt zu Prowl {{version}}. Wähle einen Editor für dieses Projekt."
+    "launcher.errors.no_matching_editor": "Kein installierter Editor und kein GitHub-Release passt zu Prowl {{version}}. Wähle einen Editor für dieses Projekt.",
+    "launcher.uninstall.button": "Launcher deinstallieren…",
+    "launcher.uninstall.title": "Prowl Launcher deinstallieren?",
+    "launcher.uninstall.description": "Dadurch werden der installierte Launcher, seine Verknüpfungen und heruntergeladene Launcher-Updates entfernt und er wird geschlossen. Installierte Editoren und deine Projekte bleiben erhalten.",
+    "launcher.uninstall.remove_data": "Auch Launcher-Einstellungen und Caches löschen",
+    "launcher.uninstall.confirm": "Deinstallieren",
+    "launcher.uninstall.uninstalling": "Prowl Launcher wird deinstalliert",
+    "launcher.uninstall.failed": "{{path}} konnte nicht entfernt werden. Schließe alles, was es verwendet, und versuche es erneut."
 }

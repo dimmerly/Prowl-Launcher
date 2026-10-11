@@ -15,7 +15,8 @@ public sealed partial class Launcher(
     string? screenshot = null,
     LauncherTab initialTab = LauncherTab.Projects,
     bool offline = false,
-    LauncherPreviews? previews = null
+    LauncherPreviews? previews = null,
+    bool uninstall = false
 )
 {
     private readonly BackgroundWork _background = new();
@@ -42,6 +43,7 @@ public sealed partial class Launcher(
     private SamplesView _samples = null!;
     private SettingsView _settings = null!;
     private Sidebar _sidebar = null!;
+    private UninstallDialog _uninstall = null!;
     private TitleBar _titleBar = null!;
     private Controls _ui = null!;
     private LauncherUpdateCoordinator _updates = null!;
@@ -126,13 +128,17 @@ public sealed partial class Launcher(
         _sidebar = new Sidebar(store, _ui, _navigation, _editors);
         _operationPanel = new OperationPanel(_ui);
         _installation = new InstallationDialog(store, _ui, _previews.Installation);
+        _uninstall = new UninstallDialog(store, _ui)
+        {
+            Pending = uninstall && !Capturing
+        };
         _logs = new LogsDialog(_ui, _editors);
         _news = new NewsSection(store, _ui, _http, LogError, _background, offline, Capturing);
         _projects = new ProjectsView(store, _ui, _dialogs, _editors, _notifications, _logs,
             new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
         _versions = new VersionsView(store, _ui, _dialogs, _editors);
         _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, _background, offline, Capturing);
-        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _background);
+        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _uninstall, _background);
         _launchView = new LaunchView(_ui, _navigation, _editors, _logs, _titleBar);
 
         _operations.Finished += _editors.ReloadInstalled;

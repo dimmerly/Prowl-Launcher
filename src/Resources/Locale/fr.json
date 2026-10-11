@@ -265,5 +265,12 @@
     "launcher.projects.install_editor_title": "Installer {{version}} ?",
     "launcher.projects.install_editor_description": "{{project}} utilise Prowl {{version}}, qui n’est pas installé. Le télécharger depuis GitHub et ouvrir le projet ?",
     "launcher.projects.install_and_open": "Installer et ouvrir",
-    "launcher.errors.no_matching_editor": "Aucun éditeur installé ni version GitHub ne correspond à Prowl {{version}}. Choisissez un éditeur pour ce projet."
+    "launcher.errors.no_matching_editor": "Aucun éditeur installé ni version GitHub ne correspond à Prowl {{version}}. Choisissez un éditeur pour ce projet.",
+    "launcher.uninstall.button": "Désinstaller le launcher…",
+    "launcher.uninstall.title": "Désinstaller Prowl Launcher ?",
+    "launcher.uninstall.description": "Cela supprime le launcher installé, ses raccourcis et les mises à jour téléchargées, puis le ferme. Les éditeurs installés et vos projets sont conservés.",
+    "launcher.uninstall.remove_data": "Supprimer aussi les paramètres et caches du launcher",
+    "launcher.uninstall.confirm": "Désinstaller",
+    "launcher.uninstall.uninstalling": "Désinstallation de Prowl Launcher",
+    "launcher.uninstall.failed": "Impossible de supprimer {{path}}. Fermez ce qui l’utilise et réessayez."
 }

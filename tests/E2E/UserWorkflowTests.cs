@@ -52,7 +52,8 @@ public sealed class UserWorkflowTests
         "SampleDownloadOnce",
         "SampleUpdateAvailable",
         "SampleAlreadyLatest",
-        "EditorUpdateIndicator"
+        "EditorUpdateIndicator",
+        "CancelLauncherUninstall"
     }.Select(scenario => new object[]
     {
         scenario

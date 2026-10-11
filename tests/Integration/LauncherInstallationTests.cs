@@ -141,6 +141,86 @@ public sealed class LauncherInstallationTests : IDisposable
         Assert.False(LauncherInstallationService.SameApplication(source, target, false, default));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UninstallingRemovesTheLauncherButKeepsEditorsAndProjects(bool removeData)
+    {
+        LauncherStore store = new( Path.Combine(_work, "Home") );
+        string desktop = Path.Combine(_work, "Desktop"), shortcuts = Path.Combine(_work, "Shortcuts");
+        string application = OperatingSystem.IsMacOS()
+            ? Path.Combine(_work, "Applications", "Prowl Launcher.app", "Contents", "MacOS", "Prowl.Launcher")
+            : OperatingSystem.IsWindows() ? Path.Combine(store.Home, "Prowl.Launcher.exe")
+            : Path.Combine(LauncherInstallationService.InstallRoot(store), "1.0.0", "Prowl Launcher.AppImage");
+        string shortcut = OperatingSystem.IsWindows() ? Path.Combine(desktop, "Prowl.lnk")
+            : OperatingSystem.IsMacOS() ? Path.Combine(desktop, "Prowl.app") : Path.Combine(desktop, "Prowl.desktop");
+        string otherApp = Path.Combine(_work, "Applications", "Other.app", "keep.txt");
+        string editor = Path.Combine(store.VersionsPath, "v1.0.0-win-x64", "installation.json");
+        string update = Path.Combine(LauncherUpdaterService.UpdatesPath(store), "repository", "2.0.0", "Prowl.Launcher");
+        foreach (string file in new[] { application, shortcut, otherApp, editor, update })
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, "file");
+        }
+        store.Settings.InstalledLauncherExecutable = application;
+        store.Save();
+
+        IReadOnlyList<string> paths = LauncherInstallationService.InstalledPaths(store, removeData, desktop, shortcuts);
+        Assert.Empty(LauncherInstallationService.DeletePaths(paths));
+
+        Assert.False(File.Exists(application));
+        Assert.False(File.Exists(shortcut));
+        Assert.False(Directory.Exists(LauncherUpdaterService.UpdatesPath(store)));
+        Assert.True(File.Exists(editor));
+        Assert.True(File.Exists(otherApp));
+        Assert.Equal(!removeData, File.Exists(store.SettingsPath));
+    }
+
+    [Fact]
+    public void UninstallingRemovesLinksWithoutFollowingThem()
+    {
+        string target = Path.Combine(_work, "Target");
+        string link = Path.Combine(_work, "Desktop", "Prowl.app");
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "keep.txt"), "keep");
+        Directory.CreateDirectory(Path.GetDirectoryName(link)!);
+        try
+        {
+            Directory.CreateSymbolicLink(link, target);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return; // Windows needs developer mode or elevation to create links.
+        }
+
+        Assert.Empty(LauncherInstallationService.DeletePaths([link]));
+        Assert.False(Directory.Exists(link));
+        Assert.True(File.Exists(Path.Combine(target, "keep.txt")));
+    }
+
+    [Fact]
+    public void WindowsUninstallerEntryRunsTheLauncherUninstallPrompt()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+        string key = @"Software\ProwlLauncherTests\" + Guid.NewGuid().ToString("N");
+        string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
+        try
+        {
+            LauncherInstallationService.RegisterWindowsUninstaller(executable, _work, key);
+            using Microsoft.Win32.RegistryKey entry = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(key)!;
+            Assert.Equal("Prowl Launcher", entry.GetValue("DisplayName"));
+            Assert.Equal($"\"{executable}\" --uninstall", entry.GetValue("UninstallString"));
+            Assert.Equal(_work, entry.GetValue("InstallLocation"));
+        }
+        finally
+        {
+            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
+        }
+    }
+
     [Fact]
     public void WindowsShortcutTargetsTheInstalledAppIncludingPathsWithSpaces()
     {

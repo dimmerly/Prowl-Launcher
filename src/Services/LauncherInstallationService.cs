@@ -1,13 +1,21 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
+
+using Microsoft.Win32;
 
 using Prowl.Rosetta;
 namespace Prowl.Launcher;
 
 sealed class LauncherInstallationService(LauncherStore store)
 {
+    /// <summary>Opens the launcher on its uninstall prompt; Windows' Apps &amp; Features runs this.</summary>
+    internal const string UninstallArgument = "--uninstall";
+    internal const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\ProwlLauncher";
+    private const string LinuxEntryName = "com.prowlengine.launcher.desktop";
+
     internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled
                                                              && typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
                                                                  .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true")
@@ -82,12 +90,175 @@ sealed class LauncherInstallationService(LauncherStore store)
         return executable;
     }
 
+    /// <summary>
+    ///     Removes the installed launcher, its shortcuts, its downloaded updates and its Apps &amp; Features entry.
+    ///     <paramref name="removeData" /> also removes settings and caches. Editors and projects are always kept.
+    ///     Files still in use, such as this running launcher on Windows, are removed once it exits.
+    /// </summary>
+    public async Task UninstallAsync(bool removeData, CancellationToken token)
+    {
+        IReadOnlyList<string> paths = InstalledPaths(store, removeData, DesktopDirectory(),
+            OperatingSystem.IsWindows() ? Environment.GetFolderPath(Environment.SpecialFolder.Programs) : ApplicationsDirectory());
+        if (!removeData)
+        {
+            store.Settings.InstalledLauncherExecutable = null;
+            store.Settings.LauncherExecutable = null;
+            store.Settings.InstallationPromptHandled = false;
+            store.Save();
+        }
+        if (OperatingSystem.IsWindows())
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
+        }
+
+        IReadOnlyList<string> inUse = await Task.Run(() => DeletePaths(paths, token), token);
+        if (inUse.Count > 0)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new IOException(Loc.Get("launcher.uninstall.failed", new
+                {
+                    path = inUse[0]
+                }));
+            }
+            DeleteAfterExit(inUse);
+        }
+    }
+
+    /// <summary>
+    ///     What uninstalling removes. <paramref name="shortcuts" /> is the Start menu folder on Windows and the
+    ///     applications folder for desktop entries on Linux.
+    /// </summary>
+    internal static IReadOnlyList<string> InstalledPaths(LauncherStore store, bool removeData, string desktop, string shortcuts)
+    {
+        List<string> paths = [];
+        if (OperatingSystem.IsWindows())
+        {
+            paths.Add(Path.Combine(shortcuts, "Prowl.lnk"));
+            paths.Add(Path.Combine(desktop, "Prowl.lnk"));
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            paths.Add(Path.Combine(shortcuts, LinuxEntryName));
+            paths.Add(Path.Combine(desktop, "Prowl.desktop"));
+            paths.Add(InstallRoot(store));
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            paths.Add(Path.Combine(desktop, "Prowl.app"));
+        }
+
+        if (store.Settings.InstalledLauncherExecutable is {} executable)
+        {
+            // Only the launcher's own files: the macOS install root is the shared ~/Applications folder.
+            string application = OperatingSystem.IsMacOS() ? Path.GetFullPath(Path.Combine(executable, "..", "..", "..")) : executable;
+            if (Path.GetFileName(application) is "Prowl.Launcher.exe" or "Prowl Launcher.app" or "Prowl Launcher.AppImage")
+            {
+                paths.Add(application);
+            }
+        }
+        paths.Add(LauncherUpdaterService.UpdatesPath(store));
+
+        if (removeData)
+        {
+            // A custom home keeps its editors inside it; those stay.
+            string versions = Path.GetFullPath(store.VersionsPath);
+            if (FileSystemHelper.IsInside(store.Home, versions))
+            {
+                paths.AddRange(Directory.EnumerateFileSystemEntries(store.Home)
+                    .Where(path => !FileSystemHelper.PathsEqual(path, versions)));
+            }
+            else
+            {
+                paths.Add(store.Home);
+            }
+        }
+        return paths.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>Deletes each path that exists, links without following them, and returns those still in use.</summary>
+    internal static IReadOnlyList<string> DeletePaths(IEnumerable<string> paths, CancellationToken token = default)
+    {
+        List<string> inUse = [];
+        foreach (string path in paths)
+        {
+            token.ThrowIfCancellationRequested();
+            try
+            {
+                if (!File.Exists(path) && !Directory.Exists(path))
+                {
+                    continue;
+                }
+                if (FileSystemHelper.IsLink(path) || File.Exists(path))
+                {
+                    if (Directory.Exists(path))
+                    {
+                        Directory.Delete(path);
+                    }
+                    else
+                    {
+                        File.Delete(path);
+                    }
+                }
+                else
+                {
+                    Directory.Delete(path, true);
+                }
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                inUse.Add(path);
+            }
+        }
+        return inUse;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void DeleteAfterExit(IReadOnlyList<string> paths)
+    {
+        string quoted = string.Join(",", paths.Select(path => "'" + path.Replace("'", "''") + "'"));
+        ProcessStartInfo cleanup = new("powershell.exe")
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false
+        };
+        foreach (string argument in new[]
+                 {
+                     "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command",
+                     $"Wait-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; "
+                     + $"Remove-Item -LiteralPath {quoted} -Recurse -Force -ErrorAction SilentlyContinue"
+                 })
+        {
+            cleanup.ArgumentList.Add(argument);
+        }
+        Process.Start(cleanup);
+    }
+
+    [SupportedOSPlatform("windows")]
+    internal static void RegisterWindowsUninstaller(string executable, string root, string keyPath = UninstallKey)
+    {
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(keyPath);
+        key.SetValue("DisplayName", "Prowl Launcher");
+        key.SetValue("DisplayVersion", VersionHelper.LauncherVersion);
+        key.SetValue("Publisher", "Prowl");
+        key.SetValue("DisplayIcon", executable + ",0");
+        key.SetValue("InstallLocation", root);
+        key.SetValue("UninstallString", $"\"{executable}\" {UninstallArgument}");
+        key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+        key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+    }
+
+    private static string ApplicationsDirectory() => Path.Combine(
+        Environment.GetEnvironmentVariable("XDG_DATA_HOME")
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"),
+        "applications");
+
     private static void RegisterApplication(string root, string destination, string executable, bool desktopShortcut)
     {
         // Register the app even when the optional desktop shortcut is disabled.
         if (OperatingSystem.IsWindows())
         {
-            RegisterWindowsApplication(executable, desktopShortcut);
+            RegisterWindowsApplication(root, executable, desktopShortcut);
         }
         else if (OperatingSystem.IsLinux())
         {
@@ -100,10 +271,11 @@ sealed class LauncherInstallationService(LauncherStore store)
     }
 
     [SupportedOSPlatform("windows")]
-    private static void RegisterWindowsApplication(string executable, bool desktopShortcut)
+    private static void RegisterWindowsApplication(string root, string executable, bool desktopShortcut)
     {
         string programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
         CreateWindowsShortcut(Path.Combine(programs, "Prowl.lnk"), executable);
+        RegisterWindowsUninstaller(executable, root);
 
         if (desktopShortcut)
         {
@@ -121,10 +293,8 @@ sealed class LauncherInstallationService(LauncherStore store)
             image.CopyTo(file);
         }
 
-        string data = Environment.GetEnvironmentVariable("XDG_DATA_HOME")
-                      ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
         string entry = DesktopEntry(executable, icon);
-        WriteDesktopEntry(Path.Combine(data, "applications", "com.prowlengine.launcher.desktop"), entry);
+        WriteDesktopEntry(Path.Combine(ApplicationsDirectory(), LinuxEntryName), entry);
 
         if (desktopShortcut)
         {

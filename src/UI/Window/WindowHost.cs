@@ -93,7 +93,7 @@ public sealed partial class Launcher
         UpdateWindowScale();
         _context.Pump();
         RefreshEditorConsoles();
-        _updates.OfferPending(Modal.IsOpen || _installation.Pending);
+        _updates.OfferPending(Modal.IsOpen || _installation.Pending || _uninstall.Pending);
         UpdateFrameRate();
     }
 

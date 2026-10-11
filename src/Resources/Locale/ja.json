@@ -265,5 +265,12 @@
     "launcher.projects.install_editor_title": "{{version}} をインストールしますか？",
     "launcher.projects.install_editor_description": "{{project}} は未インストールの Prowl {{version}} を使用しています。GitHub からダウンロードしてプロジェクトを開きますか？",
     "launcher.projects.install_and_open": "インストールして開く",
-    "launcher.errors.no_matching_editor": "Prowl {{version}} に一致するインストール済みエディターや GitHub リリースがありません。このプロジェクトのエディターを選択してください。"
+    "launcher.errors.no_matching_editor": "Prowl {{version}} に一致するインストール済みエディターや GitHub リリースがありません。このプロジェクトのエディターを選択してください。",
+    "launcher.uninstall.button": "ランチャーをアンインストール…",
+    "launcher.uninstall.title": "Prowl Launcher をアンインストールしますか？",
+    "launcher.uninstall.description": "インストールされたランチャー、そのショートカット、ダウンロード済みのランチャー更新を削除してから終了します。インストール済みのエディターとプロジェクトは残ります。",
+    "launcher.uninstall.remove_data": "ランチャーの設定とキャッシュも削除する",
+    "launcher.uninstall.confirm": "アンインストール",
+    "launcher.uninstall.uninstalling": "Prowl Launcher をアンインストール中",
+    "launcher.uninstall.failed": "{{path}} を削除できませんでした。使用中のものを閉じてもう一度お試しください。"
 }

@@ -41,6 +41,7 @@ static class Program
                         tab = LauncherTab.Versions;
                         break;
                     case "--settings":
+                    case LauncherInstallationService.UninstallArgument:
                         tab = LauncherTab.Settings;
                         break;
                     case "--samples":
@@ -60,7 +61,8 @@ static class Program
                     args.Contains("--notes-preview"),
                     args.Contains("--new-project"),
                     args.Contains("--uninstall-preview"),
-                    args.Contains("--installation-preview")) );
+                    args.Contains("--installation-preview")),
+                args.Contains(LauncherInstallationService.UninstallArgument));
             launcher.Run(Constants.Layout.WindowTitle, Constants.Layout.WindowWidth, Constants.Layout.WindowHeight);
         }
         catch (Exception exception)

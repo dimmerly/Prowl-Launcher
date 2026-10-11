@@ -39,7 +39,7 @@ static class LauncherIcons
         "launcher.projects.new" => OrigamiIconSet.Plus,
         "launcher.projects.create_and_open" => OrigamiIconSet.Plus,
         "launcher.projects.open" or "launcher.versions.launch" or "launcher.samples.run" => Play,
-        "launcher.projects.remove" or "launcher.versions.uninstall" => OrigamiIconSet.Trash,
+        "launcher.projects.remove" or "launcher.versions.uninstall" or "launcher.uninstall.button" => OrigamiIconSet.Trash,
         "launcher.versions.install" => OrigamiIconSet.Download,
         "launcher.versions.repair" or "launcher.versions.refresh" or "launcher.updates.check" => Refresh,
         "launcher.versions.set_default" => OrigamiIconSet.Star,

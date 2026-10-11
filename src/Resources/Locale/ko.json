@@ -265,5 +265,12 @@
     "launcher.projects.install_editor_title": "{{version}}을(를) 설치할까요?",
     "launcher.projects.install_editor_description": "{{project}}은(는) 설치되지 않은 Prowl {{version}}을(를) 사용합니다. GitHub에서 다운로드하고 프로젝트를 열까요?",
     "launcher.projects.install_and_open": "설치 후 열기",
-    "launcher.errors.no_matching_editor": "Prowl {{version}}과(와) 일치하는 설치된 에디터나 GitHub 릴리스가 없습니다. 이 프로젝트의 에디터를 선택하세요."
+    "launcher.errors.no_matching_editor": "Prowl {{version}}과(와) 일치하는 설치된 에디터나 GitHub 릴리스가 없습니다. 이 프로젝트의 에디터를 선택하세요.",
+    "launcher.uninstall.button": "런처 제거…",
+    "launcher.uninstall.title": "Prowl Launcher를 제거할까요?",
+    "launcher.uninstall.description": "설치된 런처, 바로 가기, 다운로드한 런처 업데이트를 제거한 뒤 런처를 닫습니다. 설치된 에디터와 프로젝트는 유지됩니다.",
+    "launcher.uninstall.remove_data": "런처 설정과 캐시도 삭제",
+    "launcher.uninstall.confirm": "제거",
+    "launcher.uninstall.uninstalling": "Prowl Launcher 제거 중",
+    "launcher.uninstall.failed": "{{path}}을(를) 제거할 수 없습니다. 사용 중인 항목을 닫고 다시 시도하세요."
 }

@@ -130,6 +130,14 @@ static class LauncherScenarios
             };
             _secondEditorKey = (await new EditorInstallerService(fixture.Http, fixture.Store).InstallAsync(release, Platform.Identifier)).Key;
         }
+        if (scenario == "CancelLauncherUninstall")
+        {
+            string installed = Path.Combine(fixture.Root, "installed", "Prowl.Launcher.exe");
+            Directory.CreateDirectory(Path.GetDirectoryName(installed)!);
+            File.WriteAllText(installed, "installed launcher");
+            fixture.Store.Settings.InstalledLauncherExecutable = installed;
+            fixture.Store.Save();
+        }
         if (scenario == "ManualReoffersDismissedUpdate")
         {
             LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
@@ -717,6 +725,18 @@ static class LauncherScenarios
                 await ui.Wait(() => ui.HasText("Existing installations are unchanged."), "Cancellation should report a safe outcome.");
                 Check(f.Store.InstalledEditors().Count == 0, "Cancelled download must not register an editor.");
                 Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(), "Cancelled download must leave no partial installation.");
+                break;
+            case "CancelLauncherUninstall":
+                await ui.Navigate("Settings");
+                await ui.Scroll();
+                await ui.ClickText("Uninstall launcher…");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Uninstall Prowl Launcher?"), "Uninstall should ask for confirmation.");
+                Check(ui.HasText("Installed editors and your projects are kept."), "The prompt must say what is kept.");
+                Check(ui.HasText("Also delete launcher settings and caches"), "Removing data must be opt-in.");
+                await ui.ClickText("Cancel");
+                await ui.Wait(() => !Modal.IsOpen, "Cancel should close the prompt.");
+                Check(f.Saved().InstalledLauncherExecutable != null, "Cancelling must keep the installation.");
+                Check(File.Exists(f.Saved().InstalledLauncherExecutable!), "Cancelling must not remove any files.");
                 break;
             case "SettingsPersist":
                 await ui.Navigate("Settings");
