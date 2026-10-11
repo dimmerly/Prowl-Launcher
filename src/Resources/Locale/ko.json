@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "런처 설정과 캐시도 삭제",
     "launcher.uninstall.confirm": "제거",
     "launcher.uninstall.uninstalling": "Prowl Launcher 제거 중",
-    "launcher.uninstall.failed": "{{path}}을(를) 제거할 수 없습니다. 사용 중인 항목을 닫고 다시 시도하세요."
+    "launcher.uninstall.failed": "{{path}}을(를) 제거할 수 없습니다. 사용 중인 항목을 닫고 다시 시도하세요.",
+    "launcher.projects.opening": "프로젝트 여는 중",
+    "launcher.projects.busy": "현재 작업을 마친 뒤 프로젝트를 다시 여세요"
 }

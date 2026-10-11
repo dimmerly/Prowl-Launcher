@@ -71,7 +71,7 @@ static class LauncherScenarios
         [
             "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
             "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall", "ProjectVersionPrompts",
-            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
+            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure", "OpenProjectFromCommandLine"
         ];
         if (installedScenarios.Contains(scenario))
         {
@@ -95,7 +95,7 @@ static class LauncherScenarios
         {
             fixture.AddProject("Beta Game");
         }
-        if (scenario is "AddExistingProject" or "DuplicateProjectImport")
+        if (scenario is "AddExistingProject" or "DuplicateProjectImport" or "OpenProjectFromCommandLine")
         {
             _project = fixture.AddProject("Imported Game");
             fixture.Store.Settings.Projects.Clear();
@@ -658,6 +658,13 @@ static class LauncherScenarios
                 Check(f.Saved().Projects.Single().Path == _project!.Path, "Importing the same folder twice must retain one project record.");
                 Check(File.ReadAllText(Path.Combine(_project.Path, "Assets", "keep.txt")) == "User project data", "Import must preserve existing files.");
                 break;
+            case "OpenProjectFromCommandLine":
+                await ui.Wait(() => File.Exists(f.LaunchRecord), "A project passed on the command line should open in its editor.");
+                Project opened = f.Saved().Projects.Single();
+                Check(FileSystemHelper.PathsEqual(opened.Path, _project!.Path), "The project must be added to the list.");
+                Check(opened.EditorKey == _editor!.Key, "The project must use the editor for its version.");
+                AssertLaunch(f, _project.Path);
+                break;
             case "InstallEditor":
                 await ui.Navigate("Versions");
                 // Refresh uses the deterministic HTTP catalog rather than the public network.
@@ -825,6 +832,10 @@ static class LauncherScenarios
         AssertDialogCentered(ui, ui.Text("Switch to stable Prowl Launcher?").IsValid
             ? "Switch to stable Prowl Launcher?" : "Update Prowl Launcher?");
     }
+
+    /// <summary>The project path a scenario passes on the launcher's command line, if any.</summary>
+    internal static string? CommandLineProject(string scenario) =>
+        scenario == "OpenProjectFromCommandLine" ? Path.Combine(_project!.Path, _project.Name + ".prowl") : null;
 
     private static void SetProjectVersion(Project project, string version) => JsonFile.Write(
         Path.Combine(project.Path, project.Name + ".prowl"), new

@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "ランチャーの設定とキャッシュも削除する",
     "launcher.uninstall.confirm": "アンインストール",
     "launcher.uninstall.uninstalling": "Prowl Launcher をアンインストール中",
-    "launcher.uninstall.failed": "{{path}} を削除できませんでした。使用中のものを閉じてもう一度お試しください。"
+    "launcher.uninstall.failed": "{{path}} を削除できませんでした。使用中のものを閉じてもう一度お試しください。",
+    "launcher.projects.opening": "プロジェクトを開いています",
+    "launcher.projects.busy": "現在の処理が終わってから、もう一度プロジェクトを開いてください"
 }

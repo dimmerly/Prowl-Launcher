@@ -16,7 +16,8 @@ public sealed partial class Launcher(
     LauncherTab initialTab = LauncherTab.Projects,
     bool offline = false,
     LauncherPreviews? previews = null,
-    bool uninstall = false
+    bool uninstall = false,
+    string? openProject = null
 )
 {
     private readonly BackgroundWork _background = new();
@@ -78,6 +79,10 @@ public sealed partial class Launcher(
         if (StartPreviewOperation())
         {
             return;
+        }
+        if (openProject != null && !Capturing)
+        {
+            OpenExternalProject(openProject);
         }
 
         if (!offline)
@@ -174,6 +179,25 @@ public sealed partial class Launcher(
         }
 
         _editors.LoadCachedReleases();
+    }
+
+    /// <summary>
+    ///     Adds and opens a project folder or .prowl file opened from outside the launcher: the command line, a file
+    ///     association or a drop onto the window.
+    /// </summary>
+    private void OpenExternalProject(string path)
+    {
+        if (_operations.Busy)
+        {
+            _notifications.Notify("launcher.projects.busy", Path.GetFileName(path), ToastType.Warning);
+            return;
+        }
+        _navigation.Tab = LauncherTab.Projects;
+        _operations.Start(async token =>
+        {
+            Project project = store.AddProject(path);
+            await _editors.OpenProjectAsync(project, token);
+        }, "launcher.projects.opening");
     }
 
     /// <summary>

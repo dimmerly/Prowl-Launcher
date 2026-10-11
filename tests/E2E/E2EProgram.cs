@@ -45,7 +45,8 @@ static class E2EProgram
             // Offline mode skips background update checks, so scenarios that rely on them run online against the fixture.
             Launcher launcher = new( fixture.Store, offline: !args[1].StartsWith("Startup", StringComparison.Ordinal)
                                                              && !args[1].StartsWith("Sample", StringComparison.Ordinal)
-                                                             && args[1] != "EnablePrereleases" );
+                                                             && args[1] != "EnablePrereleases",
+                openProject: LauncherScenarios.CommandLineProject(args[1]) );
             UiDriver.GetField<HttpClient>(launcher, "_http").Dispose();
             UiDriver.SetField(launcher, "_http", fixture.Http);
             UiDriver driver = new( launcher, Path.Combine(fixture.Root, "diagnostics") );

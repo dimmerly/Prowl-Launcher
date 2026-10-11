@@ -15,6 +15,7 @@ sealed class LauncherInstallationService(LauncherStore store)
     internal const string UninstallArgument = "--uninstall";
     internal const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\ProwlLauncher";
     private const string LinuxEntryName = "com.prowlengine.launcher.desktop";
+    private const string ProjectClass = "ProwlLauncher.Project";
 
     internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled
                                                              && typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -109,6 +110,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         if (OperatingSystem.IsWindows())
         {
             Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
+            UnregisterWindowsFileAssociation();
         }
 
         IReadOnlyList<string> inUse = await Task.Run(() => DeletePaths(paths, token), token);
@@ -248,6 +250,54 @@ sealed class LauncherInstallationService(LauncherStore store)
         key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
     }
 
+    /// <summary>Opens .prowl files with the launcher, which adds and opens their project.</summary>
+    [SupportedOSPlatform("windows")]
+    internal static void RegisterWindowsFileAssociation(string executable, string classesPath = @"Software\Classes")
+    {
+        using (RegistryKey extension = Registry.CurrentUser.CreateSubKey($@"{classesPath}\.prowl"))
+        {
+            extension.SetValue("", ProjectClass);
+        }
+        using RegistryKey type = Registry.CurrentUser.CreateSubKey($@"{classesPath}\{ProjectClass}");
+        type.SetValue("", "Prowl project");
+        using (RegistryKey icon = type.CreateSubKey("DefaultIcon"))
+        {
+            icon.SetValue("", executable + ",0");
+        }
+        using (RegistryKey command = type.CreateSubKey(@"shell\open\command"))
+        {
+            command.SetValue("", $"\"{executable}\" \"%1\"");
+        }
+        NotifyAssociationsChanged();
+    }
+
+    /// <summary>Removes the launcher's .prowl association, leaving one another app has taken over alone.</summary>
+    [SupportedOSPlatform("windows")]
+    internal static void UnregisterWindowsFileAssociation(string classesPath = @"Software\Classes")
+    {
+        bool ours;
+        using (RegistryKey? extension = Registry.CurrentUser.OpenSubKey($@"{classesPath}\.prowl"))
+        {
+            ours = extension?.GetValue("") as string == ProjectClass;
+        }
+        if (ours)
+        {
+            Registry.CurrentUser.DeleteSubKeyTree($@"{classesPath}\.prowl", false);
+        }
+        Registry.CurrentUser.DeleteSubKeyTree($@"{classesPath}\{ProjectClass}", false);
+        NotifyAssociationsChanged();
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void NotifyAssociationsChanged()
+    {
+        const int AssociationsChanged = 0x08000000;
+        SHChangeNotify(AssociationsChanged, 0, 0, 0);
+    }
+
+    [DllImport("shell32.dll")]
+    private static extern void SHChangeNotify(int eventId, uint flags, nint item1, nint item2);
+
     private static string ApplicationsDirectory() => Path.Combine(
         Environment.GetEnvironmentVariable("XDG_DATA_HOME")
         ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"),
@@ -276,6 +326,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         string programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
         CreateWindowsShortcut(Path.Combine(programs, "Prowl.lnk"), executable);
         RegisterWindowsUninstaller(executable, root);
+        RegisterWindowsFileAssociation(executable);
 
         if (desktopShortcut)
         {

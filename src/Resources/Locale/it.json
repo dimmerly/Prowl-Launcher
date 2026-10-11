@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "Elimina anche impostazioni e cache del launcher",
     "launcher.uninstall.confirm": "Disinstalla",
     "launcher.uninstall.uninstalling": "Disinstallazione di Prowl Launcher",
-    "launcher.uninstall.failed": "Impossibile rimuovere {{path}}. Chiudi ciò che lo sta usando e riprova."
+    "launcher.uninstall.failed": "Impossibile rimuovere {{path}}. Chiudi ciò che lo sta usando e riprova.",
+    "launcher.projects.opening": "Apertura del progetto",
+    "launcher.projects.busy": "Completa l’attività in corso, poi riapri il progetto"
 }

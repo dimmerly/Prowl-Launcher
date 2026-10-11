@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "Также удалить настройки и кэш лаунчера",
     "launcher.uninstall.confirm": "Удалить",
     "launcher.uninstall.uninstalling": "Удаление Prowl Launcher",
-    "launcher.uninstall.failed": "Не удалось удалить {{path}}. Закройте всё, что его использует, и повторите попытку."
+    "launcher.uninstall.failed": "Не удалось удалить {{path}}. Закройте всё, что его использует, и повторите попытку.",
+    "launcher.projects.opening": "Открытие проекта",
+    "launcher.projects.busy": "Дождитесь завершения текущей задачи и снова откройте проект"
 }

@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "Başlatıcı ayarlarını ve önbelleklerini de sil",
     "launcher.uninstall.confirm": "Kaldır",
     "launcher.uninstall.uninstalling": "Prowl Launcher kaldırılıyor",
-    "launcher.uninstall.failed": "{{path}} kaldırılamadı. Onu kullanan her şeyi kapatıp tekrar deneyin."
+    "launcher.uninstall.failed": "{{path}} kaldırılamadı. Onu kullanan her şeyi kapatıp tekrar deneyin.",
+    "launcher.projects.opening": "Proje açılıyor",
+    "launcher.projects.busy": "Mevcut işlemi bitirip projeyi yeniden açın"
 }

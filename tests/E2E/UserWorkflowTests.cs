@@ -33,6 +33,7 @@ public sealed class UserWorkflowTests
         "MissingProject",
         "CancelFolderPicker",
         "AddExistingProject",
+        "OpenProjectFromCommandLine",
         "DuplicateProjectImport",
         "InstallEditor",
         "RepairEditor",

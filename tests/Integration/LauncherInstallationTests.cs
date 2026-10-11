@@ -222,6 +222,42 @@ public sealed class LauncherInstallationTests : IDisposable
     }
 
     [Fact]
+    public void WindowsProjectFilesOpenWithTheLauncherUntilItIsUninstalled()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+        string classes = @"Software\ProwlLauncherTests\" + Guid.NewGuid().ToString("N");
+        string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
+        try
+        {
+            LauncherInstallationService.RegisterWindowsFileAssociation(executable, classes);
+            using (Microsoft.Win32.RegistryKey command = Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project\shell\open\command")!)
+            {
+                Assert.Equal($"\"{executable}\" \"%1\"", command.GetValue(""));
+            }
+
+            LauncherInstallationService.UnregisterWindowsFileAssociation(classes);
+            Assert.Null(Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl"));
+            Assert.Null(Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project"));
+
+            // Another app took over .prowl; uninstalling must leave its association alone.
+            using (Microsoft.Win32.RegistryKey other = Microsoft.Win32.Registry.CurrentUser.CreateSubKey($@"{classes}\.prowl"))
+            {
+                other.SetValue("", "SomeEditor.Project");
+            }
+            LauncherInstallationService.UnregisterWindowsFileAssociation(classes);
+            using Microsoft.Win32.RegistryKey kept = Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl")!;
+            Assert.Equal("SomeEditor.Project", kept.GetValue(""));
+        }
+        finally
+        {
+            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
+        }
+    }
+
+    [Fact]
     public void WindowsShortcutTargetsTheInstalledAppIncludingPathsWithSpaces()
     {
         if (!OperatingSystem.IsWindows())

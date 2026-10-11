@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "同时删除启动器设置和缓存",
     "launcher.uninstall.confirm": "卸载",
     "launcher.uninstall.uninstalling": "正在卸载 Prowl Launcher",
-    "launcher.uninstall.failed": "无法移除 {{path}}。请关闭正在使用它的程序后重试。"
+    "launcher.uninstall.failed": "无法移除 {{path}}。请关闭正在使用它的程序后重试。",
+    "launcher.projects.opening": "正在打开项目",
+    "launcher.projects.busy": "请先完成当前任务，然后再次打开项目"
 }

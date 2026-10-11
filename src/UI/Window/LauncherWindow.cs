@@ -140,6 +140,15 @@ public sealed partial class Launcher
             }
         }
 
+        protected override void OnFileDrop(FileDropEventArgs args)
+        {
+            base.OnFileDrop(args);
+            if (args.FileNames.FirstOrDefault() is {} path)
+            {
+                owner.OpenExternalProject(path);
+            }
+        }
+
         protected override void OnTextInput(TextInputEventArgs args)
         {
             base.OnTextInput(args);

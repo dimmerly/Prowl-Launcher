@@ -30,6 +30,7 @@ static class Program
 
             string? screenshot = null;
             LauncherTab tab = LauncherTab.Projects;
+            string? project = null;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -47,6 +48,10 @@ static class Program
                     case "--samples":
                         tab = LauncherTab.Samples;
                         break;
+                    case { } path when !path.StartsWith("--", StringComparison.Ordinal):
+                        // A project folder or .prowl file, e.g. from a file association or drag onto the app icon.
+                        project ??= Path.GetFullPath(path);
+                        break;
                 }
             }
 
@@ -62,7 +67,8 @@ static class Program
                     args.Contains("--new-project"),
                     args.Contains("--uninstall-preview"),
                     args.Contains("--installation-preview")),
-                args.Contains(LauncherInstallationService.UninstallArgument));
+                args.Contains(LauncherInstallationService.UninstallArgument),
+                project);
             launcher.Run(Constants.Layout.WindowTitle, Constants.Layout.WindowWidth, Constants.Layout.WindowHeight);
         }
         catch (Exception exception)

@@ -272,5 +272,7 @@
     "launcher.uninstall.remove_data": "Usuń także ustawienia i pamięć podręczną launchera",
     "launcher.uninstall.confirm": "Odinstaluj",
     "launcher.uninstall.uninstalling": "Odinstalowywanie Prowl Launcher",
-    "launcher.uninstall.failed": "Nie udało się usunąć {{path}}. Zamknij wszystko, co go używa, i spróbuj ponownie."
+    "launcher.uninstall.failed": "Nie udało się usunąć {{path}}. Zamknij wszystko, co go używa, i spróbuj ponownie.",
+    "launcher.projects.opening": "Otwieranie projektu",
+    "launcher.projects.busy": "Zakończ bieżące zadanie, a potem otwórz projekt ponownie"
 }

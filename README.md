@@ -46,6 +46,12 @@ The checkout stays under `Source/<repository-hash>/` in the launcher data folder
 including after uninstalling the compiled editor. Commit or remove local changes
 before pulling. Source builds can contain unfinished or broken changes.
 
+## Opening projects
+
+Besides **Add project**, you can drop a project folder or its `.prowl` file onto the launcher, or pass either on
+the command line (`Prowl.Launcher path/to/project`). On Windows, the installed launcher also opens `.prowl` files
+when you double-click them. The project is added to the list and opened in the editor for its version.
+
 ## News
 
 News appears below your projects, with arrows to browse three posts at a time.
