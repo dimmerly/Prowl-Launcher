@@ -21,7 +21,21 @@ sealed class EditorCoordinator(
 
     public IReadOnlyList<InstalledEditor> Installed => _installed;
     public IReadOnlyList<EditorRelease> Releases => _releases;
-    public bool IncludePrereleases { get; set; } = Constants.Defaults.EditorPrereleases;
+    public bool IncludePrereleases { get; private set; } = Constants.Defaults.EditorPrereleases;
+
+    /// <summary>Turning prereleases on asks first, since project migration is only supported between stable versions.</summary>
+    public async Task SetIncludePrereleasesAsync(bool enabled)
+    {
+        if (enabled && !IncludePrereleases && !await dialogs.ConfirmAsync(
+                "launcher.versions.prereleases_warning_title",
+                "launcher.versions.prereleases_warning_description",
+                "launcher.versions.prereleases_warning_accept",
+                CancellationToken.None))
+        {
+            return;
+        }
+        IncludePrereleases = enabled;
+    }
 
     /// <summary>Every editor started from this launcher, oldest first.</summary>
     public IReadOnlyList<EditorConsoleSession> Sessions => _editorSessions;

@@ -128,14 +128,14 @@ sealed class VersionsView(LauncherStore store, Controls ui, Dialogs dialogs, Edi
                     .FontSize(ui.Appearance.Theme.Metrics.FontSize).TextColor(ui.Ink)
                     .Alignment(TextAlignment.MiddleLeft)
                     .Cursor(ui.Busy ? PaperCursor.Default : PaperCursor.Pointer)
-                    .OnClick(_ =>
+                    .OnClick(click =>
                     {
                         if (!ui.Busy)
                         {
-                            editors.IncludePrereleases = !editors.IncludePrereleases;
+                            _ = editors.SetIncludePrereleasesAsync(!editors.IncludePrereleases);
                         }
                     });
-                Origami.Toggle(p, "include-editor-prereleases", editors.IncludePrereleases, value => editors.IncludePrereleases = value)
+                Origami.Toggle(p, "include-editor-prereleases", editors.IncludePrereleases, value => _ = editors.SetIncludePrereleasesAsync(value))
                     .NoLabel()
                     .Disabled(ui.Busy).Show();
             }

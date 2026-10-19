@@ -397,6 +397,15 @@ static class LauncherScenarios
                 Check(!HasVersionIndicator(), "The indicator should stay hidden before a newer release is known.");
                 await ui.Navigate("Versions");
                 await ui.ClickText("Refresh");
+                await ui.Wait(() => !ui.Launcher.Operations.Busy, "The release refresh should finish.");
+                Check(!HasVersionIndicator(), "Prereleases are off by default, so a preview-only update stays hidden.");
+                await ui.ClickText("Include prereleases");
+                await ui.Wait(() => ui.HasText("Include prereleases?"), "Enabling prereleases must warn about project migration first.");
+                await ui.ClickText("Cancel");
+                await ui.Wait(() => !ui.HasText("Include prereleases?"), "Cancelling must close the warning.");
+                Check(!HasVersionIndicator(), "Cancelling the warning must keep prereleases off.");
+                await ui.ClickText("Include prereleases");
+                await ui.ClickText("I understand");
                 await ui.Wait(HasVersionIndicator, "A newer preview should show the Versions indicator when previews are included.");
                 ElementHandle indicator = ui.Nodes().First(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
                 ElementHandle nav = indicator.GetParentHandle();
@@ -406,7 +415,8 @@ static class LauncherScenarios
                 await ui.ClickText("Include prereleases");
                 await ui.Wait(() => !HasVersionIndicator(), "Stable-only selection must hide a preview-only update.");
                 await ui.ClickText("Include prereleases");
-                await ui.Wait(HasVersionIndicator, "Including previews should restore the indicator.");
+                await ui.ClickText("I understand");
+                await ui.Wait(HasVersionIndicator, "Including previews again should warn again and restore the indicator.");
                 await ui.ClickText("Install");
                 await ui.Wait(() => f.Store.InstalledEditors().Count == 2, "The preview should install through the normal Versions flow.");
                 await ui.Wait(() => !HasVersionIndicator(), "Installing the newest eligible version should clear the indicator.");
