@@ -11,7 +11,11 @@ public enum LauncherTab
 }
 
 /// <summary>Which page is showing. Shared by the sidebar, the views that switch pages and the window shell.</summary>
-sealed class Navigation(LauncherTab initial)
+internal sealed class Navigation(LauncherTab initial)
 {
-    public LauncherTab Tab { get; set; } = initial;
+    public LauncherTab Tab
+    {
+        get;
+        set;
+    } = initial;
 }

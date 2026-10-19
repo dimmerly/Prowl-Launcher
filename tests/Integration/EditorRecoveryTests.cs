@@ -1,10 +1,13 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class EditorRecoveryTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlRecoveryTests", Guid.NewGuid().ToString("N"));
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlRecoveryTests", Guid.NewGuid().ToString("N"));
+
     private readonly HttpClient _http = new();
 
     public void Dispose()
@@ -18,8 +21,8 @@ public sealed class EditorRecoveryTests : IDisposable
 
     private (LauncherStore store, InstalledEditor editor, string work) InterruptedRepair()
     {
-        LauncherStore store = new( _home );
-        InstalledEditor editor = new( 1, "v1.0.0", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow );
+        LauncherStore store = new(_home);
+        InstalledEditor editor = new(1, "v1.0.0", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow);
         string work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
         string previous = Path.Combine(work, "previous");
         JsonFile.Write(Path.Combine(previous, "installation.json"), editor);
@@ -42,7 +45,7 @@ public sealed class EditorRecoveryTests : IDisposable
     public void FailedRestorationRetainsBackupAndJournalForTheNextAttempt()
     {
         (LauncherStore store, InstalledEditor editor, string work) = InterruptedRepair();
-        EditorInstallerService installer = new( _http, store );
+        EditorInstallerService installer = new(_http, store);
         installer.RecoverInterruptedInstalls((_, _) => throw new IOException("Locked destination"));
         Assert.True(File.Exists(Path.Combine(work, "repair.json")));
         Assert.Equal("old editor", File.ReadAllText(Path.Combine(work, "previous", editor.ExecutableRelativePath)));

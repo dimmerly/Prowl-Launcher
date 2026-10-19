@@ -4,43 +4,42 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+
 namespace Prowl.Launcher;
 
 /// <summary>
 ///     Runs in the collector process: starts the editor, forwards its output and state to the launcher over a
 ///     pipe, and keeps draining output if the launcher disconnects.
 /// </summary>
-static class EditorConsoleCollector
+internal static class EditorConsoleCollector
 {
     private const int MaxLineLength = 16384;
 
     internal static async Task<int> RunAsync(string pipeName)
     {
         using HiddenConsole console = new();
-        using NamedPipeClientStream pipe = new( ".", pipeName, PipeDirection.InOut,
-            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly );
+        using NamedPipeClientStream pipe = new(".", pipeName, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         await pipe.ConnectAsync(15000);
-        using StreamReader input = new( pipe, Encoding.UTF8, false, 1024, true );
+        using StreamReader input = new(pipe, Encoding.UTF8, false, 1024, true);
         string requestJson = await input.ReadLineAsync()
                              ?? throw new IOException("The launcher disconnected before starting the editor.");
         EditorConsoleRequest request = JsonSerializer.Deserialize<EditorConsoleRequest>(requestJson)
                                        ?? throw new InvalidDataException("Missing editor console request.");
 
-        using Connection launcher = new( pipe );
-        EditorConsoleState state = new( DateTimeOffset.UtcNow );
+        using Connection launcher = new(pipe);
+        EditorConsoleState state = new(DateTimeOffset.UtcNow);
         using CancellationTokenSource stopped = new();
         string readyName = ProcessHelper.PipeName("prowl-editor-ready-");
-        using NamedPipeServerStream readyPipe = new( readyName, PipeDirection.In, 1,
-            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly );
+        using NamedPipeServerStream readyPipe = new(readyName, PipeDirection.In, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         Process? editor = null;
         try
         {
-            editor = Process.Start(EditorInfo(request, readyName)) ?? throw new IOException("Could not start the editor.");
-            state = state with
-            {
-                ProcessId = editor.Id
-            };
-            launcher.Send(new EditorConsoleEvent(State: state));
+            editor = Process.Start(EditorInfo(request, readyName)) ??
+                     throw new IOException("Could not start the editor.");
+            state = state with { ProcessId = editor.Id };
+            launcher.Send(new EditorConsoleEvent(state));
 
             Task stdout = DrainAsync(editor.StandardOutput, false);
             Task stderr = DrainAsync(editor.StandardError, true);
@@ -50,30 +49,23 @@ static class EditorConsoleCollector
                 bool signalled = ready.IsCompletedSuccessfully && ready.Result;
                 if (state.Ready == null && (signalled || HasResponsiveWindow(editor)))
                 {
-                    state = state with
-                    {
-                        Ready = DateTimeOffset.UtcNow
-                    };
-                    launcher.Send(new EditorConsoleEvent(State: state));
+                    state = state with { Ready = DateTimeOffset.UtcNow };
+                    launcher.Send(new EditorConsoleEvent(state));
                 }
+
                 await Task.Delay(200);
             }
+
             await Task.WhenAll(stdout, stderr);
 
-            state = state with
-            {
-                Ended = DateTimeOffset.UtcNow, ExitCode = editor.ExitCode
-            };
-            launcher.Send(new EditorConsoleEvent(State: state));
+            state = state with { Ended = DateTimeOffset.UtcNow, ExitCode = editor.ExitCode };
+            launcher.Send(new EditorConsoleEvent(state));
             return editor.ExitCode;
         }
         catch (Exception error)
         {
             launcher.SendLine(error.Message, true);
-            launcher.Send(new EditorConsoleEvent(State: state with
-            {
-                Ended = DateTimeOffset.UtcNow, Error = error.Message
-            }));
+            launcher.Send(new EditorConsoleEvent(state with { Ended = DateTimeOffset.UtcNow, Error = error.Message }));
             return 1;
         }
         finally
@@ -84,7 +76,7 @@ static class EditorConsoleCollector
 
         async Task DrainAsync(StreamReader reader, bool error)
         {
-            while (await reader.ReadLineAsync() is {} line)
+            while (await reader.ReadLineAsync() is { } line)
             {
                 launcher.SendLine(line, error);
             }
@@ -97,7 +89,7 @@ static class EditorConsoleCollector
     /// </summary>
     private static ProcessStartInfo EditorInfo(EditorConsoleRequest request, string readyPipe)
     {
-        ProcessStartInfo info = new( request.Executable )
+        ProcessStartInfo info = new(request.Executable)
         {
             WorkingDirectory = request.WorkingDirectory,
             UseShellExecute = false,
@@ -111,6 +103,7 @@ static class EditorConsoleCollector
         {
             info.ArgumentList.Add(argument);
         }
+
         return info;
     }
 
@@ -144,6 +137,7 @@ static class EditorConsoleCollector
         {
             return false;
         }
+
         try
         {
             process.Refresh();
@@ -164,10 +158,9 @@ static class EditorConsoleCollector
     private sealed class Connection(Stream pipe) : IDisposable
     {
         private readonly object _lock = new();
-        private readonly StreamWriter _output = new( pipe, new UTF8Encoding(false), 1024, true )
-        {
-            AutoFlush = true
-        };
+
+        private readonly StreamWriter _output = new(pipe, new UTF8Encoding(false), 1024, true) { AutoFlush = true };
+
         private bool _connected = true;
 
         public void Dispose()
@@ -198,6 +191,7 @@ static class EditorConsoleCollector
                 {
                     return;
                 }
+
                 try
                 {
                     _output.WriteLine(JsonSerializer.Serialize(entry));
@@ -222,6 +216,7 @@ static class EditorConsoleCollector
             {
                 return;
             }
+
             FreeConsole();
             _allocated = AllocConsole();
             if (_allocated)

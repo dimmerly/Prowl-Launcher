@@ -7,21 +7,27 @@ using System.Security.Cryptography;
 using Microsoft.Win32;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
-sealed class LauncherInstallationService(LauncherStore store)
+internal sealed class LauncherInstallationService(LauncherStore store)
 {
     /// <summary>Opens the launcher on its uninstall prompt; Windows' Apps &amp; Features runs this.</summary>
     internal const string UninstallArgument = "--uninstall";
+
     internal const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\ProwlLauncher";
     private const string LinuxEntryName = "com.prowlengine.launcher.desktop";
     private const string ProjectClass = "ProwlLauncher.Project";
 
     /// <summary>True for the released, self-installing build; false for source and update builds.</summary>
-    internal static bool IsSelfInstallBuild { get; } = typeof( Launcher ).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+    internal static bool IsSelfInstallBuild
+    {
+        get;
+    } = typeof(Launcher).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
         .Any(attribute => attribute.Key == "SelfInstall" && attribute.Value == "true");
 
-    internal static bool ShouldOffer(LauncherStore store) => !store.Settings.InstallationPromptHandled && CanInstall(store);
+    internal static bool ShouldOffer(LauncherStore store) =>
+        !store.Settings.InstallationPromptHandled && CanInstall(store);
 
     /// <summary>True when this is a released build that isn't installed yet.</summary>
     internal static bool CanInstall(LauncherStore store) => store.Settings.InstalledLauncherExecutable == null
@@ -44,8 +50,8 @@ sealed class LauncherInstallationService(LauncherStore store)
     }
 
     internal static bool IsRunningInstallation(string executable) =>
-        Environment.ProcessPath is {} processPath && FileSystemHelper.PathsEqual(executable, processPath)
-        || SourcePath() is {} source && FileSystemHelper.PathsEqual(executable, source);
+        (Environment.ProcessPath is { } processPath && FileSystemHelper.PathsEqual(executable, processPath))
+        || (SourcePath() is { } source && FileSystemHelper.PathsEqual(executable, source));
 
     private static string? SourcePath()
     {
@@ -54,24 +60,29 @@ sealed class LauncherInstallationService(LauncherStore store)
             string bundle = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../.."));
             return bundle.EndsWith(".app", StringComparison.Ordinal) && Directory.Exists(bundle) ? bundle : null;
         }
+
         if (OperatingSystem.IsLinux())
         {
             string? appImage = Environment.GetEnvironmentVariable("APPIMAGE");
             return appImage != null && File.Exists(appImage) ? Path.GetFullPath(appImage) : null;
         }
+
         return Environment.ProcessPath;
     }
 
     public async Task<string> InstallAsync(bool desktopShortcut, CancellationToken token)
     {
-        string source = SourcePath() ?? throw new InvalidOperationException(Loc.Get("launcher.installation.unavailable"));
+        string source = SourcePath() ??
+                        throw new InvalidOperationException(Loc.Get("launcher.installation.unavailable"));
         string version = VersionHelper.LauncherVersion;
         string root = InstallRoot(store);
         string fileName = OperatingSystem.IsWindows() ? "Prowl.Launcher.exe" : "Prowl Launcher.AppImage";
         string relative = OperatingSystem.IsMacOS() ? "Prowl Launcher.app"
             : OperatingSystem.IsWindows() ? fileName : Path.Combine(version, fileName);
         string destination = FileSystemHelper.SafeChildPath(root, relative);
-        string executable = OperatingSystem.IsMacOS() ? Path.Combine(destination, "Contents", "MacOS", "Prowl.Launcher") : destination;
+        string executable = OperatingSystem.IsMacOS()
+            ? Path.Combine(destination, "Contents", "MacOS", "Prowl.Launcher")
+            : destination;
 
         if (!IsRunningInstallation(executable))
         {
@@ -105,7 +116,9 @@ sealed class LauncherInstallationService(LauncherStore store)
     public async Task UninstallAsync(bool removeData, CancellationToken token)
     {
         IReadOnlyList<string> paths = InstalledPaths(store, removeData, DesktopDirectory(),
-            OperatingSystem.IsWindows() ? Environment.GetFolderPath(Environment.SpecialFolder.Programs) : ApplicationsDirectory());
+            OperatingSystem.IsWindows()
+                ? Environment.GetFolderPath(Environment.SpecialFolder.Programs)
+                : ApplicationsDirectory());
         // Reset even when the settings are deleted, so a later save can't bring the installation back.
         store.Settings.InstalledLauncherExecutable = null;
         store.Settings.LauncherExecutable = null;
@@ -114,6 +127,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             store.Save();
         }
+
         if (OperatingSystem.IsWindows())
         {
             Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
@@ -125,11 +139,9 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             if (!OperatingSystem.IsWindows())
             {
-                throw new IOException(Loc.Get("launcher.uninstall.failed", new
-                {
-                    path = inUse[0]
-                }));
+                throw new IOException(Loc.Get("launcher.uninstall.failed", new { path = inUse[0] }));
             }
+
             DeleteAfterExit(inUse);
         }
     }
@@ -138,7 +150,8 @@ sealed class LauncherInstallationService(LauncherStore store)
     ///     What uninstalling removes. <paramref name="shortcuts" /> is the Start menu folder on Windows and the
     ///     applications folder for desktop entries on Linux.
     /// </summary>
-    internal static IReadOnlyList<string> InstalledPaths(LauncherStore store, bool removeData, string desktop, string shortcuts)
+    internal static IReadOnlyList<string> InstalledPaths(LauncherStore store, bool removeData, string desktop,
+        string shortcuts)
     {
         List<string> paths = [];
         if (OperatingSystem.IsWindows())
@@ -157,15 +170,19 @@ sealed class LauncherInstallationService(LauncherStore store)
             paths.Add(Path.Combine(desktop, "Prowl.app"));
         }
 
-        if (store.Settings.InstalledLauncherExecutable is {} executable)
+        if (store.Settings.InstalledLauncherExecutable is { } executable)
         {
             // Only the launcher's own files: the macOS install root is the shared ~/Applications folder.
-            string application = OperatingSystem.IsMacOS() ? Path.GetFullPath(Path.Combine(executable, "..", "..", "..")) : executable;
-            if (Path.GetFileName(application) is "Prowl.Launcher.exe" or "Prowl Launcher.app" or "Prowl Launcher.AppImage")
+            string application = OperatingSystem.IsMacOS()
+                ? Path.GetFullPath(Path.Combine(executable, "..", "..", ".."))
+                : executable;
+            if (Path.GetFileName(application) is "Prowl.Launcher.exe" or "Prowl Launcher.app"
+                or "Prowl Launcher.AppImage")
             {
                 paths.Add(application);
             }
         }
+
         paths.Add(LauncherUpdaterService.UpdatesPath(store));
 
         if (removeData)
@@ -182,6 +199,7 @@ sealed class LauncherInstallationService(LauncherStore store)
                 paths.Add(store.Home);
             }
         }
+
         return paths.Distinct(StringComparer.Ordinal).ToArray();
     }
 
@@ -198,6 +216,7 @@ sealed class LauncherInstallationService(LauncherStore store)
                 {
                     continue;
                 }
+
                 if (FileSystemHelper.IsLink(path) || File.Exists(path))
                 {
                     if (Directory.Exists(path))
@@ -219,6 +238,7 @@ sealed class LauncherInstallationService(LauncherStore store)
                 inUse.Add(path);
             }
         }
+
         return inUse;
     }
 
@@ -230,9 +250,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         // working directory is usually its own folder.
         ProcessStartInfo cleanup = new("powershell.exe")
         {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            WorkingDirectory = Path.GetTempPath()
+            CreateNoWindow = true, UseShellExecute = false, WorkingDirectory = Path.GetTempPath()
         };
         foreach (string argument in new[]
                  {
@@ -243,6 +261,7 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             cleanup.ArgumentList.Add(argument);
         }
+
         Process.Start(cleanup);
     }
 
@@ -268,16 +287,19 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             extension.SetValue("", ProjectClass);
         }
+
         using RegistryKey type = Registry.CurrentUser.CreateSubKey($@"{classesPath}\{ProjectClass}");
         type.SetValue("", "Prowl project");
         using (RegistryKey icon = type.CreateSubKey("DefaultIcon"))
         {
             icon.SetValue("", executable + ",0");
         }
+
         using (RegistryKey command = type.CreateSubKey(@"shell\open\command"))
         {
             command.SetValue("", $"\"{executable}\" \"%1\"");
         }
+
         NotifyAssociationsChanged();
     }
 
@@ -290,10 +312,12 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             ours = extension?.GetValue("") as string == ProjectClass;
         }
+
         if (ours)
         {
             Registry.CurrentUser.DeleteSubKeyTree($@"{classesPath}\.prowl", false);
         }
+
         Registry.CurrentUser.DeleteSubKeyTree($@"{classesPath}\{ProjectClass}", false);
         NotifyAssociationsChanged();
     }
@@ -347,7 +371,7 @@ sealed class LauncherInstallationService(LauncherStore store)
     private static void RegisterLinuxApplication(string root, string executable, bool desktopShortcut)
     {
         string icon = Path.Combine(root, "prowl.png");
-        using Stream image = typeof( Launcher ).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
+        using Stream image = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
                              ?? throw new InvalidDataException("The launcher icon is missing.");
         using (FileStream file = File.Create(icon))
         {
@@ -443,15 +467,18 @@ sealed class LauncherInstallationService(LauncherStore store)
         {
             return SameFile(source, destination);
         }
+
         if (!Directory.Exists(destination))
         {
             return false;
         }
+
         string[] files = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
         if (files.Length != Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Length)
         {
             return false;
         }
+
         foreach (string file in files)
         {
             token.ThrowIfCancellationRequested();
@@ -460,6 +487,7 @@ sealed class LauncherInstallationService(LauncherStore store)
                 return false;
             }
         }
+
         return true;
 
         static bool SameFile(string source, string target)
@@ -468,6 +496,7 @@ sealed class LauncherInstallationService(LauncherStore store)
             {
                 return false;
             }
+
             using FileStream original = File.OpenRead(source);
             using FileStream installed = File.OpenRead(target);
             return SHA256.HashData(original).SequenceEqual(SHA256.HashData(installed));
@@ -507,6 +536,7 @@ sealed class LauncherInstallationService(LauncherStore store)
             {
                 Marshal.FinalReleaseComObject(shortcut);
             }
+
             Marshal.FinalReleaseComObject(shell);
         }
     }
@@ -514,7 +544,9 @@ sealed class LauncherInstallationService(LauncherStore store)
     private static string DesktopDirectory()
     {
         string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        return desktop.Length > 0 ? desktop : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop");
+        return desktop.Length > 0
+            ? desktop
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop");
     }
 
     internal static string DesktopEntry(string executable, string icon) => $"""

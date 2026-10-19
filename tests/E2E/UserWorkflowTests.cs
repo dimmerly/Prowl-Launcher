@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test.E2E;
 
 [CollectionDefinition("E2E", DisableParallelization = true)]
@@ -12,57 +13,20 @@ public sealed class UserWorkflowTests
 {
     public static IEnumerable<object[]> Scenarios() => new[]
     {
-        "EmptyProjects",
-        "WindowIcon",
-        "DismissToasts",
-        "ToastAutoSize",
-        "ToastsAboveProgress",
-        "NavigatePages",
-        "ReadLocalNews",
-        "CancelNewProject",
-        "CreateProjectAndOpenIt",
-        "RejectInvalidProjectName",
-        "RejectExistingProjectFolder",
-        "OpenPinnedProject",
-        "RemoveProject",
-        "SearchProjects",
-        "FavoriteProject",
-        "ChooseProjectEditor",
-        "ProjectVersionPrompts",
-        "InstallMissingEditor",
-        "MissingProject",
-        "LocateMovedProject",
-        "CancelFolderPicker",
-        "AddExistingProject",
-        "OpenProjectFromCommandLine",
-        "DuplicateProjectImport",
-        "InstallEditor",
-        "RepairEditor",
-        "CancelUninstall",
-        "ConfirmUninstall",
-        "CorruptDownload",
-        "CancelDownload",
-        "CloseDuringDownload",
-        "ManualUpdateChangelog",
-        "ManualReoffersDismissedUpdate",
-        "EnablePrereleases",
-        "AcceptHealthyUpdate",
-        "FailedUpdateStartup",
-        "CloseOnEditorLaunch",
-        "EditorConsoleLoading",
-        "EditorConsoleFailure",
-        "SampleDownloadOnce",
-        "SampleUpdateAvailable",
-        "SampleAlreadyLatest",
-        "EditorUpdateIndicator",
-        "CancelLauncherUninstall"
-    }.Select(scenario => new object[]
-    {
-        scenario
-    });
+        "EmptyProjects", "WindowIcon", "DismissToasts", "ToastAutoSize", "ToastsAboveProgress", "NavigatePages",
+        "ReadLocalNews", "CancelNewProject", "CreateProjectAndOpenIt", "RejectInvalidProjectName",
+        "RejectExistingProjectFolder", "OpenPinnedProject", "RemoveProject", "SearchProjects", "FavoriteProject",
+        "ChooseProjectEditor", "ProjectVersionPrompts", "InstallMissingEditor", "MissingProject",
+        "LocateMovedProject", "CancelFolderPicker", "AddExistingProject", "OpenProjectFromCommandLine",
+        "DuplicateProjectImport", "InstallEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
+        "CorruptDownload", "CancelDownload", "CloseDuringDownload", "ManualUpdateChangelog",
+        "ManualReoffersDismissedUpdate", "EnablePrereleases", "AcceptHealthyUpdate", "FailedUpdateStartup",
+        "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure", "SampleDownloadOnce",
+        "SampleUpdateAvailable", "SampleAlreadyLatest", "EditorUpdateIndicator", "CancelLauncherUninstall"
+    }.Select(scenario => new object[] { scenario });
 
     [Theory]
-    [MemberData(nameof( Scenarios ))]
+    [MemberData(nameof(Scenarios))]
     public async Task CommonUserActionCompletesThroughTheRenderedUi(string scenario)
     {
         string root = ArtifactDirectory(scenario);
@@ -96,11 +60,14 @@ public sealed class UserWorkflowTests
 
     private static async Task RunScenario(string scenario, string root)
     {
-        ProcessStartInfo info = new( "dotnet" )
+        ProcessStartInfo info = new("dotnet")
         {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
-        info.ArgumentList.Add(typeof( UserWorkflowTests ).Assembly.Location);
+        info.ArgumentList.Add(typeof(UserWorkflowTests).Assembly.Location);
         info.ArgumentList.Add("--e2e");
         info.ArgumentList.Add(scenario);
         info.ArgumentList.Add(root);
@@ -111,7 +78,7 @@ public sealed class UserWorkflowTests
         using Process child = Process.Start(info)!;
         Task<string> stdout = child.StandardOutput.ReadToEndAsync();
         Task<string> stderr = child.StandardError.ReadToEndAsync();
-        using CancellationTokenSource deadline = new( TimeSpan.FromSeconds(60) );
+        using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(60));
         try
         {
             await child.WaitForExitAsync(deadline.Token);
@@ -120,12 +87,13 @@ public sealed class UserWorkflowTests
             await StopUpdateProbe(root);
             string output = await stdout, errors = await stderr;
             await File.WriteAllTextAsync(Path.Combine(root, scenario + ".log"), output + "\n" + errors);
-            Assert.True(child.ExitCode == 0, $"{scenario} failed (exit {child.ExitCode}). Artifacts: {root}\n{output}\n{errors}");
+            Assert.True(child.ExitCode == 0,
+                $"{scenario} failed (exit {child.ExitCode}). Artifacts: {root}\n{output}\n{errors}");
             Assert.Contains("PASS " + scenario, output);
         }
         catch (OperationCanceledException)
         {
-            child.Kill(entireProcessTree: true);
+            child.Kill(true);
             await child.WaitForExitAsync();
             string output = await stdout, errors = await stderr;
             await File.WriteAllTextAsync(Path.Combine(root, scenario + ".log"), output + "\n" + errors);
@@ -147,11 +115,14 @@ public sealed class UserWorkflowTests
                 using Process probe = Process.GetProcessById(id);
                 if (!probe.HasExited)
                 {
-                    probe.Kill(entireProcessTree: true);
+                    probe.Kill(true);
                 }
+
                 await probe.WaitForExitAsync();
             }
-            catch (ArgumentException) {}
+            catch (ArgumentException)
+            {
+            }
         }
     }
 }

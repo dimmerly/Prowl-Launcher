@@ -1,7 +1,7 @@
 namespace Prowl.Launcher;
 
 /// <summary>Appends diagnostics to launcher.log in the launcher home. Logging never throws.</summary>
-static class LauncherLog
+internal static class LauncherLog
 {
     internal static void Append(string home, string message)
     {

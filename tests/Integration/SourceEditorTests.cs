@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -9,7 +10,7 @@ public sealed class SourceEditorTests : IDisposable
     private readonly List<string[]> _commands = [];
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSourceTests", Guid.NewGuid().ToString("N"));
     private bool _cancelBuild;
-    private string _commit = new( 'a', 40 );
+    private string _commit = new('a', 40);
     private bool _failBuild;
 
     public void Dispose()
@@ -28,10 +29,12 @@ public sealed class SourceEditorTests : IDisposable
         {
             Directory.CreateDirectory(arguments[^1]);
         }
+
         if (arguments[0] == "rev-parse")
         {
             return Task.FromResult(_commit);
         }
+
         if (info.FileName == "dotnet")
         {
             string staging = arguments[^1];
@@ -42,38 +45,37 @@ public sealed class SourceEditorTests : IDisposable
             {
                 throw new IOException("Compilation failed.");
             }
+
             if (_cancelBuild)
             {
                 throw new OperationCanceledException(token);
             }
-            File.Copy(typeof( Launcher ).Assembly.Location, Path.Combine(staging, "Prowl.Editor.dll"));
+
+            File.Copy(typeof(Launcher).Assembly.Location, Path.Combine(staging, "Prowl.Editor.dll"));
             File.WriteAllText(Path.Combine(staging, "Prowl.Editor.runtimeconfig.json"), """
-                                                                                        {"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}
-                                                                                        """);
+                {"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}
+                """);
         }
+
         return Task.FromResult("");
     }
 
     [Fact]
     public async Task CloneThenPull_InstallsEachCommitAndPreservesProjectSelections()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         Assert.True(first.IsMain);
         Assert.Equal("main-aaaaaaa", first.Tag);
         Assert.Equal(first, Assert.Single(store.InstalledEditors()));
         Assert.Equal(first.Key, store.Settings.DefaultEditorKey);
-        Assert.Contains(_commands, command => command.SequenceEqual(new[]
-        {
-            "git",
-            "submodule",
-            "update",
-            "--init",
-            "--recursive",
-            "--force"
-        }));
+        Assert.Contains(_commands,
+            command => command.SequenceEqual(new[]
+            {
+                "git", "submodule", "update", "--init", "--recursive", "--force"
+            }));
 
         _commands.Clear();
         string firstProject = ProjectTemplates.CreateBlank(Path.Combine(_home, "Projects"), "First", first);
@@ -91,15 +93,8 @@ public sealed class SourceEditorTests : IDisposable
         Assert.Equal(_commit, updated.SourceCommit);
         Assert.Equal(_commit, File.ReadAllText(store.ExecutablePath(updated)));
         Assert.DoesNotContain(_commands, command => command.Contains("clone"));
-        Assert.Contains(_commands, command => command.SequenceEqual(new[]
-        {
-            "git",
-            "checkout",
-            "--force",
-            "-B",
-            "main",
-            "origin/main"
-        }));
+        Assert.Contains(_commands,
+            command => command.SequenceEqual(new[] { "git", "checkout", "--force", "-B", "main", "origin/main" }));
         string project = ProjectTemplates.CreateBlank(Path.Combine(_home, "Projects"), "Test", updated);
         Assert.True(File.Exists(Path.Combine(project, "Test.prowl")));
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
@@ -114,9 +109,9 @@ public sealed class SourceEditorTests : IDisposable
     [InlineData(true)]
     public async Task FailedOrCancelledBuild_PreservesInstalledEditor(bool cancel)
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor previous = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         string content = File.ReadAllText(store.ExecutablePath(previous));
         _commit = new string('b', 40);
@@ -132,6 +127,7 @@ public sealed class SourceEditorTests : IDisposable
             await Assert.ThrowsAsync<IOException>(() =>
                 installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync));
         }
+
         Assert.Equal(previous, Assert.Single(store.InstalledEditors()));
         Assert.Equal(content, File.ReadAllText(store.ExecutablePath(previous)));
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
@@ -140,9 +136,9 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task DirtyCheckout_IsDiscardedBeforeBuild()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         _commit = new string('b', 40);
         _commands.Clear();
@@ -156,7 +152,8 @@ public sealed class SourceEditorTests : IDisposable
     }
 
     [Theory]
-    [InlineData(@"C:\Source\Prowl.Runtime\XR\XR.cs(376,19): error CS0246: The type 'Graphite' could not be found [C:\Source\Prowl.Runtime\Prowl.Runtime.csproj]",
+    [InlineData(
+        @"C:\Source\Prowl.Runtime\XR\XR.cs(376,19): error CS0246: The type 'Graphite' could not be found [C:\Source\Prowl.Runtime\Prowl.Runtime.csproj]",
         "XR.cs(376,19): error CS0246: The type 'Graphite' could not be found")]
     [InlineData("/src/Program.cs(1,2): error CS1002: ; expected", "Program.cs(1,2): error CS1002: ; expected")]
     [InlineData("Build FAILED.", null)]
@@ -167,14 +164,16 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task InstalledCommit_SkipsBuildWithoutChangingMetadata()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
-        EditorInstallerService.SourceBuildResult first = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        EditorInstallerService installer = new(http, store);
+        EditorInstallerService.SourceBuildResult first =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         Assert.False(first.AlreadyInstalled);
         _commands.Clear();
 
-        EditorInstallerService.SourceBuildResult repeated = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        EditorInstallerService.SourceBuildResult repeated =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         Assert.True(repeated.AlreadyInstalled);
         Assert.Equal(first.Editor, repeated.Editor);
         Assert.Equal(first.Editor, Assert.Single(store.InstalledEditors()));
@@ -189,9 +188,9 @@ public sealed class SourceEditorTests : IDisposable
     [InlineData("Prowl.Editor.runtimeconfig.json")]
     public async Task MissingBuildFile_RebuildsTheInstalledCommit(string file)
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
         string missing = file == "executable"
             ? store.ExecutablePath(first)
@@ -199,7 +198,8 @@ public sealed class SourceEditorTests : IDisposable
         File.Delete(missing);
         _commands.Clear();
 
-        EditorInstallerService.SourceBuildResult repaired = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        EditorInstallerService.SourceBuildResult repaired =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         Assert.False(repaired.AlreadyInstalled);
         Assert.Equal(first.Key, repaired.Editor.Key);
         Assert.Contains(_commands, command => command[0] == "dotnet");
@@ -211,19 +211,17 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public async Task LegacyMainInstallation_IsRecognizedWhenItsCommitIsAlreadyInstalled()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         using HttpClient http = new();
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
-        InstalledEditor legacy = first with
-        {
-            Tag = "main"
-        };
+        InstalledEditor legacy = first with { Tag = "main" };
         Directory.Move(store.InstallPath(first), store.InstallPath(legacy));
         JsonFile.Write(Path.Combine(store.InstallPath(legacy), "installation.json"), legacy);
         _commands.Clear();
 
-        EditorInstallerService.SourceBuildResult repeated = await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        EditorInstallerService.SourceBuildResult repeated =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
         Assert.True(repeated.AlreadyInstalled);
         Assert.Equal(legacy, repeated.Editor);
         Assert.DoesNotContain(_commands, command => command[0] == "dotnet");
@@ -232,33 +230,18 @@ public sealed class SourceEditorTests : IDisposable
     [Fact]
     public void MainInstallation_DoesNotAllowOtherNonReleaseRecords()
     {
-        LauncherStore store = new( _home );
-        InstalledEditor main = new( 0, "main", Platform.Identifier, "Prowl.Editor", DateTimeOffset.UtcNow );
+        LauncherStore store = new(_home);
+        InstalledEditor main = new(0, "main", Platform.Identifier, "Prowl.Editor", DateTimeOffset.UtcNow);
         Assert.StartsWith(store.VersionsPath, store.InstallPath(main));
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with
-        {
-            Tag = "v1.0.0"
-        }));
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with
-        {
-            ReleaseId = -1
-        }));
-        InstalledEditor commit = main with
-        {
-            Tag = "main-" + _commit, SourceCommit = _commit
-        };
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with { Tag = "v1.0.0" }));
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(main with { ReleaseId = -1 }));
+        InstalledEditor commit = main with { Tag = "main-" + _commit, SourceCommit = _commit };
         Assert.StartsWith(store.VersionsPath, store.InstallPath(commit));
         Assert.Contains(_commit, commit.Key);
         Assert.Equal(commit.Tag, commit.ToString());
-        InstalledEditor shortName = commit with
-        {
-            Tag = "main-" + _commit[..7]
-        };
+        InstalledEditor shortName = commit with { Tag = "main-" + _commit[..7] };
         Assert.Equal(commit.Key, shortName.Key);
         Assert.Equal("main-aaaaaaa", shortName.ToString());
-        Assert.Throws<InvalidDataException>(() => store.InstallPath(commit with
-        {
-            Tag = "main-../outside"
-        }));
+        Assert.Throws<InvalidDataException>(() => store.InstallPath(commit with { Tag = "main-../outside" }));
     }
 }

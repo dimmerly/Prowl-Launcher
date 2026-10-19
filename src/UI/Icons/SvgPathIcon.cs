@@ -6,7 +6,7 @@ using Prowl.Quill;
 using Prowl.Vector;
 using Prowl.Vector.Spatial;
 
-using Color=System.Drawing.Color;
+using Color = System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
@@ -62,16 +62,14 @@ public sealed class SvgPathIcon : IOrigamiIcon
     {
         if (_element == null)
         {
-            SvgPathElement path = new()
-            {
-                tag = SvgElement.TagType.path
-            };
+            SvgPathElement path = new() { tag = SvgElement.TagType.path };
             path.Attributes["d"] = _pathData;
             path.Attributes["fill"] = "#ffffff"; // placeholder; the draw colour overrides this per call
             path.Attributes["fill-rule"] = "evenodd";
             path.Parse(SvgPaintContext.Root);
             _element = path;
         }
+
         return _element;
     }
 }

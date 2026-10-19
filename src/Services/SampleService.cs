@@ -3,30 +3,17 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>
 ///     Downloads the sample bundle published with launcher releases and runs samples from it. The bundle is
 ///     cached under Samples/ and replaced atomically; each run gets its own copy under Work/.
 /// </summary>
-sealed class SampleService
+internal sealed class SampleService
 {
     private const string SampleHostName = "Prowl.SampleHost";
     private const string InstalledFile = "installed.json";
-
-    /// <summary>The samples built into the launcher, shown before a bundle has been downloaded.</summary>
-    public static IReadOnlyList<Sample> Samples
-    {
-        get;
-    } = LoadEmbeddedCatalog();
-
-    public bool IsCached => InstalledCatalog() != null;
-    public IReadOnlyList<Sample> Catalog => InstalledCatalog() ?? Samples;
-
-    private string Repository => GitHubRepository.Normalize(_store.Settings.LauncherRepository);
-    private string CacheRoot => Path.Combine(_store.Home, "Samples");
-    private string ContentPath => Path.Combine(CacheRoot, "content");
-    private string DownloadLockPath => Path.Combine(_store.Home, "samples.lock");
 
     private readonly HttpClient _http;
     private readonly LauncherStore _store;
@@ -48,6 +35,20 @@ sealed class SampleService
         }
     }
 
+    /// <summary>The samples built into the launcher, shown before a bundle has been downloaded.</summary>
+    public static IReadOnlyList<Sample> Samples
+    {
+        get;
+    } = LoadEmbeddedCatalog();
+
+    public bool IsCached => InstalledCatalog() != null;
+    public IReadOnlyList<Sample> Catalog => InstalledCatalog() ?? Samples;
+
+    private string Repository => GitHubRepository.Normalize(_store.Settings.LauncherRepository);
+    private string CacheRoot => Path.Combine(_store.Home, "Samples");
+    private string ContentPath => Path.Combine(CacheRoot, "content");
+    private string DownloadLockPath => Path.Combine(_store.Home, "samples.lock");
+
     public bool IsAvailable(Sample sample) => Catalog.Any(known => known.Id == sample.Id);
 
     internal static IReadOnlyList<Sample> Discover(IEnumerable<string> ids) => ids
@@ -59,7 +60,8 @@ sealed class SampleService
 
     private static IReadOnlyList<Sample> LoadEmbeddedCatalog()
     {
-        using Stream stream = typeof( Launcher ).Assembly.GetManifestResourceStream("Prowl.Launcher.Samples.catalog.json")!;
+        using Stream stream =
+            typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.Samples.catalog.json")!;
         return Discover(JsonSerializer.Deserialize<string[]>(stream) ?? []);
     }
 
@@ -77,11 +79,17 @@ sealed class SampleService
     }
 
     /// <summary>Which bundle is cached, so updates and repository changes can be detected.</summary>
-    private sealed record InstalledBundle(string Repository, string Platform, long ReleaseId, string Tag, string Digest);
+    private sealed record InstalledBundle(
+        string Repository,
+        string Platform,
+        long ReleaseId,
+        string Tag,
+        string Digest);
 
     #region Running
 
-    public async Task RunAsync(Sample sample, IProgress<TransferProgress>? progress, CancellationToken token, bool allowNetwork = true)
+    public async Task RunAsync(Sample sample, IProgress<TransferProgress>? progress, CancellationToken token,
+        bool allowNetwork = true)
     {
         token.ThrowIfCancellationRequested();
         // Each running sample owns its output, including any files it keeps open.
@@ -121,10 +129,12 @@ sealed class SampleService
             await Task.WhenAll(stdoutCopy, stderrCopy);
             exitCode = process.ExitCode;
         }
+
         if (exitCode != 0)
         {
             return exitCode;
         }
+
         try
         {
             Directory.Delete(output, true);
@@ -133,6 +143,7 @@ sealed class SampleService
         {
             // A sample may leave another process using its files; keep those files intact.
         }
+
         return exitCode;
     }
 
@@ -159,6 +170,7 @@ sealed class SampleService
             {
                 Directory.Delete(outputDirectory, true);
             }
+
             throw;
         }
     }
@@ -179,7 +191,8 @@ sealed class SampleService
     ///     Downloads the newest bundle unless one is cached. With <paramref name="checkForUpdates" />, a cached
     ///     bundle is replaced when the release offers a different one.
     /// </summary>
-    public async Task EnsureDownloadedAsync(IProgress<TransferProgress>? progress = null, CancellationToken token = default,
+    public async Task EnsureDownloadedAsync(IProgress<TransferProgress>? progress = null,
+        CancellationToken token = default,
         bool allowNetwork = true, bool checkForUpdates = false)
     {
         token.ThrowIfCancellationRequested();
@@ -191,6 +204,7 @@ sealed class SampleService
         {
             return;
         }
+
         if (!allowNetwork)
         {
             throw new InvalidOperationException(Loc.Get("launcher.samples.download_required"));
@@ -198,12 +212,14 @@ sealed class SampleService
 
         progress?.Report(new TransferProgress("launcher.samples.downloading"));
         (EditorRelease release, ReleaseAsset asset) = await FindBundleAsync(repository, token)
-                                                      ?? throw new InvalidOperationException(Loc.Get("launcher.samples.no_bundle"));
+                                                      ?? throw new InvalidOperationException(
+                                                          Loc.Get("launcher.samples.no_bundle"));
         InstalledBundle? installed = JsonFile.Read<InstalledBundle>(Path.Combine(CacheRoot, InstalledFile));
         if (IsCached && string.Equals(installed?.Digest, asset.Digest, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
+
         ReleasePackage.RequireFromRepository(asset, repository, release.Tag);
 
         await DownloadBundleAsync(repository, release, asset, progress, token);
@@ -246,6 +262,7 @@ sealed class SampleService
         {
             return false;
         }
+
         InstalledBundle installed = JsonFile.Read<InstalledBundle>(Path.Combine(CacheRoot, InstalledFile))!;
         return await FindBundleAsync(Repository, token) is var (release, asset)
                && ReleasePackage.HasValidDigest(asset)
@@ -253,25 +270,29 @@ sealed class SampleService
                && !string.Equals(asset.Digest, installed.Digest, StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task<(EditorRelease Release, ReleaseAsset Asset)?> FindBundleAsync(string repository, CancellationToken token)
+    private async Task<(EditorRelease Release, ReleaseAsset Asset)?> FindBundleAsync(string repository,
+        CancellationToken token)
     {
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(_http, _store, repository).GetAsync(token);
+        IReadOnlyList<EditorRelease> releases =
+            await new GitHubReleasesService(_http, _store, repository).GetAsync(token);
         return SelectBundle(releases, Platform.Identifier, _store.Settings.LauncherPrereleases);
     }
 
     /// <summary>The newest non-draft release with a bundle for <paramref name="platform" />.</summary>
-    internal static (EditorRelease Release, ReleaseAsset Asset)? SelectBundle(IEnumerable<EditorRelease> releases, string platform, bool previews)
+    internal static (EditorRelease Release, ReleaseAsset Asset)? SelectBundle(IEnumerable<EditorRelease> releases,
+        string platform, bool previews)
     {
         IEnumerable<EditorRelease> candidates = releases
             .Where(r => !r.Draft && r.Id > 0 && (previews || !r.Preview))
             .OrderByDescending(r => r.Published);
         foreach (EditorRelease release in candidates)
         {
-            if (release.Assets.FirstOrDefault(a => a.Name == $"Prowl-Samples-{platform}.zip") is {} asset)
+            if (release.Assets.FirstOrDefault(a => a.Name == $"Prowl-Samples-{platform}.zip") is { } asset)
             {
                 return (release, asset);
             }
         }
+
         return null;
     }
 
@@ -283,11 +304,13 @@ sealed class SampleService
         {
             return _loadedCatalog;
         }
+
         InstalledBundle? installed = JsonFile.Read<InstalledBundle>(metadata);
         if (installed == null || installed.Repository != Repository || installed.Platform != Platform.Identifier)
         {
             return null;
         }
+
         try
         {
             _loadedCatalog = ValidateContent(ContentPath);
@@ -295,7 +318,8 @@ sealed class SampleService
             _loadedStamp = File.GetLastWriteTimeUtc(metadata);
             return _loadedCatalog;
         }
-        catch (Exception error) when (error is IOException or InvalidDataException or JsonException or UnauthorizedAccessException)
+        catch (Exception error) when (error is IOException or InvalidDataException or JsonException
+                                          or UnauthorizedAccessException)
         {
             return null;
         }
@@ -313,15 +337,18 @@ sealed class SampleService
         }
 
         string host = Path.Combine(root, "Host");
-        string[] hostFiles = [Platform.ExecutableName(SampleHostName), SampleHostName + ".dll", SampleHostName + ".runtimeconfig.json"];
+        string[] hostFiles =
+            [Platform.ExecutableName(SampleHostName), SampleHostName + ".dll", SampleHostName + ".runtimeconfig.json"];
         if (!hostFiles.All(file => File.Exists(Path.Combine(host, file))))
         {
             throw new InvalidDataException("The sample bundle is missing its runtime.");
         }
+
         if (!samples.All(sample => File.Exists(Path.Combine(root, "Samples", sample.Id, sample.Id + ".dll"))))
         {
             throw new InvalidDataException("The sample bundle is missing a sample.");
         }
+
         return samples;
     }
 
@@ -335,6 +362,7 @@ sealed class SampleService
         {
             return;
         }
+
         FileStream operation;
         // Startup must not wait for another launcher that is downloading a bundle.
         try
@@ -345,6 +373,7 @@ sealed class SampleService
         {
             return;
         }
+
         using (operation)
         {
             RecoverCache();
@@ -357,11 +386,13 @@ sealed class SampleService
         {
             return;
         }
+
         FileSystemHelper.RejectLink(_store.Home);
         if (Directory.Exists(CacheRoot))
         {
             FileSystemHelper.RejectLink(CacheRoot);
         }
+
         DirectoryReplacement.Recover(CacheRoot, IsValidCache);
         _loadedRepository = null;
     }
@@ -372,6 +403,7 @@ sealed class SampleService
         {
             return false;
         }
+
         try
         {
             FileSystemHelper.RejectLinks(root);
@@ -380,17 +412,19 @@ sealed class SampleService
             {
                 return false;
             }
+
             ValidateContent(Path.Combine(root, "content"));
             return true;
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException
+                                          or JsonException)
         {
             return false;
         }
     }
 
     private FileStream OpenDownloadLock() =>
-        new( DownloadLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None );
+        new(DownloadLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
     private async Task<FileStream> AcquireDownloadLockAsync(CancellationToken token)
     {

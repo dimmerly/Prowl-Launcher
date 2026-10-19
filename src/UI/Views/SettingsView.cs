@@ -4,12 +4,12 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 
-using Color=System.Drawing.Color;
+using Color = System.Drawing.Color;
 
 namespace Prowl.Launcher;
 
 /// <summary>Appearance, preferences, launcher updates and storage, and the release repositories.</summary>
-sealed class SettingsView(
+internal sealed class SettingsView(
     LauncherStore store,
     Controls ui,
     NotificationCenter notifications,
@@ -25,6 +25,7 @@ sealed class SettingsView(
     private DateTimeOffset _nextStorageSizeRefresh;
     private string? _prowlRepositoryDraft;
     private Task? _storageSizeRefresh;
+
     private void DrawRepositorySettings(Paper p)
     {
         using (ui.Card(p, "repository-settings"))
@@ -40,19 +41,23 @@ sealed class SettingsView(
             );
             _prowlRepositoryDraft ??= store.Settings.ProwlRepository;
             ui.Label(p, "prowl-repository-label", "launcher.settings.prowl_releases", 14, ui.Ink, 26);
-            Origami.TextField(p, "prowl-repository", _prowlRepositoryDraft, value => _prowlRepositoryDraft = value).Show();
+            Origami.TextField(p, "prowl-repository", _prowlRepositoryDraft, value => _prowlRepositoryDraft = value)
+                .Show();
 
             _launcherRepositoryDraft ??= store.Settings.LauncherRepository;
             ui.Label(p, "launcher-repository-label", "launcher.settings.launcher_releases", 14, ui.Ink, 26);
-            Origami.TextField(p, "launcher-repository", _launcherRepositoryDraft, value => _launcherRepositoryDraft = value).Show();
+            Origami.TextField(p, "launcher-repository", _launcherRepositoryDraft,
+                value => _launcherRepositoryDraft = value).Show();
             using (p.Row("repository-actions")
-                .Height(UnitValue.Auto)
-                .WrapContent()
-                .Gap(8)
-                .Enter())
+                       .Height(UnitValue.Auto)
+                       .WrapContent()
+                       .Gap(8)
+                       .Enter())
             {
-                ui.Button(p, "save-repositories", "launcher.settings.save_repositories", SaveRepositoriesAsync, true, 170);
-                ui.Button(p, "reset-repositories", "launcher.settings.official_repository", ResetRepositoryDraftsAsync, width: 165);
+                ui.Button(p, "save-repositories", "launcher.settings.save_repositories", SaveRepositoriesAsync, true,
+                    170);
+                ui.Button(p, "reset-repositories", "launcher.settings.official_repository", ResetRepositoryDraftsAsync,
+                    width: 165);
             }
         }
     }
@@ -72,9 +77,9 @@ sealed class SettingsView(
                 26
             );
             using (p.Row("interface-size-row")
-                .Height(42)
-                .Gap(12)
-                .Enter())
+                       .Height(42)
+                       .Gap(12)
+                       .Enter())
             {
                 ui.Label(p, "interface-size-label", "launcher.settings.interface_size", 14, ui.Ink, 44);
                 Origami.Dropdown(
@@ -86,17 +91,7 @@ sealed class SettingsView(
                             store.Settings.UiScale = value / 100f;
                             store.Save();
                         },
-                        new[]
-                        {
-                            50,
-                            65,
-                            75,
-                            90,
-                            100,
-                            115,
-                            125,
-                            150
-                        }
+                        new[] { 50, 65, 75, 90, 100, 115, 125, 150 }
                     )
                     .Display(value => value + "%")
                     .Width(260)
@@ -104,21 +99,22 @@ sealed class SettingsView(
             }
 
             using (p.Row("theme-preset-row")
-                .Height(42)
-                .Gap(12)
-                .Enter())
+                       .Height(42)
+                       .Gap(12)
+                       .Enter())
             {
                 ui.Label(p, "preset-label", "launcher.settings.theme", 14, ui.Ink, 34);
                 string[] names = ThemePresets.All.Select(preset => preset.Name).ToArray();
-                Origami.Dropdown(p, "theme-preset", ui.Appearance.Data.Name, name => ui.Appearance.UsePreset(name), names)
+                Origami.Dropdown(p, "theme-preset", ui.Appearance.Data.Name, name => ui.Appearance.UsePreset(name),
+                        names)
                     .Width(260)
                     .Show();
             }
 
             using (p.Row("theme-roundness-row")
-                .Height(42)
-                .Gap(12)
-                .Enter())
+                       .Height(42)
+                       .Gap(12)
+                       .Enter())
             {
                 ui.Label(p, "roundness-label", "launcher.settings.roundness", 14, ui.Ink, 34);
                 Origami.Slider(p, "theme-roundness", ui.Appearance.Data.Roundness, value =>
@@ -176,10 +172,10 @@ sealed class SettingsView(
                 }
             );
             using (p.Row("appearance-actions")
-                .Height(UnitValue.Auto)
-                .WrapContent()
-                .Gap(8)
-                .Enter())
+                       .Height(UnitValue.Auto)
+                       .WrapContent()
+                       .Gap(8)
+                       .Enter())
             {
                 Origami.Button(p, "use-editor-theme", Loc.Get("launcher.settings.use_editor_theme"))
                     .Width(190)
@@ -229,9 +225,9 @@ sealed class SettingsView(
                 .Stretch()
                 .Show();
             using (p.Row("backup-retention-row")
-                .Height(42)
-                .Gap(12)
-                .Enter())
+                       .Height(42)
+                       .Gap(12)
+                       .Enter())
             {
                 ui.Label(p, "backup-retention-label", "launcher.settings.backup_retention", 14, ui.Ink, 44);
                 Origami.Dropdown(
@@ -249,6 +245,7 @@ sealed class SettingsView(
                     .Width(260)
                     .Show();
             }
+
             ui.Button(p, "backups-folder", "launcher.backups.open_folder", _ =>
             {
                 Directory.CreateDirectory(store.BackupsPath);
@@ -271,10 +268,10 @@ sealed class SettingsView(
                     .TextColor(ui.Muted)
                     .Alignment(TextAlignment.MiddleRight);
             }
-            ui.Label(p, "launcher-version", Loc.Get("launcher.settings.version", new
-            {
-                version = VersionHelper.LauncherVersion, platform = Platform.Identifier
-            }), 13, ui.Muted, 24);
+
+            ui.Label(p, "launcher-version",
+                Loc.Get("launcher.settings.version",
+                    new { version = VersionHelper.LauncherVersion, platform = Platform.Identifier }), 13, ui.Muted, 24);
 
             Origami.Toggle(p, "launcher-auto-update", store.Settings.LauncherAutoUpdate, updates.SetAutoUpdate)
                 .LabelLeft(Loc.Get("launcher.settings.launcher_auto_update"))
@@ -285,10 +282,10 @@ sealed class SettingsView(
                 .Stretch().Disabled(ui.Busy).Show();
 
             using (p.Row("launcher-settings-actions")
-                .Height(UnitValue.Auto)
-                .WrapContent()
-                .Gap(8)
-                .Enter())
+                       .Height(UnitValue.Auto)
+                       .WrapContent()
+                       .Gap(8)
+                       .Enter())
             {
                 ui.Button(p, "launcher-update", "launcher.updates.check", updates.UpdateAsync, width: 160);
                 ui.Button(
@@ -310,6 +307,7 @@ sealed class SettingsView(
                         return Task.CompletedTask;
                     }, width: 170);
                 }
+
                 if (uninstall.Available)
                 {
                     ui.Button(p, "uninstall-launcher", "launcher.uninstall.button", _ =>
@@ -334,9 +332,9 @@ sealed class SettingsView(
     private void ColorSetting(Paper p, string id, string label, string hex, Action<string> changed)
     {
         using (p.Row(id + "-row")
-            .Height(42)
-            .Gap(12)
-            .Enter())
+                   .Height(42)
+                   .Gap(12)
+                   .Enter())
         {
             ui.Label(p, id + "-label", label, 14, ui.Ink, 34);
             Color color = ColorRamp.ParseHex(hex);
@@ -364,6 +362,7 @@ sealed class SettingsView(
         {
             return;
         }
+
         _nextStorageSizeRefresh = DateTimeOffset.UtcNow.AddSeconds(5);
         _storageSizeRefresh = RefreshStorageSizeAsync();
     }
@@ -403,6 +402,7 @@ sealed class SettingsView(
                 // An installation or update may remove files during the scan.
             }
         }
+
         return total;
     }
 

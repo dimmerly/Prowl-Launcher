@@ -6,10 +6,11 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>Validates, downloads and unpacks GitHub release assets (editors, launcher updates and samples).</summary>
-static class ReleasePackage
+internal static class ReleasePackage
 {
     private const string DigestPrefix = "sha256:";
 
@@ -48,6 +49,7 @@ static class ReleasePackage
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_download_source"));
         }
+
         if (!HasValidDigest(asset))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.missing_digest"));
@@ -61,6 +63,7 @@ static class ReleasePackage
             partial = Path.Combine(partialDirectory, digest + ".part");
             RemoveStalePartials(partialDirectory, partial);
         }
+
         long existing = partialDirectory != null && File.Exists(partial) ? new FileInfo(partial).Length : 0;
         if (asset.Size > 0 && existing > asset.Size)
         {
@@ -68,10 +71,8 @@ static class ReleasePackage
             existing = 0;
         }
 
-        progress?.Report(new TransferProgress(Loc.Get("launcher.download.starting", new
-        {
-            name = asset.Name
-        }), asset.Size > 0 ? (double)existing / asset.Size : 0));
+        progress?.Report(new TransferProgress(Loc.Get("launcher.download.starting", new { name = asset.Name }),
+            asset.Size > 0 ? (double)existing / asset.Size : 0));
         if (asset.Size <= 0 || existing < asset.Size)
         {
             RequireFreeSpace(partial, asset.Size - existing);
@@ -84,19 +85,22 @@ static class ReleasePackage
         {
             hash = Convert.ToHexString(await SHA256.HashDataAsync(file, token));
         }
+
         if (!hash.Equals(digest, StringComparison.OrdinalIgnoreCase))
         {
             // Don't resume from bytes that can't be trusted.
             File.Delete(partial);
             throw new InvalidDataException(Loc.Get("launcher.errors.digest_mismatch"));
         }
+
         if (partial != archive)
         {
             File.Move(partial, archive);
         }
     }
 
-    private static async Task DownloadAsync(HttpClient http, Uri download, ReleaseAsset asset, string path, long existing,
+    private static async Task DownloadAsync(HttpClient http, Uri download, ReleaseAsset asset, string path,
+        long existing,
         IProgress<TransferProgress>? progress, CancellationToken token)
     {
         using HttpRequestMessage request = new(HttpMethod.Get, download);
@@ -104,7 +108,9 @@ static class ReleasePackage
         {
             request.Headers.Range = new RangeHeaderValue(existing, null);
         }
-        using HttpResponseMessage response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+
+        using HttpResponseMessage response =
+            await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             // The kept bytes no longer match the server's file; start over.
@@ -112,15 +118,17 @@ static class ReleasePackage
             await DownloadAsync(http, download, asset, path, 0, progress, token);
             return;
         }
+
         response.EnsureSuccessStatusCode();
 
         // A server that ignores the range sends the whole file again.
         bool resumed = existing > 0 && response.StatusCode == HttpStatusCode.PartialContent;
         long offset = resumed ? existing : 0;
-        long size = response.Content.Headers.ContentLength is {} length ? offset + length : asset.Size;
+        long size = response.Content.Headers.ContentLength is { } length ? offset + length : asset.Size;
         await using Stream input = await response.Content.ReadAsStreamAsync(token);
-        await using FileStream output = new( path, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None,
-            Constants.Network.TransferBufferSize, true );
+        await using FileStream output = new(path, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write,
+            FileShare.None,
+            Constants.Network.TransferBufferSize, true);
         long received = await CopyWithProgressAsync(input, output, asset.Name, offset, size, progress, token);
         if (asset.Size > 0 && received != asset.Size)
         {
@@ -135,17 +143,16 @@ static class ReleasePackage
     internal static void RequireFreeSpace(string path, long bytes)
     {
         const long Margin = 64L * 1024 * 1024;
-        if (bytes <= 0 || FreeSpace(path) is not {} available)
+        if (bytes <= 0 || FreeSpace(path) is not { } available)
         {
             return;
         }
+
         long needed = bytes > long.MaxValue - Margin ? long.MaxValue : bytes + Margin;
         if (available < needed)
         {
-            throw new IOException(Loc.Get("launcher.errors.not_enough_space", new
-            {
-                needed = Gigabytes(needed), available = Gigabytes(available)
-            }));
+            throw new IOException(Loc.Get("launcher.errors.not_enough_space",
+                new { needed = Gigabytes(needed), available = Gigabytes(available) }));
         }
     }
 
@@ -198,23 +205,26 @@ static class ReleasePackage
         Directory.CreateDirectory(staging);
         using ZipArchive zip = ZipFile.OpenRead(archive);
         long declared = zip.Entries.Aggregate(0L, (total, entry) => total > Constants.Storage.MaxExpandedArchiveBytes
-            ? total : total + entry.Length);
+            ? total
+            : total + entry.Length);
         if (declared <= Constants.Storage.MaxExpandedArchiveBytes)
         {
             RequireFreeSpace(staging, declared);
         }
+
         long expanded = 0;
         foreach (ZipArchiveEntry entry in zip.Entries)
         {
             token.ThrowIfCancellationRequested();
             string relative = entry.FullName.Replace('\\', '/');
             string path = FileSystemHelper.SafeChildPath(staging, relative);
-            int unixMode = entry.ExternalAttributes >> 16 & 0xffff;
+            int unixMode = (entry.ExternalAttributes >> 16) & 0xffff;
             int fileType = unixMode & UnixFileTypeMask;
             if (fileType is not (0 or UnixRegularFile or UnixDirectory))
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.unsupported_archive_entry"));
             }
+
             if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.archive_link"));
@@ -234,7 +244,7 @@ static class ReleasePackage
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             using (Stream input = entry.Open())
-            using (FileStream output = new( path, FileMode.CreateNew ))
+            using (FileStream output = new(path, FileMode.CreateNew))
             {
                 input.CopyTo(output);
             }
@@ -256,9 +266,11 @@ static class ReleasePackage
     }
 
     private static bool TryGetGitHubUri(ReleaseAsset asset, [NotNullWhen(true)] out Uri? uri) =>
-        Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out uri) && uri.Scheme == "https" && uri.Host == "github.com";
+        Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out uri) && uri.Scheme == "https" &&
+        uri.Host == "github.com";
 
-    private static async Task<long> CopyWithProgressAsync(Stream input, Stream output, string name, long offset, long size,
+    private static async Task<long> CopyWithProgressAsync(Stream input, Stream output, string name, long offset,
+        long size,
         IProgress<TransferProgress>? progress, CancellationToken token)
     {
         byte[] buffer = new byte[Constants.Network.TransferBufferSize];
@@ -275,18 +287,16 @@ static class ReleasePackage
             }
 
             string transferred = size > 0
-                ? Loc.Get("launcher.download.transferred", new
-                {
-                    received = Megabytes(received), total = Megabytes(size)
-                })
+                ? Loc.Get("launcher.download.transferred",
+                    new { received = Megabytes(received), total = Megabytes(size) })
                 : $"{Megabytes(received)} MB";
             double? fraction = size > 0 ? (double)received / size : null;
-            progress?.Report(new TransferProgress(Loc.Get("launcher.download.progress", new
-            {
-                name, progress = transferred
-            }), fraction));
+            progress?.Report(
+                new TransferProgress(Loc.Get("launcher.download.progress", new { name, progress = transferred }),
+                    fraction));
             lastReport = clock.ElapsedMilliseconds;
         }
+
         return received;
     }
 

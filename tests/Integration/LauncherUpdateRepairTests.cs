@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -25,10 +26,11 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [InlineData("launcher-installation.json", false)]
     public async Task RetryingADamagedUpdateDownloadsAndRepairsIt(string file, bool delete)
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string executable = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         string damaged = Path.Combine(file == "launcher-installation.json"
-            ? Directory.GetParent(Path.GetDirectoryName(executable)!)!.FullName : Path.GetDirectoryName(executable)!, file);
+            ? Directory.GetParent(Path.GetDirectoryName(executable)!)!.FullName
+            : Path.GetDirectoryName(executable)!, file);
         if (delete)
         {
             File.Delete(damaged);
@@ -37,17 +39,19 @@ public sealed class LauncherUpdateRepairTests : IDisposable
         {
             File.WriteAllText(damaged, "corrupt");
         }
+
         Assert.Equal(executable, await fixture.Updater.InstallAsync(fixture.Release, "win-x64"));
         Assert.Equal(2, fixture.Downloads);
         Assert.Equal("launcher", File.ReadAllText(executable));
-        Assert.Equal("dependency", File.ReadAllText(Path.Combine(Path.GetDirectoryName(executable)!, "Prowl.Launcher.dll")));
+        Assert.Equal("dependency",
+            File.ReadAllText(Path.Combine(Path.GetDirectoryName(executable)!, "Prowl.Launcher.dll")));
         Assert.Null(fixture.Store.Settings.LauncherExecutable);
     }
 
     [Fact]
     public async Task FailedRepairRetainsTheExistingInstallationAndActiveVersion()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string executable = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         File.Delete(Path.Combine(Path.GetDirectoryName(executable)!, "Prowl.Launcher.dll"));
         fixture.Store.Settings.LauncherExecutable = "working-version";
@@ -61,7 +65,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task HealthyInstallationIsReusedWithoutADownload()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string executable = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         Assert.Equal(executable, await fixture.Updater.InstallAsync(fixture.Release, "win-x64"));
         Assert.Equal(1, fixture.Downloads);
@@ -70,17 +74,16 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupRemovesUnusedUpdatesAndPreservesTheActiveAndInstalledCopies()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
+
         async Task<string> Install(string version) => await fixture.Updater.InstallAsync(fixture.Release with
         {
             Assets =
             [
-                fixture.Release.Assets[0] with
-                {
-                    Name = $"Prowl-Launcher-{version}-win-x64.zip"
-                }
+                fixture.Release.Assets[0] with { Name = $"Prowl-Launcher-{version}-win-x64.zip" }
             ]
         }, "win-x64");
+
         string old = await Install("1.0.0");
         string original = await Install("1.1.0");
         string active = await Install("1.2.0");
@@ -100,9 +103,9 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupReadsTheSavedActiveVersionAndRemovesUnusedLegacyDirectories()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string active = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
-        LauncherStore other = new( _home );
+        LauncherStore other = new(_home);
         other.Settings.LauncherExecutable = active;
         other.Save();
         string legacy = Path.Combine(_home, "LauncherVersions", "repository", "old-version");
@@ -118,7 +121,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task CleanupCannotRemoveAnUpdateWhileItsActivationIsInProgress()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string pending = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         using FileStream update = LauncherUpdaterService.LockUpdates(fixture.Store);
         Assert.Throws<IOException>(() => LauncherUpdaterService.Cleanup(fixture.Store));
@@ -128,7 +131,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public void CleanupRejectsLinksAndCannotDeleteAnOutsideDirectory()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string outside = Path.Combine(_home, "UnrelatedData");
         Directory.CreateDirectory(outside);
         string keep = Path.Combine(outside, "keep.txt");
@@ -148,6 +151,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
         {
             return; // ERROR_PRIVILEGE_NOT_HELD on Windows without Developer Mode.
         }
+
         try
         {
             Assert.Throws<IOException>(() => LauncherUpdaterService.Cleanup(fixture.Store));
@@ -162,7 +166,7 @@ public sealed class LauncherUpdateRepairTests : IDisposable
     [Fact]
     public async Task RetryRecoversAnInstallationMovedAsideBeforeACrash()
     {
-        using Fixture fixture = new( _home );
+        using Fixture fixture = new(_home);
         string executable = await fixture.Updater.InstallAsync(fixture.Release, "win-x64");
         string target = Directory.GetParent(Path.GetDirectoryName(executable)!)!.FullName;
         Directory.Move(target, target + ".previous");
@@ -173,9 +177,6 @@ public sealed class LauncherUpdateRepairTests : IDisposable
 
     private sealed class Fixture : IDisposable
     {
-        internal LauncherStore Store { get; }
-        internal LauncherUpdaterService Updater { get; }
-        internal EditorRelease Release { get; }
         private readonly HttpClient _http;
         internal bool CorruptDownload;
         internal int Downloads;
@@ -184,40 +185,43 @@ public sealed class LauncherUpdateRepairTests : IDisposable
         {
             Store = new LauncherStore(home);
             using MemoryStream output = new();
-            using (ZipArchive archive = new( output, ZipArchiveMode.Create, true ))
+            using (ZipArchive archive = new(output, ZipArchiveMode.Create, true))
             {
                 foreach ((string name, string text) in new[]
-                    {
-                        ("Prowl.Launcher.exe", "launcher"),
-                        ("Prowl.Launcher.dll", "dependency")
-                    })
+                         {
+                             ("Prowl.Launcher.exe", "launcher"), ("Prowl.Launcher.dll", "dependency")
+                         })
                 {
-                    using StreamWriter writer = new( archive.CreateEntry("App/" + name).Open() );
+                    using StreamWriter writer = new(archive.CreateEntry("App/" + name).Open());
                     writer.Write(text);
                 }
             }
+
             byte[] bytes = output.ToArray();
             Release = new EditorRelease(1, "v1.1.0", false, false, DateTimeOffset.UtcNow, "", null,
             [
-                new ReleaseAsset("Prowl-Launcher-1.1.0-win-x64.zip", "https://github.com/dimmerly/Prowl-Launcher/releases/download/v1.1.0/update.zip",
+                new ReleaseAsset("Prowl-Launcher-1.1.0-win-x64.zip",
+                    "https://github.com/dimmerly/Prowl-Launcher/releases/download/v1.1.0/update.zip",
                     bytes.Length, "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)))
             ]);
             _http = new HttpClient(new Handler(() =>
             {
                 Downloads++;
                 byte[] content = CorruptDownload ? bytes.Select(b => (byte)(b ^ 255)).ToArray() : bytes;
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new ByteArrayContent(content)
-                };
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(content) };
             }));
             Updater = new LauncherUpdaterService(_http, Store);
         }
+
+        internal LauncherStore Store { get; }
+        internal LauncherUpdaterService Updater { get; }
+        internal EditorRelease Release { get; }
         public void Dispose() => _http.Dispose();
     }
 
     private sealed class Handler(Func<HttpResponseMessage> respond) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => Task.FromResult(respond());
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) =>
+            Task.FromResult(respond());
     }
 }

@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+
 namespace Prowl.Launcher;
 
-static class LauncherStartupService
+internal static class LauncherStartupService
 {
     internal static string? ReadyPipe
     {
@@ -24,15 +25,13 @@ static class LauncherStartupService
         {
             return;
         }
+
         try
         {
-            using CancellationTokenSource timeout = new( Constants.Startup.ReadyPipeTimeout );
-            await using NamedPipeClientStream pipe = new( ".", name, PipeDirection.Out, PipeOptions.Asynchronous );
+            using CancellationTokenSource timeout = new(Constants.Startup.ReadyPipeTimeout);
+            await using NamedPipeClientStream pipe = new(".", name, PipeDirection.Out, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(timeout.Token);
-            await pipe.WriteAsync(new byte[]
-            {
-                1
-            }, timeout.Token);
+            await pipe.WriteAsync(new byte[] { 1 }, timeout.Token);
             await pipe.FlushAsync(timeout.Token);
         }
         catch (Exception e) when (e is IOException or OperationCanceledException)
@@ -46,9 +45,9 @@ static class LauncherStartupService
         Func<ProcessStartInfo, Process?>? start = null)
     {
         string name = ProcessHelper.PipeName("prowl-ready-");
-        await using NamedPipeServerStream pipe = new( name, PipeDirection.In, 1,
-            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly );
-        ProcessStartInfo info = new( executable )
+        await using NamedPipeServerStream pipe = new(name, PipeDirection.In, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        ProcessStartInfo info = new(executable)
         {
             UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(executable)!
         };
@@ -58,6 +57,7 @@ static class LauncherStartupService
         {
             info.ArgumentList.Add(arg);
         }
+
         using Process process = (start ?? Process.Start)(info)
                                 ?? throw new IOException("The updated launcher could not be started.");
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -71,6 +71,7 @@ static class LauncherStartupService
                 await exited;
                 throw new IOException("The updated launcher exited before its window was ready.");
             }
+
             await ready;
             await Task.Delay(Constants.Startup.StabilityDelay, deadline.Token);
             if (process.HasExited)
@@ -84,12 +85,13 @@ static class LauncherStartupService
             {
                 if (!process.HasExited)
                 {
-                    process.Kill(entireProcessTree: true);
+                    process.Kill(true);
                 }
             }
             catch (InvalidOperationException)
             {
             }
+
             throw;
         }
         finally

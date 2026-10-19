@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -19,8 +20,8 @@ public sealed class EditorConsoleTests : IDisposable
 
     private EditorConsoleSession Start(params string[] args)
     {
-        ProcessStartInfo info = new( Path.Combine(AppContext.BaseDirectory,
-            "Prowl.Launcher.Test" + (OperatingSystem.IsWindows() ? ".exe" : "")) )
+        ProcessStartInfo info = new(Path.Combine(AppContext.BaseDirectory,
+            "Prowl.Launcher.Test" + (OperatingSystem.IsWindows() ? ".exe" : "")))
         {
             WorkingDirectory = AppContext.BaseDirectory
         };
@@ -29,6 +30,7 @@ public sealed class EditorConsoleTests : IDisposable
         {
             info.ArgumentList.Add(argument);
         }
+
         return EditorConsoleService.Start(info, _root, "Large project", "v1.0.0");
     }
 
@@ -67,7 +69,9 @@ public sealed class EditorConsoleTests : IDisposable
         {
             pipeName = Path.Combine("/tmp", pipeName);
         }
-        using NamedPipeServerStream completion = new( pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous );
+
+        using NamedPipeServerStream completion = new(pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
         EditorConsoleSession session = Start("completed-pipe=" + pipeName);
         await session.WaitForStartAsync(CancellationToken.None);
         session.Dispose();
@@ -81,7 +85,8 @@ public sealed class EditorConsoleTests : IDisposable
     [Fact]
     public async Task MissingExecutableReportsAStartupFailureInTheSession()
     {
-        using EditorConsoleSession session = EditorConsoleService.Start(new ProcessStartInfo(Path.Combine(_root, "missing-editor")),
+        using EditorConsoleSession session = EditorConsoleService.Start(
+            new ProcessStartInfo(Path.Combine(_root, "missing-editor")),
             _root, "Missing editor", "v1.0.0");
         await Assert.ThrowsAsync<IOException>(() => session.WaitForStartAsync(CancellationToken.None));
         Assert.False(session.Active);

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 public static class GitHubRepository
@@ -20,7 +21,8 @@ public static class GitHubRepository
             value = value[..^4];
         }
 
-        if (!Regex.IsMatch(value, "\\A[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+\\z") || value.Split('/')[1] is "." or "..")
+        if (!Regex.IsMatch(value, "\\A[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+\\z") ||
+            value.Split('/')[1] is "." or "..")
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_repository"));
         }
@@ -28,5 +30,7 @@ public static class GitHubRepository
         return value;
     }
 
-    public static string CacheKey(string repository) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Normalize(repository).ToLowerInvariant())))[..16].ToLowerInvariant();
+    public static string CacheKey(string repository) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Normalize(repository).ToLowerInvariant())))[..16]
+            .ToLowerInvariant();
 }

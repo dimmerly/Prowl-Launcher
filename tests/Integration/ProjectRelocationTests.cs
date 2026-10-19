@@ -1,10 +1,12 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class ProjectRelocationTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlRelocationTests", Guid.NewGuid().ToString("N"));
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlRelocationTests", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
     {
@@ -18,17 +20,14 @@ public sealed class ProjectRelocationTests : IDisposable
     {
         string path = Path.Combine(_home, "Projects", name);
         Directory.CreateDirectory(Path.Combine(path, "Assets"));
-        JsonFile.Write(Path.Combine(path, name + ".prowl"), new
-        {
-            name, version = "1.0"
-        });
+        JsonFile.Write(Path.Combine(path, name + ".prowl"), new { name, version = "1.0" });
         return path;
     }
 
     [Fact]
     public void LocatingAMovedProjectKeepsItsEditorFavouriteAndHistory()
     {
-        LauncherStore store = new( Path.Combine(_home, "Home") );
+        LauncherStore store = new(Path.Combine(_home, "Home"));
         string original = CreateProject("Game");
         Project project = store.AddProject(original);
         project.EditorKey = "v1.0.0-win-x64";
@@ -51,7 +50,7 @@ public sealed class ProjectRelocationTests : IDisposable
     [Fact]
     public void LocatingRejectsFoldersThatArentProjectsOrAreAlreadyListed()
     {
-        LauncherStore store = new( Path.Combine(_home, "Home") );
+        LauncherStore store = new(Path.Combine(_home, "Home"));
         Project project = store.AddProject(CreateProject("Game"));
         string other = CreateProject("Other");
         store.AddProject(other);

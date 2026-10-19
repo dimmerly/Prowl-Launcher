@@ -2,10 +2,11 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>The result of a launcher update check, tied to the settings it was made with.</summary>
-sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release)
+internal sealed record LauncherUpdateCheck(string Repository, bool Prereleases, EditorRelease? Release)
 {
     /// <summary>Whether the check still applies after the user may have changed repository or channel.</summary>
     internal bool Matches(Settings settings) =>
@@ -25,7 +26,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
     /// <summary>Held for the whole download, start and save handoff so cleanup never removes an update mid-switch.</summary>
     internal static FileStream LockUpdates(LauncherStore store) => new(
-        Path.Combine(store.Home, "launcher-update.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None );
+        Path.Combine(store.Home, "launcher-update.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
     private static bool IsRunning(string target) => ProcessHelper.IsRunningUnder(LauncherName, target);
 
@@ -56,17 +57,20 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             return new LauncherUpdateCheck(repository, prereleases, null);
         }
 
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store, repository).GetAsync(token, timeout);
+        IReadOnlyList<EditorRelease> releases =
+            await new GitHubReleasesService(http, store, repository).GetAsync(token, timeout);
         EditorRelease? release = FindUpdate(releases, platform, currentVersion, prereleases);
         if (automatic && release != null && IsDismissed(store.Settings, repository, release.Id))
         {
             release = null;
         }
+
         return new LauncherUpdateCheck(repository, prereleases, release);
     }
 
     internal static bool IsDismissed(Settings settings, string repository, long releaseId) =>
-        settings.DismissedLauncherReleases.TryGetValue(DismissalKey(repository, releaseId), out bool dismissed) && dismissed;
+        settings.DismissedLauncherReleases.TryGetValue(DismissalKey(repository, releaseId), out bool dismissed) &&
+        dismissed;
 
     internal static void Dismiss(LauncherStore store, string repository, long releaseId)
     {
@@ -74,12 +78,14 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         store.Save();
     }
 
-    private static string DismissalKey(string repository, long releaseId) => $"{GitHubRepository.CacheKey(repository)}-{releaseId}";
+    private static string DismissalKey(string repository, long releaseId) =>
+        $"{GitHubRepository.CacheKey(repository)}-{releaseId}";
 
     /// <summary>The launcher version in an asset named like <c>Prowl.Launcher-1.2.3-win-x64.zip</c>, or null.</summary>
     public static string? VersionFor(ReleaseAsset asset, string platform)
     {
-        Match match = Regex.Match(asset.Name, $"\\AProwl[- .]Launcher-({VersionHelper.Pattern})-{Regex.Escape(platform)}\\.zip\\z");
+        Match match = Regex.Match(asset.Name,
+            $"\\AProwl[- .]Launcher-({VersionHelper.Pattern})-{Regex.Escape(platform)}\\.zip\\z");
         return match.Success && VersionHelper.TryParse(match.Groups[1].Value, out _) ? match.Groups[1].Value : null;
     }
 
@@ -90,7 +96,8 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
     ///     The newest release newer than <paramref name="currentVersion" />. When prereleases are excluded and the
     ///     current version is a prerelease, the newest stable release is returned so users can switch channel.
     /// </summary>
-    public static EditorRelease? FindUpdate(IEnumerable<EditorRelease> releases, string platform, string currentVersion, bool includePrereleases = false)
+    public static EditorRelease? FindUpdate(IEnumerable<EditorRelease> releases, string platform, string currentVersion,
+        bool includePrereleases = false)
     {
         if (!VersionHelper.TryParse(currentVersion, out ReleaseVersion installed))
         {
@@ -99,13 +106,14 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
 
         EditorRelease? newest = null;
         ReleaseVersion? newestVersion = !includePrereleases && installed.IsPrerelease ? null : installed;
-        foreach (EditorRelease release in releases.Where(release => !release.Draft && (includePrereleases || !release.Preview)))
+        foreach (EditorRelease release in releases.Where(release =>
+                     !release.Draft && (includePrereleases || !release.Preview)))
         {
             ReleaseAsset? asset = AssetFor(release, platform);
             string? version = asset == null ? null : VersionFor(asset, platform);
             if (!VersionHelper.TryParse(version, out ReleaseVersion candidate)
-                || !includePrereleases && candidate.IsPrerelease
-                || newestVersion != null && candidate.CompareTo(newestVersion) <= 0)
+                || (!includePrereleases && candidate.IsPrerelease)
+                || (newestVersion != null && candidate.CompareTo(newestVersion) <= 0))
             {
                 continue;
             }
@@ -113,6 +121,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             newest = release;
             newestVersion = candidate;
         }
+
         return newest;
     }
 
@@ -137,7 +146,8 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_launcher_release"));
         }
 
-        ReleaseAsset asset = AssetFor(release, platform) ?? throw new InvalidDataException(Loc.Get("launcher.errors.no_platform_update"));
+        ReleaseAsset asset = AssetFor(release, platform) ??
+                             throw new InvalidDataException(Loc.Get("launcher.errors.no_platform_update"));
         string repository = GitHubRepository.Normalize(store.Settings.LauncherRepository);
         ReleasePackage.RequireFromRepository(asset, repository);
         string version = VersionFor(asset, platform)!;
@@ -160,7 +170,10 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         {
             ThrowIfRunning(target);
         }
-        await Task.Run(() => DirectoryReplacement.Recover(target, path => ValidateInstallation(path, null, name, token) != null), token);
+
+        await Task.Run(
+            () => DirectoryReplacement.Recover(target, path => ValidateInstallation(path, null, name, token) != null),
+            token);
         executable = await Task.Run(() => ValidateInstallation(target, asset.Digest, name, token), token);
         return executable ?? await DownloadAndReplaceAsync(asset, target, name, progress, token);
     }
@@ -212,6 +225,7 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
                 files.Add(relative, HashFile(path));
             }
         }
+
         JsonFile.Write(Path.Combine(root, Constants.Storage.LauncherManifest),
             new Installation(digest, Path.GetRelativePath(root, executable), files));
     }
@@ -223,29 +237,36 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         {
             return null;
         }
+
         try
         {
             FileSystemHelper.RejectLinks(root);
-            Installation? installed = JsonFile.Read<Installation>(Path.Combine(root, Constants.Storage.LauncherManifest));
+            Installation? installed =
+                JsonFile.Read<Installation>(Path.Combine(root, Constants.Storage.LauncherManifest));
             bool consistent = installed?.Files is { Count: > 0 }
-                              && (digest == null || string.Equals(digest, installed.Digest, StringComparison.OrdinalIgnoreCase))
+                              && (digest == null || string.Equals(digest, installed.Digest,
+                                  StringComparison.OrdinalIgnoreCase))
                               && installed.Files.ContainsKey(installed.Executable)
                               && Path.GetFileName(installed.Executable) == name;
             if (!consistent)
             {
                 return null;
             }
+
             foreach ((string relative, string hash) in installed!.Files)
             {
                 token.ThrowIfCancellationRequested();
-                if (!HashFile(FileSystemHelper.SafeChildPath(root, relative)).Equals(hash, StringComparison.OrdinalIgnoreCase))
+                if (!HashFile(FileSystemHelper.SafeChildPath(root, relative))
+                        .Equals(hash, StringComparison.OrdinalIgnoreCase))
                 {
                     return null;
                 }
             }
+
             return FileSystemHelper.SafeChildPath(root, installed.Executable);
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException
+                                          or ArgumentException)
         {
             return null;
         }
@@ -272,16 +293,13 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
         // Another launcher may have activated a different update since this one loaded its settings.
         Settings saved = JsonFile.Read<Settings>(store.SettingsPath) ?? store.Settings;
         FileSystemHelper.RejectLink(store.Home);
-        foreach (string root in new[]
-            {
-                UpdatesPath(store),
-                Path.Combine(store.Home, "LauncherVersions")
-            })
+        foreach (string root in new[] { UpdatesPath(store), Path.Combine(store.Home, "LauncherVersions") })
         {
             if (!Directory.Exists(root))
             {
                 continue;
             }
+
             FileSystemHelper.RejectLink(root);
             foreach (string repository in Directory.EnumerateDirectories(root))
             {
@@ -295,8 +313,10 @@ public sealed class LauncherUpdaterService(HttpClient http, LauncherStore store)
                         Directory.Delete(target, true);
                     }
                 }
+
                 DeleteIfEmpty(repository);
             }
+
             DeleteIfEmpty(root);
         }
     }

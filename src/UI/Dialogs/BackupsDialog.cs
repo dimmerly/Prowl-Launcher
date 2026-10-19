@@ -3,10 +3,11 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>Every project's backups in one place: back up a project, restore a backup as a copy, show or delete it.</summary>
-sealed class BackupsDialog(
+internal sealed class BackupsDialog(
     LauncherStore store,
     Controls ui,
     Dialogs dialogs,
@@ -30,6 +31,7 @@ sealed class BackupsDialog(
         {
             return;
         }
+
         _pending = false;
         Show();
     }
@@ -54,16 +56,13 @@ sealed class BackupsDialog(
     /// <summary>Makes a manual backup, which is never pruned automatically.</summary>
     public async Task BackUpAsync(Project project, CancellationToken token)
     {
-        ui.Operations.Title = Loc.Get("launcher.backups.creating", new
-        {
-            project = project.Name
-        });
+        ui.Operations.Title = Loc.Get("launcher.backups.creating", new { project = project.Name });
         ui.Operations.ImmediateProgress = true;
-        ProjectBackup backup = await backups.CreateAsync(project, BackupReason.Manual, null, ui.Operations.Transfer(), token);
-        notifications.Notify("launcher.backups.created", Loc.Get("launcher.backups.created_description", new
-        {
-            project = project.Name, size = Size(backup.ArchiveBytes)
-        }));
+        ProjectBackup backup =
+            await backups.CreateAsync(project, BackupReason.Manual, null, ui.Operations.Transfer(), token);
+        notifications.Notify("launcher.backups.created",
+            Loc.Get("launcher.backups.created_description",
+                new { project = project.Name, size = Size(backup.ArchiveBytes) }));
     }
 
     private void DrawBackups(Paper p, float width, float height)
@@ -84,9 +83,11 @@ sealed class BackupsDialog(
                 {
                     _selected = projects[0].Path;
                 }
+
                 using (p.Row("backups-create").Height(40).Gap(8).Enter())
                 {
-                    Controls.AboveParentLayer(p, () => Origami.Dropdown(p, "backups-project", _selected, value => _selected = value,
+                    Controls.AboveParentLayer(p, () => Origami.Dropdown(p, "backups-project", _selected,
+                            value => _selected = value,
                             projects.Select(project => project.Path).ToArray())
                         .Display(path => projects.FirstOrDefault(project => project.Path == path)?.Name ?? path)
                         .Width(UnitValue.Stretch())
@@ -106,6 +107,7 @@ sealed class BackupsDialog(
                 ui.Label(p, "backups-empty", "launcher.backups.empty", 15, ui.Muted, 36);
                 return;
             }
+
             Origami.ScrollView(p, "backups-scroll", width, Math.Min(height, _backups.Count * 86f))
                 .SmoothScroll().WheelStep(72).ColSpacing(8)
                 .Body(() =>
@@ -132,11 +134,15 @@ sealed class BackupsDialog(
                 {
                     version += " → " + backup.TargetVersion;
                 }
-                string reason = Loc.Get(backup.Automatic ? "launcher.backups.reason_upgrade" : "launcher.backups.reason_manual");
+
+                string reason = Loc.Get(backup.Automatic
+                    ? "launcher.backups.reason_upgrade"
+                    : "launcher.backups.reason_manual");
                 ui.Label(p, id + "details",
                     $"{backup.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm} ({RelativeDate.FormatElapsed(backup.CreatedAt)}) · {reason} · {version} · {Size(backup.ArchiveBytes)}",
                     13, ui.Muted, 22);
             }
+
             using (p.Row(id + "buttons").Width(UnitValue.Auto).Height(40).Gap(8).Enter())
             {
                 IconButton(p, id + "show", OrigamiIconSet.FolderOpen, "launcher.backups.show",
@@ -152,7 +158,8 @@ sealed class BackupsDialog(
         }
     }
 
-    private void IconButton(Paper p, string id, IOrigamiIcon icon, string tooltip, Action click) => Origami.Button(p, id, "")
+    private void IconButton(Paper p, string id, IOrigamiIcon icon, string tooltip, Action click) => Origami
+        .Button(p, id, "")
         .LeadingIcon(icon)
         .Width(40)
         .Height(40)
@@ -170,16 +177,11 @@ sealed class BackupsDialog(
 
     private async Task RestoreAsCopyAsync(ProjectBackup backup, CancellationToken token)
     {
-        ui.Operations.Title = Loc.Get("launcher.backups.restoring", new
-        {
-            project = backup.ProjectName
-        });
+        ui.Operations.Title = Loc.Get("launcher.backups.restoring", new { project = backup.ProjectName });
         ui.Operations.ImmediateProgress = true;
         Project copy = await backups.RestoreAsCopyAsync(backup, ui.Operations.Transfer(), token);
-        notifications.Notify("launcher.backups.restored", Loc.Get("launcher.backups.restored_description", new
-        {
-            project = copy.Name, path = copy.Path
-        }));
+        notifications.Notify("launcher.backups.restored",
+            Loc.Get("launcher.backups.restored_description", new { project = copy.Name, path = copy.Path }));
     }
 
     private async Task DeleteAsync(ProjectBackup backup, CancellationToken token)
@@ -190,6 +192,7 @@ sealed class BackupsDialog(
         {
             await backups.DeleteAsync(backup);
         }
+
         Request();
     }
 

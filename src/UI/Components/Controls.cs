@@ -7,13 +7,18 @@ using Prowl.Scribe;
 using Prowl.Vector;
 using Prowl.Vector.Spatial;
 
-using Color=System.Drawing.Color;
-using TextAlignment=Prowl.PaperUI.TextAlignment;
+using Color = System.Drawing.Color;
+using TextAlignment = Prowl.PaperUI.TextAlignment;
 
 namespace Prowl.Launcher;
 
 /// <summary>The launcher's styled building blocks, shared by every view.</summary>
-sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bold, OperationCoordinator operations, Func<Float2> screenSize)
+internal sealed class Controls(
+    LauncherAppearance appearance,
+    FontFile font,
+    FontFile bold,
+    OperationCoordinator operations,
+    Func<Float2> screenSize)
 {
     public LauncherAppearance Appearance => appearance;
     public FontFile Font => font;
@@ -43,6 +48,7 @@ sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bol
         {
             parentLayer = Math.Max(parentLayer, parent.Data.Layer);
         }
+
         int firstElement = p.ElementCount;
         draw();
         for (int i = firstElement; i < p.ElementCount; i++)
@@ -62,7 +68,8 @@ sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bol
     ///     Fills the current element with <paramref name="texture" />, scaled to cover it and centered (cropping the
     ///     overflow), clipped to the given corner radii.
     /// </summary>
-    public static void DrawCoverImage(Paper p, TextureTK texture, float topLeft, float topRight, float bottomRight, float bottomLeft) => p.Draw((canvas, rect) =>
+    public static void DrawCoverImage(Paper p, TextureTK texture, float topLeft, float topRight, float bottomRight,
+        float bottomLeft) => p.Draw((canvas, rect) =>
     {
         float width = rect.Size.X, height = rect.Size.Y;
         float scale = Math.Max(width / texture.Width, height / texture.Height);
@@ -77,7 +84,8 @@ sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bol
         canvas.RestoreState();
     });
 
-    public void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false, FontQuality? quality = null)
+    public void Label(Paper p, string id, string text, float size, Color color, float height, bool bold = false,
+        FontQuality? quality = null)
     {
         float fontSize = Math.Max(16, size * 1.1f);
         p.Box(id)

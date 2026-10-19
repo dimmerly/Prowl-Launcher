@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
+
 namespace Prowl.Launcher;
 
-sealed class UiContext : SynchronizationContext, IDisposable
+internal sealed class UiContext : SynchronizationContext, IDisposable
 {
     private readonly SynchronizationContext? _previous = Current;
     private readonly ConcurrentQueue<(SendOrPostCallback callback, object? state)> _queue = new();

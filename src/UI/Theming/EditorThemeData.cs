@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Prowl.OrigamiUI;
+
 namespace Prowl.Launcher.Theming;
 
 /// <summary>Static editor-background style used when the animated background is off.</summary>
@@ -52,21 +53,24 @@ public class ColorRamp
     }
 
     /// <summary>Number of stops in this ramp.</summary>
-    [JsonIgnore] public int StopCount
+    [JsonIgnore]
+    public int StopCount
     {
         get;
         set;
     }
 
     /// <summary>Index of the primary stop (0-based).</summary>
-    [JsonIgnore] public int PrimaryIndex
+    [JsonIgnore]
+    public int PrimaryIndex
     {
         get;
         set;
     }
 
     /// <summary>RGB offsets from primary for each stop. Set by Init().</summary>
-    [JsonIgnore] public (int R, int G, int B)[] Offsets
+    [JsonIgnore]
+    public (int R, int G, int B)[] Offsets
     {
         get;
         set;
@@ -90,6 +94,7 @@ public class ColorRamp
         {
             return p;
         }
+
         (int R, int G, int B) o = Offsets[index];
         return Color.FromArgb(255,
             Math.Clamp(p.R + o.R, 0, 255),
@@ -142,16 +147,29 @@ public class ColorRamp
 /// </summary>
 public class EditorThemeData
 {
-
     // Default ramp stops (RGB) = Origami's ramps. Customization is applied on top of Origami's
     // live theme, preserving each stop's alpha, so translucent glass surfaces stay glass.
-    private static readonly Color[] DefaultNeutral = [H("#06060E"), H("#96A0FF"), H("#161628"), H("#0E0E1C"), H("#181830"), H("#22223E"), H("#30304E")];
-    private static readonly Color[] DefaultPurple = [H("#14153A"), H("#1E1F4D"), H("#2E3072"), H("#464B9E"), H("#6366F1"), H("#818CF8"), H("#A5B4FC")];
-    private static readonly Color[] DefaultBlue = [H("#1A0F33"), H("#241547"), H("#372066"), H("#4E2E8C"), H("#8B5CF6"), H("#A78BFA"), H("#C4B5FD")];
-    private static readonly Color[] DefaultRed = [H("#1F0E10"), H("#3A181E"), H("#5A242C"), H("#8C3442"), H("#FB7185"), H("#FC8C9C"), H("#FAAFBA")];
-    private static readonly Color[] DefaultGreen = [H("#0F1F15"), H("#162C20"), H("#1F4530"), H("#2D6446"), H("#4ADE80"), H("#78E6A0"), H("#AAF0C3")];
-    private static readonly Color[] DefaultAmber = [H("#1F1808"), H("#3A2A10"), H("#5C4017"), H("#825C28"), H("#FBBF24"), H("#FCD060"), H("#FAE0A0")];
-    private static readonly Color[] DefaultInk = [H("#494960"), H("#6A6A86"), H("#9090AB"), H("#BBBBD4"), H("#EAEAF7"), H("#FFFFFF"), H("#FFFFFF")];
+    private static readonly Color[] DefaultNeutral =
+        [H("#06060E"), H("#96A0FF"), H("#161628"), H("#0E0E1C"), H("#181830"), H("#22223E"), H("#30304E")];
+
+    private static readonly Color[] DefaultPurple =
+        [H("#14153A"), H("#1E1F4D"), H("#2E3072"), H("#464B9E"), H("#6366F1"), H("#818CF8"), H("#A5B4FC")];
+
+    private static readonly Color[] DefaultBlue =
+        [H("#1A0F33"), H("#241547"), H("#372066"), H("#4E2E8C"), H("#8B5CF6"), H("#A78BFA"), H("#C4B5FD")];
+
+    private static readonly Color[] DefaultRed =
+        [H("#1F0E10"), H("#3A181E"), H("#5A242C"), H("#8C3442"), H("#FB7185"), H("#FC8C9C"), H("#FAAFBA")];
+
+    private static readonly Color[] DefaultGreen =
+        [H("#0F1F15"), H("#162C20"), H("#1F4530"), H("#2D6446"), H("#4ADE80"), H("#78E6A0"), H("#AAF0C3")];
+
+    private static readonly Color[] DefaultAmber =
+        [H("#1F1808"), H("#3A2A10"), H("#5C4017"), H("#825C28"), H("#FBBF24"), H("#FCD060"), H("#FAE0A0")];
+
+    private static readonly Color[] DefaultInk =
+        [H("#494960"), H("#6A6A86"), H("#9090AB"), H("#BBBBD4"), H("#EAEAF7"), H("#FFFFFF"), H("#FFFFFF")];
+
     /// <summary> Display name of this theme. </summary>
     public string Name
     {
@@ -165,64 +183,49 @@ public class EditorThemeData
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#181830"
-    };
+    } = new() { Primary = "#181830" };
+
     /// <summary> Purple accent color ramp. </summary>
     public ColorRamp Purple
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#6366F1"
-    };
+    } = new() { Primary = "#6366F1" };
+
     /// <summary> Blue accent color ramp. </summary>
     public ColorRamp Blue
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#8B5CF6"
-    };
+    } = new() { Primary = "#8B5CF6" };
+
     /// <summary> Red accent color ramp. </summary>
     public ColorRamp Red
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#FB7185"
-    };
+    } = new() { Primary = "#FB7185" };
+
     /// <summary> Green accent color ramp. </summary>
     public ColorRamp Green
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#4ADE80"
-    };
+    } = new() { Primary = "#4ADE80" };
+
     /// <summary> Amber accent color ramp. </summary>
     public ColorRamp Amber
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#FBBF24"
-    };
+    } = new() { Primary = "#FBBF24" };
+
     /// <summary> Ink color ramp for text and high-contrast elements. </summary>
     public ColorRamp Ink
     {
         get;
         set;
-    } = new()
-    {
-        Primary = "#EAEAF7"
-    };
+    } = new() { Primary = "#EAEAF7" };
 
     // Font
     /// <summary> Name of the default UI font. </summary>
@@ -253,42 +256,49 @@ public class EditorThemeData
         get;
         set;
     } = 40f;
+
     /// <summary> Height of the status bar in pixels. </summary>
     public float StatusBarHeight
     {
         get;
         set;
     } = 26f;
+
     /// <summary> Height of a single row in pixels. </summary>
     public float RowHeight
     {
         get;
         set;
     } = 24f;
+
     /// <summary> Default font size in points. </summary>
     public float FontSize
     {
         get;
         set;
     } = 17f;
+
     /// <summary> Width of property labels in pixels. </summary>
     public float LabelWidth
     {
         get;
         set;
     } = 150f;
+
     /// <summary> Spacing between UI elements in pixels. </summary>
     public float Spacing
     {
         get;
         set;
     } = 2f;
+
     /// <summary> Padding inside UI elements in pixels. </summary>
     public float Padding
     {
         get;
         set;
     } = 6f;
+
     // Single knob driving both the dock gutter padding and the splitter thickness.
     /// <summary> Dock gutter padding and splitter thickness in pixels. </summary>
     public float DockSpacing
@@ -296,18 +306,21 @@ public class EditorThemeData
         get;
         set;
     } = 6f;
+
     /// <summary> Height of the tab bar in pixels. </summary>
     public float TabBarHeight
     {
         get;
         set;
     } = 32f;
+
     /// <summary> Padding inside tabs in pixels. </summary>
     public float TabPadding
     {
         get;
         set;
     } = 12f;
+
     /// <summary> Corner roundness radius in pixels. </summary>
     public float Roundness
     {
@@ -322,30 +335,35 @@ public class EditorThemeData
         get;
         set;
     } = true;
+
     /// <summary> Opacity of dock window fills, from 0 to 1. </summary>
     public float WindowOpacity
     {
         get;
         set;
     } = 0.8f;
+
     /// <summary> Strength of the glass blur effect. </summary>
     public float BlurAmount
     {
         get;
         set;
     } = 22f;
+
     /// <summary> Whether drop shadows are rendered. </summary>
     public bool DropShadows
     {
         get;
         set;
     } = true;
+
     /// <summary> Whether accent elements have a glow effect. </summary>
     public bool AccentGlow
     {
         get;
         set;
     } = true;
+
     /// <summary> Whether anti-aliasing is enabled. </summary>
     public bool AntiAliasing
     {
@@ -360,24 +378,28 @@ public class EditorThemeData
         get;
         set;
     } = true;
+
     /// <summary> Speed of the animated background. </summary>
     public float BackgroundSpeed
     {
         get;
         set;
     } = 1f;
+
     /// <summary> Static background style used when the animated background is off. </summary>
     public EditorBackgroundStyle BackgroundStyle
     {
         get;
         set;
     } = EditorBackgroundStyle.Nebula;
+
     /// <summary> First background gradient color as hex. </summary>
     public string BackgroundColorA
     {
         get;
         set;
     } = "#1B1130";
+
     /// <summary> Second background gradient color as hex. </summary>
     public string BackgroundColorB
     {
@@ -392,6 +414,7 @@ public class EditorThemeData
         get;
         set;
     } = true;
+
     /// <summary> Solid color behind all background layers as hex. </summary>
     public string BackgroundVoidColor
     {
@@ -406,12 +429,14 @@ public class EditorThemeData
         get;
         set;
     } = "";
+
     /// <summary> How the background image is fitted to the window. </summary>
     public BackgroundImageFit BackgroundImageFit
     {
         get;
         set;
     } = BackgroundImageFit.Fill;
+
     /// <summary> How much the background image is darkened, from 0 to 1. </summary>
     public float BackgroundImageDim
     {
@@ -479,10 +504,7 @@ public class EditorThemeData
     /// <summary> Serializes this theme to a JSON file at the given path. </summary>
     public void ExportToFile(string path)
     {
-        string json = JsonSerializer.Serialize(this, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(path, json);
     }
 

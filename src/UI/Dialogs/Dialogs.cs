@@ -5,10 +5,11 @@ using Prowl.PaperUI.Markdown;
 using Prowl.Rosetta;
 using Prowl.Scribe;
 using Prowl.Vector;
+
 namespace Prowl.Launcher;
 
 /// <summary>Confirmations, release notes and the folder picker shared by several views.</summary>
-sealed class Dialogs(Controls ui)
+internal sealed class Dialogs(Controls ui)
 {
     public async Task<bool> ConfirmAsync(
         string title,
@@ -83,7 +84,8 @@ sealed class Dialogs(Controls ui)
         using (ui.Operations.WaitForUser())
         {
             Directory.CreateDirectory(initialDirectory);
-            Origami.OpenFileDialog(FileDialogMode.SelectFolder, selected => completion.TrySetResult(selected), initialDirectory);
+            Origami.OpenFileDialog(FileDialogMode.SelectFolder, selected => completion.TrySetResult(selected),
+                initialDirectory);
             return await completion.Task.WaitAsync(token);
         }
     }
@@ -106,7 +108,8 @@ sealed class Dialogs(Controls ui)
             .Show();
     }
 
-    public void ChangelogButton(Paper p, string id, EditorRelease release, bool subtle = false) => Origami.Button(p, id, "")
+    public void ChangelogButton(Paper p, string id, EditorRelease release, bool subtle = false) => Origami
+        .Button(p, id, "")
         .LeadingIcon(OrigamiIconSet.File)
         .Width(subtle ? 28 : 40)
         .Height(subtle ? 28 : 40)
@@ -117,9 +120,11 @@ sealed class Dialogs(Controls ui)
         .OnClick(() => ShowChangelog(release))
         .Show();
 
-    private MarkdownBuilder ReleaseNotesMarkdown(EditorRelease release) => new MarkdownBuilder(ui.Font).Fonts(bold: ui.Bold)
+    private MarkdownBuilder ReleaseNotesMarkdown(EditorRelease release) => new MarkdownBuilder(ui.Font).Fonts(ui.Bold)
         .FontSize(18)
-        .Source(string.IsNullOrWhiteSpace(release.Notes) ? Loc.Get("launcher.versions.no_release_notes") : release.Notes)
+        .Source(string.IsNullOrWhiteSpace(release.Notes)
+            ? Loc.Get("launcher.versions.no_release_notes")
+            : release.Notes)
         .OnLink(href =>
         {
             if (Uri.TryCreate(release.PageUrl, UriKind.Absolute, out Uri? page)

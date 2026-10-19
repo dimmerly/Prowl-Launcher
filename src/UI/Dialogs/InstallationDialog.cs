@@ -2,18 +2,27 @@ using Prowl.OrigamiUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>
-///     The first-run prompt to install the launcher or keep it portable, also shown from Settings. A <paramref name="preview" /> shows
+///     The first-run prompt to install the launcher or keep it portable, also shown from Settings. A
+///     <paramref name="preview" /> shows
 ///     the prompt without acting on either choice.
 /// </summary>
-sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
+internal sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
 {
     private bool _createDesktopShortcut = true;
 
     /// <summary>Set to show the prompt on the next frame.</summary>
-    public bool Pending { get; set; }
+    public bool Pending
+    {
+        get;
+        set;
+    }
+
+    /// <summary>True when this launcher isn't installed and can install itself.</summary>
+    public bool Available => LauncherInstallationService.CanInstall(store);
 
     /// <summary>Shows the prompt if it is <see cref="Pending" />.</summary>
     public void ShowIfPending()
@@ -22,12 +31,10 @@ sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
         {
             return;
         }
+
         Pending = false;
         Show();
     }
-
-    /// <summary>True when this launcher isn't installed and can install itself.</summary>
-    public bool Available => LauncherInstallationService.CanInstall(store);
 
     public void Show() => Origami.Modal(Loc.Get("launcher.installation.title"))
         .Width(Math.Min(520, ui.ScreenSize.X - 48))
@@ -64,5 +71,6 @@ sealed class InstallationDialog(LauncherStore store, Controls ui, bool preview)
         .Show();
 
     private async Task InstallAsync(CancellationToken token) =>
-        ui.Operations.RestartWith = await new LauncherInstallationService(store).InstallAsync(_createDesktopShortcut, token);
+        ui.Operations.RestartWith =
+            await new LauncherInstallationService(store).InstallAsync(_createDesktopShortcut, token);
 }

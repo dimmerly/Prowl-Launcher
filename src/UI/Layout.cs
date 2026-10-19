@@ -3,6 +3,7 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>The window shell: sidebar, page heading, the selected page, news, progress panel and toasts.</summary>
@@ -12,17 +13,17 @@ public sealed partial class Launcher
 
     /// <summary>The progress panel is hidden on the launch view and while a sample card shows its own spinner.</summary>
     private bool ShowProgress => _navigation.Tab != LauncherTab.Launch
-                                 && !(_samples.Launching && !_operations.ImmediateProgress)
-                                 && _operations.ProgressDue;
+                                 && !(Samples.Launching && !Operations.ImmediateProgress)
+                                 && Operations.ProgressDue;
 
     private void OnGui(Paper p)
     {
         float width = p.ScreenRect.Size.X;
         float height = p.ScreenRect.Size.Y;
         bool progressVisible = ShowProgress;
-        using IDisposable theme = Origami.PushTheme(_appearance.Theme);
+        using IDisposable theme = Origami.PushTheme(Appearance.Theme);
 
-        _notifications.ShowPending();
+        Notifications.ShowPending();
         Origami.BeginFrame(p, _deltaTime);
         _installation.ShowIfPending();
         _uninstall.ShowIfPending();
@@ -30,7 +31,7 @@ public sealed partial class Launcher
         if (_navigation.Tab == LauncherTab.Launch)
         {
             _launchView.Draw(p, width, height);
-            _notifications.Draw(p, _deltaTime, false);
+            Notifications.Draw(p, _deltaTime, false);
             Origami.EndFrame(p);
             return;
         }
@@ -38,9 +39,9 @@ public sealed partial class Launcher
         using (p.Column("window").Size(width, height).Enter())
         {
             using (p.Row("launcher")
-                .Size(width, height)
-                .BackgroundColor(_appearance.Background)
-                .Enter())
+                       .Size(width, height)
+                       .BackgroundColor(Appearance.Background)
+                       .Enter())
             {
                 p.Box("sidebar-backdrop")
                     .PositionType(PositionType.SelfDirected)
@@ -48,17 +49,17 @@ public sealed partial class Launcher
                     .Top(0)
                     .Size(Constants.Layout.SidebarWidth, height)
                     .BackgroundLinearGradient(0, 0, 1, 1,
-                        OrigamiTheme.WithAlpha(_appearance.Accent, 14),
-                        _appearance.Background)
+                        OrigamiTheme.WithAlpha(Appearance.Accent, 14),
+                        Appearance.Background)
                     .IsNotInteractable();
                 _sidebar.Draw(p);
 
                 using (p.Column("content")
-                    .Padding(28, 28, 24, 18)
-                    .Gap(14)
-                    .Enter())
+                           .Padding(28, 28, 24, 18)
+                           .Gap(14)
+                           .Enter())
                 {
-                    DrawHeading(p, _navigation.Tab == LauncherTab.Samples ? _samples.DrawHeadingActions : null);
+                    DrawHeading(p, _navigation.Tab == LauncherTab.Samples ? Samples.DrawHeadingActions : null);
 
                     bool showToolbar = _navigation.Tab == LauncherTab.Projects && !_projects.ShowingNewProject;
                     if (showToolbar)
@@ -85,9 +86,9 @@ public sealed partial class Launcher
                     if (showToolbar)
                     {
                         using (p.Column("projects-footer").Height(UnitValue.Auto).Gap(12)
-                            .OnPostLayout((_, rect) => _newsFooterHeight = rect.Size.Y).Enter())
+                                   .OnPostLayout((_, rect) => _newsFooterHeight = rect.Size.Y).Enter())
                         {
-                            _news.Draw(p);
+                            News.Draw(p);
                         }
                     }
                 }
@@ -97,10 +98,11 @@ public sealed partial class Launcher
                     _operationPanel.Draw(p);
                 }
             }
+
             _titleBar.Draw(p);
         }
 
-        _notifications.Draw(p, _deltaTime, progressVisible);
+        Notifications.Draw(p, _deltaTime, progressVisible);
         Origami.EndFrame(p);
     }
 
@@ -115,7 +117,7 @@ public sealed partial class Launcher
                 _versions.Draw(p);
                 break;
             case LauncherTab.Samples:
-                _samples.Draw(p);
+                Samples.Draw(p);
                 break;
             default:
                 _settings.Draw(p);
@@ -135,7 +137,9 @@ public sealed partial class Launcher
         };
         string subtitle = _navigation.Tab switch
         {
-            LauncherTab.Projects => newProject ? Loc.Get("launcher.projects.choose_template") : "launcher.projects.subtitle",
+            LauncherTab.Projects => newProject
+                ? Loc.Get("launcher.projects.choose_template")
+                : "launcher.projects.subtitle",
             LauncherTab.Versions => "launcher.versions.subtitle",
             LauncherTab.Samples => "launcher.samples.subtitle",
             _ => "launcher.settings.subtitle"
@@ -152,7 +156,7 @@ public sealed partial class Launcher
             if (actions != null)
             {
                 using (p.Row("heading-actions").Width(UnitValue.Auto).Height(UnitValue.Auto)
-                    .Gap(8).AlignItems(LayoutAlignment.Center).Enter())
+                           .Gap(8).AlignItems(LayoutAlignment.Center).Enter())
                 {
                     actions(p);
                 }

@@ -1,10 +1,12 @@
 namespace Prowl.Launcher;
 
-readonly record struct WindowScale(float Rendering, float Input)
+internal readonly record struct WindowScale(float Rendering, float Input)
 {
     /// <summary>The interface size setting limited to the supported range.</summary>
     internal static float ClampInterfaceScale(float scale) =>
-        float.IsFinite(scale) ? Math.Clamp(scale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale) : Constants.Defaults.UiScale;
+        float.IsFinite(scale)
+            ? Math.Clamp(scale, Constants.Defaults.MinUiScale, Constants.Defaults.MaxUiScale)
+            : Constants.Defaults.UiScale;
 
     internal static WindowScale Calculate(float interfaceScale, float contentScale, float framebufferRatio)
     {

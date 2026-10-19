@@ -1,13 +1,17 @@
 using System.Text.Json;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Unit")]
 public sealed class ProjectTemplateTests : IDisposable
 {
-    private static InstalledEditor Editor => new( 1, "v1.0-preview-4", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow );
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlLauncherTemplates", Guid.NewGuid().ToString("N"));
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlLauncherTemplates", Guid.NewGuid().ToString("N"));
+
+    private static InstalledEditor Editor =>
+        new(1, "v1.0-preview-4", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow);
 
     public void Dispose()
     {
@@ -26,7 +30,7 @@ public sealed class ProjectTemplateTests : IDisposable
         Assert.Equal("1.0-preview.4", marker.RootElement.GetProperty("version").GetString());
         Assert.False(marker.RootElement.TryGetProperty("appliedSteps", out _));
         Assert.True(File.Exists(Path.Combine(path, "Directory.Build.props")));
-        LauncherStore store = new( Path.Combine(_home, "Launcher") );
+        LauncherStore store = new(Path.Combine(_home, "Launcher"));
         JsonFile.Write(Path.Combine(store.InstallPath(Editor), "installation.json"), Editor);
         Assert.Equal(Editor.Key, store.AddProject(path).EditorKey);
     }

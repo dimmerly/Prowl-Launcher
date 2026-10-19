@@ -3,33 +3,38 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
+
 namespace Prowl.Launcher;
 
-static class ProcessHelper
+internal static class ProcessHelper
 {
     /// <summary>A windowless child process whose output the launcher reads.</summary>
-    internal static ProcessStartInfo Captured(string executable, string? workingDirectory, params IEnumerable<string> arguments)
+    internal static ProcessStartInfo Captured(string executable, string? workingDirectory,
+        params IEnumerable<string> arguments)
     {
-        ProcessStartInfo info = new( executable )
+        ProcessStartInfo info = new(executable)
         {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
         if (workingDirectory != null)
         {
             info.WorkingDirectory = workingDirectory;
         }
+
         foreach (string argument in arguments)
         {
             info.ArgumentList.Add(argument);
         }
+
         return info;
     }
 
     /// <summary>Opens a URL or folder with the operating system's default handler.</summary>
-    internal static void OpenInShell(string target) => Process.Start(new ProcessStartInfo(target)
-    {
-        UseShellExecute = true
-    });
+    internal static void OpenInShell(string target) =>
+        Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
 
     /// <summary>
     ///     Whether a process named <paramref name="processName" /> runs from inside <paramref name="root" />.
@@ -58,6 +63,7 @@ static class ProcessHelper
                 }
             }
         }
+
         return false;
     }
 
@@ -83,6 +89,7 @@ static class ProcessHelper
             // An invalid process id means it already exited.
             return error == InvalidParameter ? null : throw new Win32Exception(error);
         }
+
         char[] buffer = new char[32768];
         int length = buffer.Length;
         if (!QueryFullProcessImageName(handle, 0, buffer, ref length))
@@ -91,16 +98,20 @@ static class ProcessHelper
             {
                 return null;
             }
+
             throw new Win32Exception(Marshal.GetLastPInvokeError());
         }
+
         return new string(buffer, 0, length);
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern SafeProcessHandle OpenProcess(uint access, bool inherit, int processId);
 
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "QueryFullProcessImageNameW")]
-    private static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, char[] name, ref int size);
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode,
+        EntryPoint = "QueryFullProcessImageNameW")]
+    private static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, char[] name,
+        ref int size);
 
     /// <summary>
     ///     A unique pipe name. Absolute Unix pipe paths avoid adding a potentially long TMPDIR and

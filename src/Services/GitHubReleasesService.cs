@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, string? sourceRepository = null)
@@ -12,16 +13,20 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
         get;
         private set;
     }
+
     public static string CachePath(LauncherStore store) => Path.Combine(store.Home, "releases.json");
 
     internal static List<EditorRelease>? ReadCache(LauncherStore store, string repository)
     {
         EditorCache? cache = JsonFile.Read<EditorCache>(CachePath(store));
-        return cache != null && string.Equals(cache.Repository, GitHubRepository.Normalize(repository), StringComparison.OrdinalIgnoreCase)
-            ? cache.Releases : null;
+        return cache != null && string.Equals(cache.Repository, GitHubRepository.Normalize(repository),
+            StringComparison.OrdinalIgnoreCase)
+            ? cache.Releases
+            : null;
     }
 
-    public async Task<IReadOnlyList<EditorRelease>> GetAsync(CancellationToken token = default, TimeSpan? timeout = null)
+    public async Task<IReadOnlyList<EditorRelease>> GetAsync(CancellationToken token = default,
+        TimeSpan? timeout = null)
     {
         UsedCache = false;
         string repository = GitHubRepository.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
@@ -33,7 +38,8 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             // Pagination includes older versions and prereleases; /latest would hide previews.
             for (int page = 1;; page++)
             {
-                using HttpRequestMessage request = new( HttpMethod.Get, $"{Constants.Network.GitHubApiUrl}repos/{repository}/releases?per_page={Constants.Network.ReleasesPerPage}&page={page}" );
+                using HttpRequestMessage request = new(HttpMethod.Get,
+                    $"{Constants.Network.GitHubApiUrl}repos/{repository}/releases?per_page={Constants.Network.ReleasesPerPage}&page={page}");
                 request.Headers.UserAgent.ParseAdd(Constants.Network.UserAgent);
                 request.Headers.Accept.ParseAdd("application/vnd.github+json");
                 using HttpResponseMessage response = await http.SendAsync(request, deadline.Token);
@@ -43,7 +49,8 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
                 }
 
                 response.EnsureSuccessStatusCode();
-                List<EditorRelease> batch = await response.Content.ReadFromJsonAsync<List<EditorRelease>>(deadline.Token) ?? [];
+                List<EditorRelease> batch =
+                    await response.Content.ReadFromJsonAsync<List<EditorRelease>>(deadline.Token) ?? [];
                 releases.AddRange(batch.Where(r => !r.Draft));
                 if (batch.Count < Constants.Network.ReleasesPerPage)
                 {
@@ -56,9 +63,11 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             {
                 JsonFile.Write(CachePath(store), new EditorCache(repository, sorted.ToList()));
             }
+
             return sorted;
         }
-        catch (Exception e) when (e is HttpRequestException or JsonException || e is OperationCanceledException && !token.IsCancellationRequested)
+        catch (Exception e) when (e is HttpRequestException or JsonException ||
+                                  (e is OperationCanceledException && !token.IsCancellationRequested))
         {
             List<EditorRelease>? cached = sourceRepository == null ? ReadCache(store, repository) : null;
             if (cached == null)
@@ -67,6 +76,7 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
                 {
                     throw new HttpRequestException("The GitHub release request timed out.", e);
                 }
+
                 throw;
             }
 
@@ -74,5 +84,6 @@ public sealed class GitHubReleasesService(HttpClient http, LauncherStore store, 
             return cached;
         }
     }
+
     internal sealed record EditorCache(string Repository, List<EditorRelease> Releases);
 }

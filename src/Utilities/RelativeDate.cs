@@ -1,7 +1,8 @@
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
-static class RelativeDate
+internal static class RelativeDate
 {
     internal static string Format(DateOnly date, DateOnly? today = null)
     {
@@ -11,14 +12,8 @@ static class RelativeDate
             0 => Loc.Get("launcher.news.today"),
             1 => Loc.Get("launcher.news.yesterday"),
             -1 => Loc.Get("launcher.news.tomorrow"),
-            < 0 => Loc.Get("launcher.news.in_days", new
-            {
-                count = -days
-            }),
-            _ => Loc.Get("launcher.news.days_ago", new
-            {
-                count = days
-            })
+            < 0 => Loc.Get("launcher.news.in_days", new { count = -days }),
+            _ => Loc.Get("launcher.news.days_ago", new { count = days })
         };
     }
 
@@ -30,23 +25,17 @@ static class RelativeDate
         {
             return Loc.Get("launcher.projects.just_now");
         }
+
         if (elapsed.TotalHours < 1)
         {
-            return Loc.Get("launcher.projects.minutes_ago", new
-            {
-                count = (int)elapsed.TotalMinutes
-            });
+            return Loc.Get("launcher.projects.minutes_ago", new { count = (int)elapsed.TotalMinutes });
         }
+
         if (elapsed.TotalDays < 1)
         {
-            return Loc.Get("launcher.projects.hours_ago", new
-            {
-                count = (int)elapsed.TotalHours
-            });
+            return Loc.Get("launcher.projects.hours_ago", new { count = (int)elapsed.TotalHours });
         }
-        return Loc.Get("launcher.projects.days_ago", new
-        {
-            count = (int)elapsed.TotalDays
-        });
+
+        return Loc.Get("launcher.projects.days_ago", new { count = (int)elapsed.TotalDays });
     }
 }

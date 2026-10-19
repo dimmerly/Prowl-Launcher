@@ -1,9 +1,10 @@
 using Prowl.OrigamiUI;
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>Editor releases and installations: install, repair, uninstall, build from source and launch.</summary>
-sealed class EditorCoordinator(
+internal sealed class EditorCoordinator(
     LauncherStore store,
     HttpClient http,
     GitHubReleasesService github,
@@ -16,13 +17,42 @@ sealed class EditorCoordinator(
 ) : IDisposable
 {
     private readonly List<EditorConsoleSession> _editorSessions = [];
-    private IReadOnlyList<InstalledEditor> _installed = [];
-    private IReadOnlyList<EditorRelease> _releases = [];
-    private EditorConsoleSession? _selectedEditorSession;
 
-    public IReadOnlyList<InstalledEditor> Installed => _installed;
-    public IReadOnlyList<EditorRelease> Releases => _releases;
-    public bool IncludePrereleases { get; private set; } = Constants.Defaults.EditorPrereleases;
+    public IReadOnlyList<InstalledEditor> Installed
+    {
+        get;
+        private set;
+    } = [];
+
+    public IReadOnlyList<EditorRelease> Releases
+    {
+        get;
+        private set;
+    } = [];
+
+    public bool IncludePrereleases
+    {
+        get;
+        private set;
+    } = Constants.Defaults.EditorPrereleases;
+
+    /// <summary>Every editor started from this launcher, oldest first.</summary>
+    public IReadOnlyList<EditorConsoleSession> Sessions => _editorSessions;
+
+    /// <summary>The most recently launched editor.</summary>
+    public EditorConsoleSession? SelectedSession
+    {
+        get;
+        private set;
+    }
+
+    public void Dispose()
+    {
+        foreach (EditorConsoleSession session in _editorSessions)
+        {
+            session.Dispose();
+        }
+    }
 
     /// <summary>Turning prereleases on asks first, since project migration is only supported between stable versions.</summary>
     public async Task SetIncludePrereleasesAsync(bool enabled)
@@ -35,25 +65,12 @@ sealed class EditorCoordinator(
         {
             return;
         }
+
         IncludePrereleases = enabled;
     }
 
-    /// <summary>Every editor started from this launcher, oldest first.</summary>
-    public IReadOnlyList<EditorConsoleSession> Sessions => _editorSessions;
-
-    /// <summary>The most recently launched editor.</summary>
-    public EditorConsoleSession? SelectedSession => _selectedEditorSession;
-
     /// <summary>Raised when an editor process has been started, before it reports ready.</summary>
     public event Action<EditorConsoleSession>? SessionStarted;
-
-    public void Dispose()
-    {
-        foreach (EditorConsoleSession session in _editorSessions)
-        {
-            session.Dispose();
-        }
-    }
 
     /// <summary>Finishes or rolls back installs and removes backups that a previous launcher left half done.</summary>
     public void RecoverInterruptedOperations()
@@ -62,23 +79,24 @@ sealed class EditorCoordinator(
         installer.RecoverInterruptedOperations();
     }
 
-    public void ReloadInstalled() => _installed = store.InstalledEditors()
+    public void ReloadInstalled() => Installed = store.InstalledEditors()
         .Where(e => e.Platform == Platform.Identifier)
         .ToArray();
 
-    public InstalledEditor? FindInstalled(string? key) => _installed.FirstOrDefault(editor => editor.Key == key);
+    public InstalledEditor? FindInstalled(string? key) => Installed.FirstOrDefault(editor => editor.Key == key);
 
     /// <summary>Throws if <paramref name="editor" />'s installation can't be launched.</summary>
     public void Validate(InstalledEditor editor) => _ = installer.LaunchInfo(editor);
 
     #region Releases
 
-    public void LoadCachedReleases() => _releases = GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository) ?? [];
+    public void LoadCachedReleases() =>
+        Releases = GitHubReleasesService.ReadCache(store, store.Settings.ProwlRepository) ?? [];
 
     /// <summary>Forgets releases from a previous repository.</summary>
-    public void ClearReleases() => _releases = [];
+    public void ClearReleases() => Releases = [];
 
-    public EditorRelease? NewerRelease() => FindEditorUpdate(_releases, _installed,
+    public EditorRelease? NewerRelease() => FindEditorUpdate(Releases, Installed,
         store.Settings.ProwlRepository, Platform.Identifier, IncludePrereleases);
 
     /// <summary>The newest release newer than every installed editor from <paramref name="repository" />, or null.</summary>
@@ -96,6 +114,7 @@ sealed class EditorCoordinator(
                 current = version;
             }
         }
+
         if (current == null)
         {
             return null;
@@ -107,14 +126,16 @@ sealed class EditorCoordinator(
         foreach (EditorRelease release in candidates)
         {
             if (!VersionHelper.TryParse(release.Tag, out ReleaseVersion version, true)
-                || !includePrereleases && version.IsPrerelease
+                || (!includePrereleases && version.IsPrerelease)
                 || version.CompareTo(current) <= 0)
             {
                 continue;
             }
+
             update = release;
             current = version;
         }
+
         return update;
     }
 
@@ -126,7 +147,7 @@ sealed class EditorCoordinator(
             IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store).GetAsync(token);
             if (!token.IsCancellationRequested)
             {
-                _releases = releases;
+                Releases = releases;
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -141,7 +162,7 @@ sealed class EditorCoordinator(
     public async Task RefreshAsync(CancellationToken token, bool notify = true)
     {
         operations.Detail = "launcher.versions.checking_releases";
-        _releases = await github.GetAsync(token);
+        Releases = await github.GetAsync(token);
         if (!notify)
         {
             return;
@@ -152,31 +173,26 @@ sealed class EditorCoordinator(
             notifications.Notify("launcher.network.offline", "launcher.versions.cached_releases", ToastType.Warning);
             return;
         }
-        int count = _releases.Count(r => r.AssetFor(Platform.Identifier) != null);
+
+        int count = Releases.Count(r => r.AssetFor(Platform.Identifier) != null);
         notifications.Notify("launcher.versions.releases_checked",
-            Loc.Get("launcher.versions.available_count", new
-            {
-                count, platform = Platform.Identifier
-            }));
+            Loc.Get("launcher.versions.available_count", new { count, platform = Platform.Identifier }));
     }
 
     #endregion
 
     #region Installations
 
-    public async Task<InstalledEditor> InstallAsync(EditorRelease release, CancellationToken token, bool repair = false, string? repository = null)
+    public async Task<InstalledEditor> InstallAsync(EditorRelease release, CancellationToken token, bool repair = false,
+        string? repository = null)
     {
-        operations.Title = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing", new
-        {
-            version = release.Tag
-        });
+        operations.Title = Loc.Get(repair ? "launcher.versions.repairing" : "launcher.versions.installing",
+            new { version = release.Tag });
         operations.ImmediateProgress = true;
-        InstalledEditor editor = await installer.InstallAsync(release, Platform.Identifier, operations.Transfer(), token, repository);
+        InstalledEditor editor =
+            await installer.InstallAsync(release, Platform.Identifier, operations.Transfer(), token, repository);
         notifications.Notify(repair ? "launcher.versions.repaired" : "launcher.versions.installed",
-            Loc.Get("launcher.versions.ready", new
-            {
-                version = release.Tag
-            }));
+            Loc.Get("launcher.versions.ready", new { version = release.Tag }));
         ReloadInstalled();
         return editor;
     }
@@ -184,26 +200,28 @@ sealed class EditorCoordinator(
     /// <summary>Reinstalls the exact release an editor came from, looked up in its own repository.</summary>
     public async Task RepairAsync(InstalledEditor editor, CancellationToken token)
     {
-        IReadOnlyList<EditorRelease> releases = await new GitHubReleasesService(http, store, editor.Repository).GetAsync(token);
-        EditorRelease release = releases.FirstOrDefault(release => release.Id == editor.ReleaseId && release.Tag == editor.Tag)
-                                ?? throw new InvalidOperationException(Loc.Get("launcher.errors.release_unavailable"));
+        IReadOnlyList<EditorRelease> releases =
+            await new GitHubReleasesService(http, store, editor.Repository).GetAsync(token);
+        EditorRelease release =
+            releases.FirstOrDefault(release => release.Id == editor.ReleaseId && release.Tag == editor.Tag)
+            ?? throw new InvalidOperationException(Loc.Get("launcher.errors.release_unavailable"));
         await InstallAsync(release, token, true, editor.Repository);
     }
 
     public async Task BuildMainAsync(CancellationToken token, string? repository = null)
     {
         operations.ImmediateProgress = true;
-        EditorInstallerService.SourceBuildResult result = await installer.InstallMainAsync(Platform.Identifier, operations.Transfer(), token, repository);
-        notifications.Notify(result.AlreadyInstalled ? "launcher.versions.main_current" : "launcher.versions.main_ready", result.Editor.ToString());
+        EditorInstallerService.SourceBuildResult result =
+            await installer.InstallMainAsync(Platform.Identifier, operations.Transfer(), token, repository);
+        notifications.Notify(
+            result.AlreadyInstalled ? "launcher.versions.main_current" : "launcher.versions.main_ready",
+            result.Editor.ToString());
     }
 
     public async Task UninstallAsync(InstalledEditor editor, CancellationToken token)
     {
         bool confirmed = await dialogs.ConfirmAsync(
-            Loc.Get("launcher.versions.uninstall_title", new
-            {
-                version = editor.Tag
-            }),
+            Loc.Get("launcher.versions.uninstall_title", new { version = editor.Tag }),
             "launcher.versions.uninstall_description",
             "launcher.versions.uninstall",
             token);
@@ -213,17 +231,16 @@ sealed class EditorCoordinator(
         }
 
         await Task.Run(() => installer.Uninstall(editor), token);
-        notifications.Notify("launcher.versions.uninstalled", Loc.Get("launcher.versions.uninstalled_description", new
-        {
-            version = editor.Tag
-        }));
+        notifications.Notify("launcher.versions.uninstalled",
+            Loc.Get("launcher.versions.uninstalled_description", new { version = editor.Tag }));
     }
 
     public void SetDefault(InstalledEditor editor, bool enabled)
     {
         store.Settings.DefaultEditorKey = enabled ? editor.Key : null;
         store.Save();
-        notifications.Notify("launcher.versions.default_updated", enabled ? editor.Tag : "launcher.versions.automatic_selection");
+        notifications.Notify("launcher.versions.default_updated",
+            enabled ? editor.Tag : "launcher.versions.automatic_selection");
     }
 
     public Task OpenInstallFolderAsync(CancellationToken token)
@@ -249,34 +266,32 @@ sealed class EditorCoordinator(
         }
 
         InstalledEditor? editor = FindInstalled(project.EditorKey);
-        if (editor == null && ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion version))
+        if (editor == null &&
+            ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion version))
         {
-            editor = _installed.FirstOrDefault(e => !e.IsMain && ProjectVersion.TryParse(e, out ProjectVersion v) && v.CompareTo(version) == 0);
+            editor = Installed.FirstOrDefault(e =>
+                !e.IsMain && ProjectVersion.TryParse(e, out ProjectVersion v) && v.CompareTo(version) == 0);
             if (editor == null)
             {
                 EditorRelease release = await FindReleaseAsync(version, token)
-                                        ?? throw new InvalidOperationException(Loc.Get("launcher.errors.no_matching_editor", new
-                                        {
-                                            version = version.ToString()
-                                        }));
+                                        ?? throw new InvalidOperationException(Loc.Get(
+                                            "launcher.errors.no_matching_editor",
+                                            new { version = version.ToString() }));
                 bool accepted = await dialogs.ConfirmAsync(
-                    Loc.Get("launcher.projects.install_editor_title", new
-                    {
-                        version = release.Tag
-                    }),
-                    Loc.Get("launcher.projects.install_editor_description", new
-                    {
-                        project = project.Name, version = release.Tag
-                    }),
+                    Loc.Get("launcher.projects.install_editor_title", new { version = release.Tag }),
+                    Loc.Get("launcher.projects.install_editor_description",
+                        new { project = project.Name, version = release.Tag }),
                     "launcher.projects.install_and_open",
                     token);
                 if (!accepted)
                 {
                     return;
                 }
+
                 editor = await InstallAsync(release, token);
             }
         }
+
         if (editor == null)
         {
             throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
@@ -287,22 +302,26 @@ sealed class EditorCoordinator(
             project.EditorKey = editor.Key;
             store.Save();
         }
+
         await LaunchAsync(editor, project, token);
     }
 
     /// <summary>The installable release for <paramref name="version" />, checking GitHub when the cached list has none.</summary>
     private async Task<EditorRelease?> FindReleaseAsync(ProjectVersion version, CancellationToken token)
     {
-        EditorRelease? Match() => _releases.FirstOrDefault(release => !release.Draft && release.AssetFor(Platform.Identifier) != null
-                                                                      && ProjectVersion.TryParse(release.Tag, out ProjectVersion v)
-                                                                      && v.CompareTo(version) == 0);
+        EditorRelease? Match() => Releases.FirstOrDefault(release => !release.Draft &&
+                                                                     release.AssetFor(Platform.Identifier) != null
+                                                                     && ProjectVersion.TryParse(release.Tag,
+                                                                         out ProjectVersion v)
+                                                                     && v.CompareTo(version) == 0);
 
-        if (Match() is {} cached)
+        if (Match() is { } cached)
         {
             return cached;
         }
+
         operations.Detail = "launcher.versions.checking_releases";
-        _releases = await github.GetAsync(token);
+        Releases = await github.GetAsync(token);
         return Match();
     }
 
@@ -327,7 +346,7 @@ sealed class EditorCoordinator(
         EditorConsoleSession session = EditorConsoleService.Start(installer.LaunchInfo(editor, project?.Path),
             store.Home, project?.Name ?? editor.Tag, editor.Tag);
         _editorSessions.Add(session);
-        _selectedEditorSession = session;
+        SelectedSession = session;
         SessionStarted?.Invoke(session);
         await session.WaitForStartAsync(token);
         if (project != null)
@@ -344,7 +363,8 @@ sealed class EditorCoordinator(
     ///     first; an older editor refuses the project. Both ask first. Unknown versions on either side open without
     ///     asking.
     /// </summary>
-    private async Task<bool> ConfirmProjectVersionAsync(Project project, InstalledEditor editor, CancellationToken token)
+    private async Task<bool> ConfirmProjectVersionAsync(Project project, InstalledEditor editor,
+        CancellationToken token)
     {
         if (!ProjectVersion.TryParse(LauncherStore.ReadProjectVersion(project.Path), out ProjectVersion saved)
             || !ProjectVersion.TryParse(editor, out ProjectVersion target)
@@ -353,19 +373,18 @@ sealed class EditorCoordinator(
             return true;
         }
 
-        object values = new
-        {
-            project = project.Name, saved = saved.ToString(), editor = target.ToString()
-        };
+        object values = new { project = project.Name, saved = saved.ToString(), editor = target.ToString() };
         bool upgrade = target.CompareTo(saved) > 0;
         // A clean git checkout already has a restore point: its last commit.
-        bool committed = upgrade && store.Settings.BackupBeforeUpgrade && await ProjectBackupService.IsCommittedInGitAsync(project.Path, token);
+        bool committed = upgrade && store.Settings.BackupBeforeUpgrade &&
+                         await ProjectBackupService.IsCommittedInGitAsync(project.Path, token);
         bool backUp = upgrade && store.Settings.BackupBeforeUpgrade && !committed;
         bool accepted = await dialogs.ConfirmAsync(
             Loc.Get(upgrade ? "launcher.projects.upgrade_title" : "launcher.projects.downgrade_title", values),
             Loc.Get(committed ? "launcher.projects.upgrade_git_description"
                 : backUp ? "launcher.projects.upgrade_backup_description"
-                : upgrade ? "launcher.projects.upgrade_description" : "launcher.projects.downgrade_description", values),
+                : upgrade ? "launcher.projects.upgrade_description"
+                : "launcher.projects.downgrade_description", values),
             upgrade ? "launcher.projects.upgrade" : "launcher.projects.open_anyway",
             token);
         return accepted && (!backUp || await BackUpBeforeUpgradeAsync(project, target, token));
@@ -375,14 +394,12 @@ sealed class EditorCoordinator(
     private async Task<bool> BackUpBeforeUpgradeAsync(Project project, ProjectVersion target, CancellationToken token)
     {
         string title = operations.Title;
-        operations.Title = Loc.Get("launcher.backups.creating", new
-        {
-            project = project.Name
-        });
+        operations.Title = Loc.Get("launcher.backups.creating", new { project = project.Name });
         operations.ImmediateProgress = true;
         try
         {
-            await backups.CreateAsync(project, BackupReason.PreUpgrade, target.ToString(), operations.Transfer(), token);
+            await backups.CreateAsync(project, BackupReason.PreUpgrade, target.ToString(), operations.Transfer(),
+                token);
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
@@ -390,10 +407,8 @@ sealed class EditorCoordinator(
             logError(error);
             return await dialogs.ConfirmAsync(
                 "launcher.backups.failed_title",
-                Loc.Get("launcher.backups.failed_description", new
-                {
-                    project = project.Name, error = error.Message.Split('\n', 2)[0]
-                }),
+                Loc.Get("launcher.backups.failed_description",
+                    new { project = project.Name, error = error.Message.Split('\n', 2)[0] }),
                 "launcher.backups.upgrade_without",
                 token);
         }
@@ -405,14 +420,8 @@ sealed class EditorCoordinator(
     }
 
     private Task<bool> ConfirmMissingSdkAsync(int sdk, CancellationToken token) => dialogs.ConfirmAsync(
-        Loc.Get("launcher.sdk.required_title", new
-        {
-            sdk
-        }),
-        Loc.Get("launcher.sdk.required_description", new
-        {
-            sdk
-        }),
+        Loc.Get("launcher.sdk.required_title", new { sdk }),
+        Loc.Get("launcher.sdk.required_description", new { sdk }),
         "launcher.sdk.open_anyway",
         token,
         $"https://dotnet.microsoft.com/download/dotnet/{sdk}.0");

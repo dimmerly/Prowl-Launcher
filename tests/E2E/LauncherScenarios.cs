@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -10,7 +9,7 @@ using static Prowl.Launcher.Test.E2E.UiDriver;
 
 namespace Prowl.Launcher.Test.E2E;
 
-static class LauncherScenarios
+internal static class LauncherScenarios
 {
     private static InstalledEditor? _editor;
     private static Project? _project;
@@ -31,6 +30,7 @@ static class LauncherScenarios
         {
             fixture.AddProject("News placement project");
         }
+
         if (scenario == "EditorUpdateIndicator")
         {
             _editor = await fixture.InstallEditor();
@@ -42,18 +42,17 @@ static class LauncherScenarios
                 Preview = true,
                 Assets =
                 [
-                    fixture.EditorRelease.Assets[0] with
-                    {
-                        Name = $"Prowl-v1.1.0-preview.1-{Platform.Identifier}.zip"
-                    }
+                    fixture.EditorRelease.Assets[0] with { Name = $"Prowl-v1.1.0-preview.1-{Platform.Identifier}.zip" }
                 ]
             });
         }
+
         if (scenario == "EnablePrereleases")
         {
             // Runs online so opting in can trigger the background check; keep the stable update from opening at startup.
             LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
         }
+
         if (scenario.StartsWith("Sample", StringComparison.Ordinal))
         {
             fixture.PublishSamples();
@@ -62,63 +61,77 @@ static class LauncherScenarios
             {
                 await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
             }
+
             if (scenario == "SampleUpdateAvailable")
             {
-                fixture.PublishSamples(newer: true);
+                fixture.PublishSamples(true);
             }
         }
+
         string[] installedScenarios =
         [
             "CreateProjectAndOpenIt", "RejectInvalidProjectName", "RejectExistingProjectFolder",
-            "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall", "ProjectVersionPrompts",
-            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure", "OpenProjectFromCommandLine", "LocateMovedProject"
+            "OpenPinnedProject", "ChooseProjectEditor", "RepairEditor", "CancelUninstall", "ConfirmUninstall",
+            "ProjectVersionPrompts",
+            "CorruptDownload", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure",
+            "OpenProjectFromCommandLine", "LocateMovedProject"
         ];
         if (installedScenarios.Contains(scenario))
         {
             _editor = await fixture.InstallEditor();
         }
+
         string[] projectScenarios =
         [
-            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts", "InstallMissingEditor", "LocateMovedProject",
+            "OpenPinnedProject", "RemoveProject", "FavoriteProject", "ChooseProjectEditor", "ProjectVersionPrompts",
+            "InstallMissingEditor", "LocateMovedProject",
             "MissingProject", "ConfirmUninstall", "CloseOnEditorLaunch", "EditorConsoleLoading", "EditorConsoleFailure"
         ];
         if (projectScenarios.Contains(scenario))
         {
             _project = fixture.AddProject("Alpha Game", _editor);
         }
+
         if (scenario == "SearchProjects")
         {
             fixture.AddProject("Alpha Game");
             fixture.AddProject("Beta Game");
         }
+
         if (scenario == "FavoriteProject")
         {
             fixture.AddProject("Beta Game");
         }
+
         if (scenario is "AddExistingProject" or "DuplicateProjectImport" or "OpenProjectFromCommandLine")
         {
             _project = fixture.AddProject("Imported Game");
             fixture.Store.Settings.Projects.Clear();
             fixture.Store.Save();
         }
+
         if (scenario == "MissingProject")
         {
             Directory.Delete(_project!.Path, true);
         }
+
         if (scenario == "LocateMovedProject")
         {
             Directory.CreateDirectory(Path.GetDirectoryName(MovedProjectPath(fixture))!);
             Directory.Move(_project!.Path, MovedProjectPath(fixture));
         }
+
         if (scenario == "RepairEditor" || scenario == "CorruptDownload")
         {
             File.WriteAllText(fixture.Store.ExecutablePath(_editor!), "broken editor");
         }
+
         if (scenario == "RejectExistingProjectFolder")
         {
             Directory.CreateDirectory(Path.Combine(fixture.Projects, "My Game"));
             File.WriteAllText(Path.Combine(fixture.Projects, "My Game", "keep.txt"), "Existing data");
         }
+
         if (scenario == "ChooseProjectEditor")
         {
             EditorRelease release = fixture.EditorRelease with
@@ -127,14 +140,14 @@ static class LauncherScenarios
                 Tag = "v1.1.0",
                 Assets =
                 [
-                    fixture.EditorRelease.Assets[0] with
-                    {
-                        Name = $"Prowl-v1.1.0-{Platform.Identifier}.zip"
-                    }
+                    fixture.EditorRelease.Assets[0] with { Name = $"Prowl-v1.1.0-{Platform.Identifier}.zip" }
                 ]
             };
-            _secondEditorKey = (await new EditorInstallerService(fixture.Http, fixture.Store).InstallAsync(release, Platform.Identifier)).Key;
+            _secondEditorKey =
+                (await new EditorInstallerService(fixture.Http, fixture.Store).InstallAsync(release,
+                    Platform.Identifier)).Key;
         }
+
         if (scenario == "CancelLauncherUninstall")
         {
             string installed = Path.Combine(fixture.Root, "installed", "Prowl.Launcher.exe");
@@ -143,10 +156,12 @@ static class LauncherScenarios
             fixture.Store.Settings.InstalledLauncherExecutable = installed;
             fixture.Store.Save();
         }
+
         if (scenario == "ManualReoffersDismissedUpdate")
         {
             LauncherUpdaterService.Dismiss(fixture.Store, fixture.Store.Settings.LauncherRepository, 201);
         }
+
         if (scenario == "CloseOnEditorLaunch")
         {
             fixture.Store.Settings.CloseOnEditorLaunch = true;
@@ -162,44 +177,56 @@ static class LauncherScenarios
             case "WindowIcon":
                 if (OperatingSystem.IsWindows())
                 {
-                    Check(WindowIconHandle(ui.Launcher) != 0, "The native launcher window must have an icon, including when launched through dotnet.");
+                    Check(WindowIconHandle(ui.Launcher) != 0,
+                        "The native launcher window must have an icon, including when launched through dotnet.");
                 }
+
                 break;
             case "ToastsAboveProgress":
                 using (CancellationTokenSource operation = new())
                 {
                     SetField(ui.Launcher.Operations, "_operation", operation);
                     ui.Launcher.Operations.ImmediateProgress = true;
-                    ui.Launcher.Notifications.Notify("Toast above progress", "Cancel remains accessible", ToastType.Error);
+                    ui.Launcher.Notifications.Notify("Toast above progress", "Cancel remains accessible",
+                        ToastType.Error);
                     await ui.Frame(2);
-                    ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
+                    ElementHandle progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle()
+                        .GetParentHandle();
                     float toastTop = progressToast.Data.Y;
-                    Check(toastTop + progressToast.Data.LayoutHeight < ui.Paper.Height - Constants.Layout.OperationHeight,
+                    Check(
+                        toastTop + progressToast.Data.LayoutHeight < ui.Paper.Height - Constants.Layout.OperationHeight,
                         "Toasts must stay above the entire progress panel.");
                     await ui.ClickText("Cancel");
                     Check(operation.IsCancellationRequested, "Cancel must remain clickable while a toast is visible.");
                     SetField(ui.Launcher.Operations, "_operation", null!);
                     await ui.Frame(2);
-                    progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle().GetParentHandle();
+                    progressToast = ui.Text("Toast above progress").GetParentHandle().GetParentHandle()
+                        .GetParentHandle();
                     Check(Math.Abs(progressToast.Data.Y - toastTop - Constants.Layout.OperationHeight) < 1,
                         "Toasts must return to the bottom when the progress panel closes.");
                 }
+
                 break;
             case "DismissToasts":
-                ui.Launcher.Notifications.Notify("Dismiss this toast", "First notification", ToastType.Success);
+                ui.Launcher.Notifications.Notify("Dismiss this toast", "First notification");
                 ui.Launcher.Notifications.Notify("Keep this toast", "Second notification", ToastType.Error);
                 await ui.Frame(2);
-                ElementHandle toastCard = ui.Text("Dismiss this toast").GetParentHandle().GetParentHandle().GetParentHandle();
-                ElementHandle closeToast = ui.Nodes().Single(n => n.GetParentHandle().GetParentHandle() == toastCard && n.Data.OnClick != null);
+                ElementHandle toastCard =
+                    ui.Text("Dismiss this toast").GetParentHandle().GetParentHandle().GetParentHandle();
+                ElementHandle closeToast = ui.Nodes().Single(n =>
+                    n.GetParentHandle().GetParentHandle() == toastCard && n.Data.OnClick != null);
                 await ui.Click(closeToast);
                 await ui.Frame(2);
-                Check(!ui.HasText("Dismiss this toast"), "Clicking the close target must dismiss its toast immediately.");
+                Check(!ui.HasText("Dismiss this toast"),
+                    "Clicking the close target must dismiss its toast immediately.");
                 Check(ui.HasText("Keep this toast"), "Dismissing one toast must preserve the other toast.");
-                await ui.Wait(() => !ui.HasText("Keep this toast"), "Undismissed toasts must still expire automatically.");
+                await ui.Wait(() => !ui.HasText("Keep this toast"),
+                    "Undismissed toasts must still expire automatically.");
                 break;
             case "ToastAutoSize":
                 string longVersion = "main-c988840fc2807f11e3cf1720f60490a1d9a01234";
-                string longMessage = string.Join(" ", Enumerable.Repeat("A longer notification must wrap within the window.", 12));
+                string longMessage = string.Join(" ",
+                    Enumerable.Repeat("A longer notification must wrap within the window.", 12));
                 ui.Launcher.Notifications.Notify("Short toast", "Done", ToastType.Error);
                 ui.Launcher.Notifications.Notify("Editor uninstalled", longVersion, ToastType.Error);
                 ui.Launcher.Notifications.Notify("Wrapping toast", longMessage, ToastType.Error);
@@ -211,24 +238,23 @@ static class LauncherScenarios
                     "Toast width must grow with its content.");
                 Check(wrappingCard.Data.LayoutHeight > versionCard.Data.LayoutHeight,
                     "Long messages must wrap and increase the card height.");
-                foreach (ElementHandle card in new[]
-                    {
-                        shortCard,
-                        versionCard,
-                        wrappingCard
-                    })
+                foreach (ElementHandle card in new[] { shortCard, versionCard, wrappingCard })
                 {
                     Check(card.Data.X >= 0 && card.Data.X + card.Data.LayoutWidth <= ui.Paper.Width,
                         "Toast cards must fit within the window.");
-                    Check(Math.Abs(card.Data.X + card.Data.LayoutWidth - shortCard.Data.X - shortCard.Data.LayoutWidth) < 1,
+                    Check(
+                        Math.Abs(card.Data.X + card.Data.LayoutWidth - shortCard.Data.X - shortCard.Data.LayoutWidth) <
+                        1,
                         "Toasts of different widths must share the same right edge.");
                 }
+
                 ElementHandle versionText = ui.Text(longVersion);
                 Check(versionText.Data.LayoutWidth >= ui.Paper.MeasureText(longVersion,
                         ui.Launcher.Appearance.Theme.Metrics.FontSizeSmall,
                         versionText.Data.Font).X - 1,
                     "The version identifier must fit fully within its text area.");
-                ElementHandle wrappingClose = ui.Nodes().Single(n => n.GetParentHandle() == wrappingCard && n.Data.OnClick != null);
+                ElementHandle wrappingClose =
+                    ui.Nodes().Single(n => n.GetParentHandle() == wrappingCard && n.Data.OnClick != null);
                 Check(wrappingClose.Data.X >= ui.Text(longMessage).Data.X + ui.Text(longMessage).Data.LayoutWidth,
                     "The close button must remain beside the wrapped text.");
                 await ui.Click(wrappingClose);
@@ -246,22 +272,27 @@ static class LauncherScenarios
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     File.Copy(file, destination);
                 }
-                NewsService localNews = new( f.Http, f.Store, f.Store.Settings.LauncherRepository,
-                    localNewsRoot );
+
+                NewsService localNews = new(f.Http, f.Store, f.Store.Settings.LauncherRepository,
+                    localNewsRoot);
                 SetField(ui.Launcher.News, "_newsRepository", f.Store.Settings.LauncherRepository);
                 SetField(ui.Launcher.News, "_news", localNews);
                 SetField(ui.Launcher.News, "_newsPosts", localNews.ReadCache());
                 await ui.Navigate("Projects");
-                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The local index should be readable while offline.");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"),
+                    "The local index should be readable while offline.");
                 Check(ui.Text("Markdown showcase (test post)").Data.Y > ui.Text("News placement project").Data.Y,
                     "News must appear below the project list.");
                 NewsImages thumbnails = GetField<NewsImages>(ui.Launcher.News, "_newsThumbnails");
-                await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(thumbnails, "_textures").Values.Any(texture => texture != null),
+                await ui.Wait(
+                    () => GetField<Dictionary<string, TextureTK?>>(thumbnails, "_textures").Values
+                        .Any(texture => texture != null),
                     "The optional thumbnail should load from the local news directory.");
                 await ui.Frame(3);
                 Check(ui.Text("Rendering notes (test post)").Data.Y > ui.Paper.Height - 220,
                     "The latest updates must remain at the bottom of the viewport.");
-                ElementHandle previewThumbnail = ui.Nodes().First(node => node.Data.LayoutWidth == 96 && node.Data.LayoutHeight == 88);
+                ElementHandle previewThumbnail =
+                    ui.Nodes().First(node => node.Data.LayoutWidth == 96 && node.Data.LayoutHeight == 88);
                 ElementHandle previewCard = previewThumbnail.GetParentHandle();
                 Check(Math.Abs(previewThumbnail.Data.X - previewCard.Data.X) <= 1
                       && Math.Abs(previewThumbnail.Data.Y - previewCard.Data.Y) <= 1,
@@ -269,11 +300,14 @@ static class LauncherScenarios
                 Check(ui.Text("Rendering notes (test post)").Data.X < ui.Text("Physics playground (test post)").Data.X
                     + previewCard.Data.LayoutWidth + 40,
                     "Text-only previews should use the space otherwise occupied by a thumbnail.");
-                Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - ui.Text("Physics playground (test post)").Data.Y) < 10,
+                Check(
+                    Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y -
+                             ui.Text("Physics playground (test post)").Data.Y) < 10,
                     "Latest updates should share a horizontal row.");
                 Check(GetField<float>(ui.Launcher, "_newsFooterHeight") <= 112,
                     "The footer must leave most of the page available for projects.");
-                ElementHandle firstPreview = ui.Text("Markdown showcase (test post)").GetParentHandle().GetParentHandle();
+                ElementHandle firstPreview =
+                    ui.Text("Markdown showcase (test post)").GetParentHandle().GetParentHandle();
                 ElementHandle lastPreview = ui.Text("Rendering notes (test post)").GetParentHandle().GetParentHandle();
                 ElementHandle previewRow = firstPreview.GetParentHandle();
                 float groupCenter = (firstPreview.Data.X + lastPreview.Data.X + lastPreview.Data.LayoutWidth) / 2;
@@ -283,27 +317,35 @@ static class LauncherScenarios
                 Check(!ui.Text("Newer posts").IsValid, "The first page must hide the newer arrow.");
                 Check(moreButton.Data.X - (lastPreview.Data.X + lastPreview.Data.LayoutWidth) >= 7,
                     "The paging arrows must have a visible gap from the rightmost news card.");
-                Check(ui.HasText(RelativeDate.Format(localNews.ReadCache()[0].Date)), "The preview must show a relative date.");
+                Check(ui.HasText(RelativeDate.Format(localNews.ReadCache()[0].Date)),
+                    "The preview must show a relative date.");
                 Check(ui.Text("Prowl team").Data.Y > ui.Text("Rendering notes (test post)").Data.Y,
                     "The author must appear below the title.");
                 ElementHandle bylineAuthor = ui.Text("Prowl team");
                 Check(Math.Abs(bylineAuthor.Data.Y + bylineAuthor.Data.LayoutHeight
                                - (lastPreview.Data.Y + lastPreview.Data.LayoutHeight - 12)) <= 1,
                     "The byline should use the bottom of the card's text area.");
-                ElementHandle bylineDate = ui.Nodes().First(node => node.Data.Paragraph == RelativeDate.Format(localNews.ReadCache()[2].Date));
+                ElementHandle bylineDate = ui.Nodes().First(node =>
+                    node.Data.Paragraph == RelativeDate.Format(localNews.ReadCache()[2].Date));
                 Check(bylineDate.Data.X > bylineAuthor.Data.X
                       && Math.Abs(bylineDate.Data.Y - bylineAuthor.Data.Y) <= 1,
                     "Author and date must share a line with the date on the right.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-news.png"));
-                Check(!ui.Text("Refresh").IsValid && !ui.Text("News").IsValid, "The footer must not need a heading or refresh control.");
-                await ui.Wait(() => !GetField<bool>(ui.Launcher.News, "_newsLoading"), "Local refresh should finish without a network request.");
+                Check(!ui.Text("Refresh").IsValid && !ui.Text("News").IsValid,
+                    "The footer must not need a heading or refresh control.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher.News, "_newsLoading"),
+                    "Local refresh should finish without a network request.");
                 await ui.ClickText("Markdown showcase (test post)");
                 await ui.Wait(() => ui.HasText("This is a test post"), "The local Markdown article should render.");
                 NewsImages images = GetField<NewsImages>(ui.Launcher.News, "_newsImages");
-                await ui.Wait(() => GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Count(texture => texture != null) == 2,
+                await ui.Wait(
+                    () => GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values
+                        .Count(texture => texture != null) == 2,
                     "Both relative local screenshots should become real textures.");
-                Check(GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values.Where(texture => texture != null)
-                    .All(texture => texture!.Width > 0 && texture.Height > 0), "Decoded screenshots must have valid dimensions.");
+                Check(GetField<Dictionary<string, TextureTK?>>(images, "_textures").Values
+                        .Where(texture => texture != null)
+                        .All(texture => texture!.Width > 0 && texture.Height > 0),
+                    "Decoded screenshots must have valid dimensions.");
                 await ui.Frame(3);
                 AssertNewsDialogCentered(ui);
                 Check(!ui.HasText("A little README fanciness"), "The article must omit its leading title.");
@@ -311,36 +353,43 @@ static class LauncherScenarios
                                               && node.Data.Paragraph == "Prowl team"),
                     "The dialog body must not repeat the author.");
                 Check(ui.Nodes().Count(node => node.Data.Paragraph == "Markdown showcase (test post)"
-                                               && node.GetParentHandle().GetParentHandle().Data.Layer > Layer.Overlay) == 1,
+                                               && node.GetParentHandle().GetParentHandle().Data.Layer >
+                                               Layer.Overlay) == 1,
                     "The title must appear once in the dialog header.");
                 await ui.Resize(1000, 850);
                 AssertNewsDialogCentered(ui);
                 await ui.Resize(1200, 1100);
                 ui.SaveScreenshot(Path.Combine(f.Root, "news-article.png"));
                 await ui.ClickText("Close");
-                Check(!Modal.IsOpen && ui.HasText("News placement project"), "Closing an article must leave the project list available.");
-                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "Back should return to the news cards.");
+                Check(!Modal.IsOpen && ui.HasText("News placement project"),
+                    "Closing an article must leave the project list available.");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"),
+                    "Back should return to the news cards.");
                 NewsPost latest = localNews.ReadCache()[0];
                 List<NewsPost> archivePosts = [latest];
                 for (int i = 1; i <= 4; i++)
                 {
-                    NewsPost archived = new( $"archive-{i}.md", $"Archived update {i}", latest.Date.AddDays(-i) );
+                    NewsPost archived = new($"archive-{i}.md", $"Archived update {i}", latest.Date.AddDays(-i));
                     archivePosts.Add(archived);
-                    await File.WriteAllTextAsync(Path.Combine(localNewsRoot, archived.File), "# Archived showcase " + i + "\n\nArchived content " + i);
+                    await File.WriteAllTextAsync(Path.Combine(localNewsRoot, archived.File),
+                        "# Archived showcase " + i + "\n\nArchived content " + i);
                 }
+
                 JsonFile.Write(Path.Combine(localNewsRoot, "index.json"), archivePosts);
                 await ui.Wait(() => ui.HasText("Archived update 2"), "Local index edits should appear automatically.");
                 await ui.Frame(3);
                 Check(!ui.HasText("Archived update 3") && !ui.HasText("Archived update 4"),
                     "The footer should show only the three latest posts.");
-                await ui.Wait(() => !ui.Text("Offline").IsValid, "The startup toast must clear the archive link before clicking.");
+                await ui.Wait(() => !ui.Text("Offline").IsValid,
+                    "The startup toast must clear the archive link before clicking.");
                 await ui.ClickText("Older posts");
                 Check(GetField<long>(ui.Launcher.News, "_newsSlideStarted") != 0,
                     "Paging must start a slide transition.");
                 await ui.Wait(() => ui.HasText("Archived update 4"), "The next page must show older posts.");
                 await ui.Frame();
                 ui.SaveScreenshot(Path.Combine(f.Root, "news-sliding.png"));
-                await ui.Wait(() => !ui.HasText("Markdown showcase (test post)"), "The outgoing page must leave after the slide.");
+                await ui.Wait(() => !ui.HasText("Markdown showcase (test post)"),
+                    "The outgoing page must leave after the slide.");
                 Check(!ui.Text("Older posts").IsValid && ui.Text("Newer posts").IsValid,
                     "The last page must show only the newer arrow.");
                 ElementHandle olderPreview = ui.Text("Archived update 4").GetParentHandle().GetParentHandle();
@@ -356,15 +405,19 @@ static class LauncherScenarios
                 await ui.Frame(3);
                 AssertNewsDialogCentered(ui);
                 await ui.ClickText("Close");
-                Check(!Modal.IsOpen && ui.HasText("Archived update 4"), "Closing an article must preserve the current page.");
+                Check(!Modal.IsOpen && ui.HasText("Archived update 4"),
+                    "Closing an article must preserve the current page.");
                 await ui.ClickText("Newer posts");
-                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"), "The previous arrow must restore the latest posts.");
-                await ui.Wait(() => !ui.HasText("Archived update 4"), "The reverse slide must finish on the latest page.");
+                await ui.Wait(() => ui.HasText("Markdown showcase (test post)"),
+                    "The previous arrow must restore the latest posts.");
+                await ui.Wait(() => !ui.HasText("Archived update 4"),
+                    "The reverse slide must finish on the latest page.");
                 float footerY = ui.Text("Markdown showcase (test post)").Data.Y;
                 for (int i = 0; i < 10; i++)
                 {
                     f.AddProject("Overflow project " + i);
                 }
+
                 await ui.Frame(3);
                 Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
                     "Adding projects must not move the news footer.");
@@ -375,11 +428,9 @@ static class LauncherScenarios
                 Check(Math.Abs(ui.Text("Markdown showcase (test post)").Data.Y - footerY) < 1,
                     "Scrolling projects must leave news in place.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-scrolled-news.png"));
-                JsonFile.Write(Path.Combine(localNewsRoot, "index.json"), new[]
-                {
-                    latest
-                });
-                await ui.Wait(() => !ui.HasText("Archived update 1"), "The local index should update to a single post.");
+                JsonFile.Write(Path.Combine(localNewsRoot, "index.json"), new[] { latest });
+                await ui.Wait(() => !ui.HasText("Archived update 1"),
+                    "The local index should update to a single post.");
                 await ui.Frame(3);
                 Check(!ui.Text("Older posts").IsValid && !ui.Text("Newer posts").IsValid,
                     "A single post must show no paging arrows.");
@@ -391,62 +442,84 @@ static class LauncherScenarios
                 ui.SaveScreenshot(Path.Combine(f.Root, "news-single-post.png"));
                 break;
             case "EditorUpdateIndicator":
-                bool HasVersionIndicator() => ui.Nodes().Any(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10
-                                                                                                 && node.GetParentHandle().IsValid && node.GetParentHandle().Data.X == 8
-                                                                                                 && node.GetParentHandle().Data.Y > 130 && node.GetParentHandle().Data.Y < 150);
+
+                bool HasVersionIndicator() => ui.Nodes().Any(node => node.Data.LayoutWidth == 10 &&
+                                                                     node.Data.LayoutHeight == 10
+                                                                     && node.GetParentHandle().IsValid &&
+                                                                     node.GetParentHandle().Data.X == 8
+                                                                     && node.GetParentHandle().Data.Y > 130 &&
+                                                                     node.GetParentHandle().Data.Y < 150);
+
                 Check(!HasVersionIndicator(), "The indicator should stay hidden before a newer release is known.");
                 await ui.Navigate("Versions");
                 await ui.ClickText("Refresh");
                 await ui.Wait(() => !ui.Launcher.Operations.Busy, "The release refresh should finish.");
                 Check(!HasVersionIndicator(), "Prereleases are off by default, so a preview-only update stays hidden.");
                 await ui.ClickText("Include prereleases");
-                await ui.Wait(() => ui.HasText("Include prereleases?"), "Enabling prereleases must warn about project migration first.");
+                await ui.Wait(() => ui.HasText("Include prereleases?"),
+                    "Enabling prereleases must warn about project migration first.");
                 await ui.ClickText("Cancel");
                 await ui.Wait(() => !ui.HasText("Include prereleases?"), "Cancelling must close the warning.");
                 Check(!HasVersionIndicator(), "Cancelling the warning must keep prereleases off.");
                 await ui.ClickText("Include prereleases");
                 await ui.ClickText("I understand");
-                await ui.Wait(HasVersionIndicator, "A newer preview should show the Versions indicator when previews are included.");
-                ElementHandle indicator = ui.Nodes().First(node => node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
+                await ui.Wait(HasVersionIndicator,
+                    "A newer preview should show the Versions indicator when previews are included.");
+                ElementHandle indicator = ui.Nodes().First(node =>
+                    node.Data.LayoutWidth == 10 && node.Data.LayoutHeight == 10 && node.Data.X < 72);
                 ElementHandle nav = indicator.GetParentHandle();
-                Check(indicator.Data.X > nav.Data.X + nav.Data.LayoutWidth / 2 && indicator.Data.Y < nav.Data.Y + nav.Data.LayoutHeight / 2,
+                Check(
+                    indicator.Data.X > nav.Data.X + nav.Data.LayoutWidth / 2 &&
+                    indicator.Data.Y < nav.Data.Y + nav.Data.LayoutHeight / 2,
                     "The update dot should sit in the top-right corner of the Versions tab.");
                 Check(indicator.Data.OnClick == null, "The update dot must leave navigation clicks to its parent tab.");
                 await ui.ClickText("Include prereleases");
                 await ui.Wait(() => !HasVersionIndicator(), "Stable-only selection must hide a preview-only update.");
                 await ui.ClickText("Include prereleases");
                 await ui.ClickText("I understand");
-                await ui.Wait(HasVersionIndicator, "Including previews again should warn again and restore the indicator.");
+                await ui.Wait(HasVersionIndicator,
+                    "Including previews again should warn again and restore the indicator.");
                 await ui.ClickText("Install");
-                await ui.Wait(() => f.Store.InstalledEditors().Count == 2, "The preview should install through the normal Versions flow.");
-                await ui.Wait(() => !HasVersionIndicator(), "Installing the newest eligible version should clear the indicator.");
+                await ui.Wait(() => f.Store.InstalledEditors().Count == 2,
+                    "The preview should install through the normal Versions flow.");
+                await ui.Wait(() => !HasVersionIndicator(),
+                    "Installing the newest eligible version should clear the indicator.");
                 break;
             case "SampleDownloadOnce":
                 await ui.Navigate("Samples");
                 f.DelaySampleDownload = true;
                 await ui.ClickText("Hello Prowl");
-                await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"), "Sample download should show progress in the bottom bar.");
+                await ui.Wait(() => ui.HasText("Downloading samples") && ui.HasText("Cancel"),
+                    "Sample download should show progress in the bottom bar.");
                 Check(ui.Text("Downloading samples").Data.Y > ui.Paper.Height / 2f
-                      && ui.Text("Downloading samples").Data.Y > ui.Text("Hello Prowl").Data.Y, "Download progress must appear in the bottom bar, below sample cards.");
-                await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")), "The selected sample should launch after the shared download.");
+                      && ui.Text("Downloading samples").Data.Y > ui.Text("Hello Prowl").Data.Y,
+                    "Download progress must appear in the bottom bar, below sample cards.");
+                await ui.Wait(() => File.Exists(Path.Combine(f.Home, "sample-launch.log")),
+                    "The selected sample should launch after the shared download.");
                 await ui.Wait(() => !ui.Launcher.Operations.Busy, "Sample startup should finish.");
                 await ui.ClickText("Physics Showcase");
-                await ui.Wait(() => File.ReadAllLines(Path.Combine(f.Home, "sample-launch.log")).Length == 2, "A second sample should use the shared local runtime.");
+                await ui.Wait(() => File.ReadAllLines(Path.Combine(f.Home, "sample-launch.log")).Length == 2,
+                    "A second sample should use the shared local runtime.");
                 Check(f.SampleDownloads == 1, "All sample cards must share one download.");
-                Check(!ui.HasText("Update samples"), "The update button should stay hidden when the local bundle is latest.");
+                Check(!ui.HasText("Update samples"),
+                    "The update button should stay hidden when the local bundle is latest.");
                 break;
             case "SampleUpdateAvailable":
                 await ui.Navigate("Samples");
-                await ui.Wait(() => ui.HasText("Update samples"), "A newer remote bundle should expose the update button.");
+                await ui.Wait(() => ui.HasText("Update samples"),
+                    "A newer remote bundle should expose the update button.");
                 f.DelaySampleDownload = true;
                 await ui.ClickText("Update samples");
-                await ui.Wait(() => ui.HasText("Downloading samples"), "Updating samples should expose download progress.");
-                await ui.Wait(() => ui.HasText("Samples updated") && !ui.HasText("Update samples"), "The update button should disappear after a successful refresh.");
+                await ui.Wait(() => ui.HasText("Downloading samples"),
+                    "Updating samples should expose download progress.");
+                await ui.Wait(() => ui.HasText("Samples updated") && !ui.HasText("Update samples"),
+                    "The update button should disappear after a successful refresh.");
                 Check(f.SampleDownloads == 2, "Updating should download one replacement bundle.");
                 break;
             case "SampleAlreadyLatest":
                 await ui.Navigate("Samples");
-                await ui.Wait(() => !GetField<bool>(ui.Launcher.Samples, "_sampleUpdateChecking"), "The background sample check should finish.");
+                await ui.Wait(() => !GetField<bool>(ui.Launcher.Samples, "_sampleUpdateChecking"),
+                    "The background sample check should finish.");
                 await ui.Frame(10);
                 Check(!ui.HasText("Update samples"), "The update button must be hidden without a newer bundle.");
                 Check(f.SampleDownloads == 1, "Checking for updates must not download anything.");
@@ -470,7 +543,8 @@ static class LauncherScenarios
                 await ui.ClickText("New project…");
                 await ui.Wait(() => ui.HasText("Name:"), "New project form should open.");
                 await ui.ClickText("Cancel");
-                Check(f.Saved().Projects.Count == 0 && !Directory.EnumerateDirectories(f.Projects).Any(), "Cancel must create no project files or records.");
+                Check(f.Saved().Projects.Count == 0 && !Directory.EnumerateDirectories(f.Projects).Any(),
+                    "Cancel must create no project files or records.");
                 break;
             case "CreateProjectAndOpenIt":
             case "RejectInvalidProjectName":
@@ -481,23 +555,31 @@ static class LauncherScenarios
                 await ui.ClickText("Create & open");
                 if (scenario == "CreateProjectAndOpenIt")
                 {
-                    await ui.Wait(() => File.Exists(f.LaunchRecord), "Creating a project should start the selected editor.");
+                    await ui.Wait(() => File.Exists(f.LaunchRecord),
+                        "Creating a project should start the selected editor.");
                     Project created = f.Saved().Projects.Single();
-                    Check(created.Name == "My Game" && created.EditorKey == _editor!.Key, "The new project must be saved with the selected editor.");
+                    Check(created.Name == "My Game" && created.EditorKey == _editor!.Key,
+                        "The new project must be saved with the selected editor.");
                     Check(created.LastOpened != default, "Launching must record the last-opened time.");
-                    Check(File.Exists(Path.Combine(created.Path, "My Game.prowl")), "The editor project marker must exist.");
+                    Check(File.Exists(Path.Combine(created.Path, "My Game.prowl")),
+                        "The editor project marker must exist.");
                     AssertLaunch(f, created.Path);
                 }
                 else
                 {
-                    string error = scenario == "RejectInvalidProjectName" ? "Choose a valid project folder name." : "A folder with this project name already exists.";
+                    string error = scenario == "RejectInvalidProjectName"
+                        ? "Choose a valid project folder name."
+                        : "A folder with this project name already exists.";
                     await ui.Wait(() => ui.HasText(error), "The form should explain why project creation failed.");
-                    Check(f.Saved().Projects.Count == 0 && !File.Exists(f.LaunchRecord), "Invalid creation must not register or launch a project.");
+                    Check(f.Saved().Projects.Count == 0 && !File.Exists(f.LaunchRecord),
+                        "Invalid creation must not register or launch a project.");
                     if (scenario == "RejectExistingProjectFolder")
                     {
-                        Check(File.ReadAllText(Path.Combine(f.Projects, "My Game", "keep.txt")) == "Existing data", "Existing project data must not be overwritten.");
+                        Check(File.ReadAllText(Path.Combine(f.Projects, "My Game", "keep.txt")) == "Existing data",
+                            "Existing project data must not be overwritten.");
                     }
                 }
+
                 break;
             case "OpenPinnedProject":
             case "CloseOnEditorLaunch":
@@ -505,12 +587,15 @@ static class LauncherScenarios
                 {
                     ui.ExpectClose();
                 }
+
                 await ui.ClickText("Open");
                 if (scenario == "CloseOnEditorLaunch")
                 {
-                    await ui.Wait(() => false, "Close-on-launch should close the window after starting the editor.", 15);
+                    await ui.Wait(() => false, "Close-on-launch should close the window after starting the editor.",
+                        15);
                     return;
                 }
+
                 await ui.Wait(() => File.Exists(f.LaunchRecord), "Opening a project should start its pinned editor.");
                 AssertLaunch(f, _project!.Path);
                 Check(f.Saved().Projects.Single().LastOpened != default, "Opening must persist its timestamp.");
@@ -527,28 +612,33 @@ static class LauncherScenarios
                 Check(!ui.HasText("Search projects…") && !ui.HasText("Working"),
                     "The loading view must occupy the window without the project sidebar or progress panel.");
                 await ui.ClickText("Show logs");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Loading models"), "Show logs should open a live console dialog.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Loading models"),
+                    "Show logs should open a live console dialog.");
                 await ui.Frame(2);
                 ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-dialog.png"));
                 await ui.ClickText("Close");
                 await ui.Wait(() => !Modal.IsOpen && !ui.HasText("Search output…") && ui.HasText("Loading models"),
                     "Closing the dialog should restore the loading screen with its live readout.");
-                await ui.Wait(() => ui.HasText("Search projects…") && ui.HasText("Logs") && !ui.HasText("Opening project…"),
+                await ui.Wait(
+                    () => ui.HasText("Search projects…") && ui.HasText("Logs") && !ui.HasText("Opening project…"),
                     "Readiness should close the loading view and return to Projects with a Logs button.");
                 Check(ui.Text("Logs").Data.X < ui.Text("Search projects…").Data.X,
                     "The Logs button must appear to the left of project search.");
                 await ui.Frame(2);
                 ui.SaveScreenshot(Path.Combine(f.Root, "projects-with-logs.png"));
-                Check(!Directory.Exists(Path.Combine(f.Home, "EditorLogs")), "Capturing logs must not create an EditorLogs folder.");
+                Check(!Directory.Exists(Path.Combine(f.Home, "EditorLogs")),
+                    "Capturing logs must not create an EditorLogs folder.");
                 await ui.ClickText("Logs");
                 await ui.ClickText("Warnings and errors");
                 Check(!ui.HasText("Loading models"), "The problem filter must hide regular output.");
                 Check(ui.HasText("missing material"), "The problem filter must retain stderr warnings.");
                 await ui.ClickText("All output");
-                await ui.Wait(() => ui.HasText("Final editor output"), "Exit should retain the final output in memory.");
+                await ui.Wait(() => ui.HasText("Final editor output"),
+                    "Exit should retain the final output in memory.");
                 await ui.ClickText("Close");
                 await ui.ClickText("Logs");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Final editor output"), "The console dialog should retain its session after leaving it.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Final editor output"),
+                    "The console dialog should retain its session after leaving it.");
                 break;
             case "EditorConsoleFailure":
                 await ui.ClickText("Open");
@@ -561,11 +651,14 @@ static class LauncherScenarios
                 await ui.ClickText("Back");
                 await ui.ClickText("Open");
                 await ui.Wait(() => ui.Launcher.Editors.Sessions.Count == 2
-                                    && ui.HasText("Exit code: 7"), "A second launch should retain both failed sessions.");
+                                    && ui.HasText("Exit code: 7"),
+                    "A second launch should retain both failed sessions.");
                 await ui.ClickText("Show logs");
                 List<EditorConsoleSession> sessions = ui.Launcher.Editors.Sessions.ToList();
+
                 string SessionLabel(EditorConsoleSession item) =>
                     $"{sessions.IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+
                 await ui.ClickText(SessionLabel(sessions[1]));
                 await ui.Frame(2);
                 ElementHandle firstOption = ui.Text(SessionLabel(sessions[0]));
@@ -574,15 +667,20 @@ static class LauncherScenarios
                 {
                     menuLayer = Math.Max(menuLayer, parent.Data.Layer);
                 }
+
                 int dialogLayer = 0;
-                for (ElementHandle parent = ui.Text("Search output…"); parent.IsValid; parent = parent.GetParentHandle())
+                for (ElementHandle parent = ui.Text("Search output…");
+                     parent.IsValid;
+                     parent = parent.GetParentHandle())
                 {
                     dialogLayer = Math.Max(dialogLayer, parent.Data.Layer);
                 }
+
                 Check(menuLayer > dialogLayer, "The session menu must render above the dialog and search field.");
                 ui.SaveScreenshot(Path.Combine(f.Root, "editor-console-session-menu.png"));
                 await ui.Click(firstOption);
-                await ui.Wait(() => GetField<EditorConsoleSession>(ui.Launcher.Logs, "_selectedLogSession") == sessions[0],
+                await ui.Wait(
+                    () => GetField<EditorConsoleSession>(ui.Launcher.Logs, "_selectedLogSession") == sessions[0],
                     "Session menu choices must receive clicks above the search field.");
                 Check(ui.Launcher.Editors.SelectedSession == sessions[1],
                     "Browsing older logs must preserve the current launch session.");
@@ -590,31 +688,38 @@ static class LauncherScenarios
             case "RemoveProject":
                 await ui.ClickText("Remove");
                 await ui.Wait(() => f.Saved().Projects.Count == 0, "Remove should forget the project.");
-                Check(File.ReadAllText(Path.Combine(_project!.Path, "Assets", "keep.txt")) == "User project data", "Remove must preserve all project files.");
+                Check(File.ReadAllText(Path.Combine(_project!.Path, "Assets", "keep.txt")) == "User project data",
+                    "Remove must preserve all project files.");
                 break;
             case "SearchProjects":
                 // Empty text fields render their placeholder as an ordinary text node.
                 await ui.ReplaceText("Search projects…", "alpha");
-                await ui.Wait(() => ui.HasText("Alpha Game") && !ui.HasText("Beta Game"), "Search should filter by project name without changing saved projects.");
+                await ui.Wait(() => ui.HasText("Alpha Game") && !ui.HasText("Beta Game"),
+                    "Search should filter by project name without changing saved projects.");
                 Check(f.Saved().Projects.Count == 2, "Search must not remove hidden projects.");
                 await ui.ReplaceText("alpha", "no matching game");
-                await ui.Wait(() => ui.HasText("No matching projects"), "Unmatched search should explain the empty result.");
+                await ui.Wait(() => ui.HasText("No matching projects"),
+                    "Unmatched search should explain the empty result.");
                 break;
             case "FavoriteProject":
                 await ui.Click(ui.Text("Beta Game"), PaperMouseBtn.Right);
                 await ui.ClickText("Favourite");
-                await ui.Wait(() => f.Saved().Projects.Single(p => p.Name == "Beta Game").Favorite, "Favourite must persist.");
-                Check(ui.Text("Beta Game").Data.Y < ui.Text("Alpha Game").Data.Y, "Favourites should appear above ordinary projects.");
+                await ui.Wait(() => f.Saved().Projects.Single(p => p.Name == "Beta Game").Favorite,
+                    "Favourite must persist.");
+                Check(ui.Text("Beta Game").Data.Y < ui.Text("Alpha Game").Data.Y,
+                    "Favourites should appear above ordinary projects.");
                 break;
             case "ChooseProjectEditor":
                 await ui.ClickText("v1.0.0");
                 await ui.ClickText("v1.1.0");
-                await ui.Wait(() => f.Saved().Projects.Single().EditorKey == _secondEditorKey, "Choosing an editor should persist the project pin.");
+                await ui.Wait(() => f.Saved().Projects.Single().EditorKey == _secondEditorKey,
+                    "Choosing an editor should persist the project pin.");
                 break;
             case "ProjectVersionPrompts":
                 SetProjectVersion(_project!, "2.0");
                 await ui.ClickText("Open");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Open in an older editor?"), "A newer project should warn before opening.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Open in an older editor?"),
+                    "A newer project should warn before opening.");
                 Check(ui.HasText("Prowl 2.0, which is newer than 1.0"), "The warning must name both versions.");
                 await ui.ClickText("Cancel");
                 await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Cancelling should end the launch.");
@@ -622,7 +727,8 @@ static class LauncherScenarios
 
                 SetProjectVersion(_project!, "1.0-preview.4");
                 await ui.ClickText("Open");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Upgrade Alpha Game?"), "An older project should ask before upgrading.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Upgrade Alpha Game?"),
+                    "An older project should ask before upgrading.");
                 await ui.ClickText("Cancel");
                 await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Cancelling should end the launch.");
                 Check(!File.Exists(f.LaunchRecord), "Declining the upgrade must not start the editor.");
@@ -634,22 +740,28 @@ static class LauncherScenarios
                 break;
             case "InstallMissingEditor":
                 await ui.ClickText("Open");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Install v1.0.0?"), "A project without its editor should offer to install it.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Install v1.0.0?"),
+                    "A project without its editor should offer to install it.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy, "Declining should end the operation.");
-                Check(f.Store.InstalledEditors().Count == 0 && !File.Exists(f.LaunchRecord), "Declining must not install or launch anything.");
+                await ui.Wait(() => !Modal.IsOpen && !ui.Launcher.Operations.Busy,
+                    "Declining should end the operation.");
+                Check(f.Store.InstalledEditors().Count == 0 && !File.Exists(f.LaunchRecord),
+                    "Declining must not install or launch anything.");
 
                 await ui.ClickText("Open");
                 await ui.ClickText("Install & open");
-                await ui.Wait(() => File.Exists(f.LaunchRecord), "Accepting should install the editor and open the project.");
+                await ui.Wait(() => File.Exists(f.LaunchRecord),
+                    "Accepting should install the editor and open the project.");
                 InstalledEditor installed = f.Store.InstalledEditors().Single();
                 Check(installed.Tag == "v1.0.0", "The release matching the project's version must be installed.");
-                Check(f.Saved().Projects.Single().EditorKey == installed.Key, "The project must be pinned to the installed editor.");
+                Check(f.Saved().Projects.Single().EditorKey == installed.Key,
+                    "The project must be pinned to the installed editor.");
                 AssertLaunch(f, _project!.Path);
                 break;
             case "MissingProject":
                 Check(ui.HasText("Folder unavailable"), "Missing projects should be clearly marked.");
-                Check(ui.HasText("Locate…"), "Missing projects should offer to locate their folder instead of opening.");
+                Check(ui.HasText("Locate…"),
+                    "Missing projects should offer to locate their folder instead of opening.");
                 Check(!File.Exists(f.LaunchRecord), "Unavailable projects must not start an editor.");
                 break;
             case "LocateMovedProject":
@@ -661,7 +773,8 @@ static class LauncherScenarios
                 await ui.Wait(() => FileSystemHelper.PathsEqual(f.Saved().Projects.Single().Path, MovedProjectPath(f)),
                     "Locating should save the project's new folder.");
                 Check(f.Saved().Projects.Single().EditorKey == _editor!.Key, "The project must keep its editor.");
-                await ui.Wait(() => !ui.HasText("Folder unavailable") && !ui.HasText("Locate…"), "The project card should be available again.");
+                await ui.Wait(() => !ui.HasText("Folder unavailable") && !ui.HasText("Locate…"),
+                    "The project card should be available again.");
                 await ui.ClickText("Open");
                 await ui.Wait(() => File.Exists(f.LaunchRecord), "The located project should open.");
                 AssertLaunch(f, MovedProjectPath(f));
@@ -681,15 +794,21 @@ static class LauncherScenarios
                     await ui.Wait(() => ui.HasText("Folder:"), "The folder picker should open.");
                     await ui.FillBesideLabel("Folder:", _project!.Path);
                     await ui.ClickText("Select Folder");
-                    await ui.Wait(() => !Modal.IsOpen && ui.HasText("Imported Game"), "Choosing a folder should add its project card.");
+                    await ui.Wait(() => !Modal.IsOpen && ui.HasText("Imported Game"),
+                        "Choosing a folder should add its project card.");
                 }
-                Check(f.Saved().Projects.Single().Path == _project!.Path, "Importing the same folder twice must retain one project record.");
-                Check(File.ReadAllText(Path.Combine(_project.Path, "Assets", "keep.txt")) == "User project data", "Import must preserve existing files.");
+
+                Check(f.Saved().Projects.Single().Path == _project!.Path,
+                    "Importing the same folder twice must retain one project record.");
+                Check(File.ReadAllText(Path.Combine(_project.Path, "Assets", "keep.txt")) == "User project data",
+                    "Import must preserve existing files.");
                 break;
             case "OpenProjectFromCommandLine":
-                await ui.Wait(() => File.Exists(f.LaunchRecord), "A project passed on the command line should open in its editor.");
+                await ui.Wait(() => File.Exists(f.LaunchRecord),
+                    "A project passed on the command line should open in its editor.");
                 Project opened = f.Saved().Projects.Single();
-                Check(FileSystemHelper.PathsEqual(opened.Path, _project!.Path), "The project must be added to the list.");
+                Check(FileSystemHelper.PathsEqual(opened.Path, _project!.Path),
+                    "The project must be added to the list.");
                 Check(opened.EditorKey == _editor!.Key, "The project must use the editor for its version.");
                 AssertLaunch(f, _project.Path);
                 break;
@@ -698,9 +817,12 @@ static class LauncherScenarios
                 // Refresh uses the deterministic HTTP catalog rather than the public network.
                 await ui.ClickText("Refresh");
                 await ui.ClickText("Install");
-                await ui.Wait(() => f.Store.InstalledEditors().Count == 1, "Install should register a verified editor.");
-                Check(f.Saved().DefaultEditorKey == f.Store.InstalledEditors().Single().Key, "The first installed editor should become the default.");
-                Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(), "Successful installation must clean up staging files.");
+                await ui.Wait(() => f.Store.InstalledEditors().Count == 1,
+                    "Install should register a verified editor.");
+                Check(f.Saved().DefaultEditorKey == f.Store.InstalledEditors().Single().Key,
+                    "The first installed editor should become the default.");
+                Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(),
+                    "Successful installation must clean up staging files.");
                 break;
             case "RepairEditor":
             case "CorruptDownload":
@@ -711,14 +833,19 @@ static class LauncherScenarios
                 if (scenario == "RepairEditor")
                 {
                     await ui.Wait(() => ui.HasText("Editor repaired"), "Repair should report success.");
-                    Check(new FileInfo(f.Store.ExecutablePath(_editor!)).Length > 100, "Repair should restore the executable.");
+                    Check(new FileInfo(f.Store.ExecutablePath(_editor!)).Length > 100,
+                        "Repair should restore the executable.");
                 }
                 else
                 {
-                    await ui.Wait(() => ui.HasText("SHA-256 check"), "Corrupt downloads should show a verification error.");
-                    Check(File.ReadAllText(f.Store.ExecutablePath(_editor!)) == "broken editor", "Failed repair must preserve the previous installation.");
-                    Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(), "Failed download should clean up staging files.");
+                    await ui.Wait(() => ui.HasText("SHA-256 check"),
+                        "Corrupt downloads should show a verification error.");
+                    Check(File.ReadAllText(f.Store.ExecutablePath(_editor!)) == "broken editor",
+                        "Failed repair must preserve the previous installation.");
+                    Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(),
+                        "Failed download should clean up staging files.");
                 }
+
                 break;
             case "CancelUninstall":
             case "ConfirmUninstall":
@@ -737,10 +864,14 @@ static class LauncherScenarios
                 {
                     await ui.Wait(() => f.Store.InstalledEditors().Count == 0 && f.Saved().DefaultEditorKey == null,
                         "Confirmed uninstall should remove the editor and save its default selection.");
-                    Check(f.Saved().DefaultEditorKey == null, "Uninstalling the default editor must clear the default.");
-                    Check(f.Saved().Projects.Single().EditorKey == _editor!.Key, "Uninstall must retain project pins for reinstalling later.");
-                    Check(File.Exists(Path.Combine(_project!.Path, "Assets", "keep.txt")), "Uninstall must preserve projects.");
+                    Check(f.Saved().DefaultEditorKey == null,
+                        "Uninstalling the default editor must clear the default.");
+                    Check(f.Saved().Projects.Single().EditorKey == _editor!.Key,
+                        "Uninstall must retain project pins for reinstalling later.");
+                    Check(File.Exists(Path.Combine(_project!.Path, "Assets", "keep.txt")),
+                        "Uninstall must preserve projects.");
                 }
+
                 break;
             case "CancelDownload":
             case "CloseDuringDownload":
@@ -756,16 +887,20 @@ static class LauncherScenarios
                     await ui.Wait(() => false, "Closing should finish download cancellation and close the window.", 15);
                     return;
                 }
+
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => ui.HasText("Existing installations are unchanged."), "Cancellation should report a safe outcome.");
+                await ui.Wait(() => ui.HasText("Existing installations are unchanged."),
+                    "Cancellation should report a safe outcome.");
                 Check(f.Store.InstalledEditors().Count == 0, "Cancelled download must not register an editor.");
-                Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(), "Cancelled download must leave no partial installation.");
+                Check(!Directory.EnumerateDirectories(f.Store.WorkPath).Any(),
+                    "Cancelled download must leave no partial installation.");
                 break;
             case "CancelLauncherUninstall":
                 await ui.Navigate("Settings");
                 await ui.Scroll();
                 await ui.ClickText("Uninstall launcher…");
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Uninstall Prowl Launcher?"), "Uninstall should ask for confirmation.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Uninstall Prowl Launcher?"),
+                    "Uninstall should ask for confirmation.");
                 Check(ui.HasText("Installed editors and your projects are kept."), "The prompt must say what is kept.");
                 Check(ui.HasText("Also delete launcher settings and caches"), "Removing data must be opt-in.");
                 await ui.ClickText("Cancel");
@@ -778,36 +913,49 @@ static class LauncherScenarios
                 await ui.Scroll();
                 await ui.ClickText("Show FPS");
                 await ui.ClickText("Close on launch");
-                await ui.Wait(() => f.Saved().ShowFps && f.Saved().CloseOnEditorLaunch, "Preference toggles must persist to disk.");
+                await ui.Wait(() => f.Saved().ShowFps && f.Saved().CloseOnEditorLaunch,
+                    "Preference toggles must persist to disk.");
                 break;
             case "SettingsAfterRestart":
-                Check(f.Store.Settings.ShowFps && f.Store.Settings.CloseOnEditorLaunch, "Restart must restore saved settings.");
+                Check(f.Store.Settings.ShowFps && f.Store.Settings.CloseOnEditorLaunch,
+                    "Restart must restore saved settings.");
                 await ui.Navigate("Settings");
                 await ui.Scroll();
                 await ui.ClickText("Show FPS");
                 await ui.ClickText("Close on launch");
-                await ui.Wait(() => !f.Saved().ShowFps && !f.Saved().CloseOnEditorLaunch, "Restored switches must start checked and toggle off.");
+                await ui.Wait(() => !f.Saved().ShowFps && !f.Saved().CloseOnEditorLaunch,
+                    "Restored switches must start checked and toggle off.");
                 break;
             case "ManualUpdateChangelog":
             case "ManualReoffersDismissedUpdate":
                 await OpenManualUpdate(ui);
-                Check(ui.HasText("Fixture release notes") && ui.HasText("Changelog"), "The update dialog must render its release notes.");
+                Check(ui.HasText("Fixture release notes") && ui.HasText("Changelog"),
+                    "The update dialog must render its release notes.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Dismissing an update must save its repository and release ID.");
+                await ui.Wait(
+                    () => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201),
+                    "Dismissing an update must save its repository and release ID.");
                 break;
             case "EnablePrereleases":
                 await ui.Navigate("Settings");
                 await ui.Scroll();
                 await ui.ClickText("Opt in to launcher prereleases");
-                await ui.Wait(() => ui.HasText("3.0.0-preview.1") && Modal.IsOpen, "Opting into previews should immediately offer the latest preview.");
-                Check(f.Saved().LauncherPrereleases && f.LauncherChecks > 0, "Opt-in and its update check must both occur.");
+                await ui.Wait(() => ui.HasText("3.0.0-preview.1") && Modal.IsOpen,
+                    "Opting into previews should immediately offer the latest preview.");
+                Check(f.Saved().LauncherPrereleases && f.LauncherChecks > 0,
+                    "Opt-in and its update check must both occur.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 202), "Preview dismissal must be saved.");
+                await ui.Wait(
+                    () => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 202),
+                    "Preview dismissal must be saved.");
                 break;
             case "StartupDismissFirst":
-                await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"), "Startup should check for updates and show their changelog.");
+                await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"),
+                    "Startup should check for updates and show their changelog.");
                 await ui.ClickText("Cancel");
-                await ui.Wait(() => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201), "Startup dismissal must persist.");
+                await ui.Wait(
+                    () => LauncherUpdaterService.IsDismissed(f.Saved(), f.Store.Settings.LauncherRepository, 201),
+                    "Startup dismissal must persist.");
                 break;
             case "StartupDismissSecond":
                 await ui.Wait(() => f.LauncherChecks > 0, "Restart should still check for newer releases.");
@@ -818,13 +966,15 @@ static class LauncherScenarios
                 await OpenManualUpdate(ui);
                 ui.ExpectClose();
                 await ui.ClickText("Update and restart");
-                await ui.Wait(() => f.Saved().LauncherExecutable != null, "The healthy update should become the startup target.");
+                await ui.Wait(() => f.Saved().LauncherExecutable != null,
+                    "The healthy update should become the startup target.");
                 await ui.Wait(() => false, "A healthy update should close the original window.", 15);
                 break;
             case "FailedUpdateStartup":
                 await OpenManualUpdate(ui);
                 await ui.ClickText("Update and restart");
-                await ui.Wait(() => ui.HasText("Couldn't complete"), "An early update crash must be reported without closing the launcher.");
+                await ui.Wait(() => ui.HasText("Couldn't complete"),
+                    "An early update crash must be reported without closing the launcher.");
                 Check(f.Saved().LauncherExecutable == null, "Failed startup must not activate the update.");
                 Check(f.Saved().Locale == "en", "Failed startup must preserve preferences.");
                 break;
@@ -835,8 +985,10 @@ static class LauncherScenarios
     private static void AssertNewsDialogCentered(UiDriver ui)
     {
         ElementHandle dialog = ui.Nodes().First(node => node.Data.Layer > Layer.Overlay
-                                                        && node.Data.LayoutWidth > 500 && node.Data.LayoutWidth < ui.Paper.Width
-                                                        && node.GetParentHandle().IsValid && node.GetParentHandle().Data.LayoutWidth >= ui.Paper.Width - 1);
+                                                        && node.Data.LayoutWidth > 500 &&
+                                                        node.Data.LayoutWidth < ui.Paper.Width
+                                                        && node.GetParentHandle().IsValid &&
+                                                        node.GetParentHandle().Data.LayoutWidth >= ui.Paper.Width - 1);
         Check(Math.Abs(dialog.Data.Y + dialog.Data.LayoutHeight / 2 - ui.Paper.Height / 2) <= 1,
             "The article dialog must remain vertically centered.");
     }
@@ -855,46 +1007,55 @@ static class LauncherScenarios
         await ui.Navigate("Settings");
         await ui.Scroll();
         await ui.ClickText("Check for updates");
-        await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"), "Manual check should show the update dialog and changelog.");
+        await ui.Wait(() => Modal.IsOpen && ui.HasText("Fixture release notes"),
+            "Manual check should show the update dialog and changelog.");
         await ui.Frame(3);
         AssertDialogCentered(ui, ui.Text("Switch to stable Prowl Launcher?").IsValid
-            ? "Switch to stable Prowl Launcher?" : "Update Prowl Launcher?");
+            ? "Switch to stable Prowl Launcher?"
+            : "Update Prowl Launcher?");
     }
 
     /// <summary>The project path a scenario passes on the launcher's command line, if any.</summary>
     internal static string? CommandLineProject(string scenario) =>
         scenario == "OpenProjectFromCommandLine" ? Path.Combine(_project!.Path, _project.Name + ".prowl") : null;
 
-    private static string MovedProjectPath(LauncherFixture fixture) => Path.Combine(fixture.Projects, "Moved", "Alpha Game");
+    private static string MovedProjectPath(LauncherFixture fixture) =>
+        Path.Combine(fixture.Projects, "Moved", "Alpha Game");
 
     private static void SetProjectVersion(Project project, string version) => JsonFile.Write(
-        Path.Combine(project.Path, project.Name + ".prowl"), new
-        {
-            name = project.Name, version
-        });
+        Path.Combine(project.Path, project.Name + ".prowl"), new { name = project.Name, version });
 
     private static void AssertLaunch(LauncherFixture fixture, string project)
     {
         using JsonDocument record = JsonDocument.Parse(File.ReadAllText(fixture.LaunchRecord));
-        Check(record.RootElement.GetProperty("Arguments").EnumerateArray().Select(x => x.GetString()).SequenceEqual(["--project", project]),
+        Check(
+            record.RootElement.GetProperty("Arguments").EnumerateArray().Select(x => x.GetString())
+                .SequenceEqual(["--project", project]),
             "Editor arguments must preserve the complete project path, including spaces.");
-        Check(record.RootElement.GetProperty("WorkingDirectory").GetString()!.Contains("Probe"), "The editor must start from its installation directory.");
+        Check(record.RootElement.GetProperty("WorkingDirectory").GetString()!.Contains("Probe"),
+            "The editor must start from its installation directory.");
     }
 
     internal static void AfterClose(string scenario, LauncherFixture fixture, Launcher launcher)
     {
         if (scenario == "AcceptHealthyUpdate")
         {
-            Check(fixture.Saved().LauncherExecutable is {} path && File.Exists(path), "Only a healthy update may be activated before closing.");
+            Check(fixture.Saved().LauncherExecutable is { } path && File.Exists(path),
+                "Only a healthy update may be activated before closing.");
         }
+
         if (scenario == "CloseDuringDownload")
         {
-            Check(fixture.Store.InstalledEditors().Count == 0 && !Directory.EnumerateDirectories(fixture.Store.WorkPath).Any(),
+            Check(
+                fixture.Store.InstalledEditors().Count == 0 &&
+                !Directory.EnumerateDirectories(fixture.Store.WorkPath).Any(),
                 "Closing during download must wait for cancellation and cleanup.");
         }
+
         if (scenario == "CloseOnEditorLaunch")
         {
-            Check(fixture.Saved().Projects.Single().LastOpened != default, "Close-on-launch must still persist project history.");
+            Check(fixture.Saved().Projects.Single().LastOpened != default,
+                "Close-on-launch must still persist project history.");
             Check(launcher.Editors.Sessions.Any(session => session.State.Ready != null),
                 "Close-on-launch must wait for readiness rather than just starting the process.");
         }

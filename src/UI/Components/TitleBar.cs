@@ -8,13 +8,14 @@ using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>
 ///     The window's title bar: language picker, optional FPS counter and window controls. Without a native frame
 ///     (<paramref name="nativeFrame" /> false) it also drags and maximizes the window.
 /// </summary>
-sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool nativeFrame)
+internal sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool nativeFrame)
 {
     private int _fpsFrames;
     private double _fpsSeconds;
@@ -27,33 +28,37 @@ sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool 
     public bool HasFrameRate => _fpsText != "— FPS";
 
     /// <summary>Width of the controls on the right, which the native frame must not treat as a drag area.</summary>
-    public static float ControlsWidth(Settings settings) => (settings.ShowFps ? Constants.Layout.FpsWidth : 0) + Constants.Layout.LanguagePickerWidth + 126;
+    public static float ControlsWidth(Settings settings) => (settings.ShowFps ? Constants.Layout.FpsWidth : 0) +
+                                                            Constants.Layout.LanguagePickerWidth + 126;
 
     public void Draw(Paper p)
     {
         using (p.Row("title-bar")
-            .PositionType(PositionType.SelfDirected)
-            .Left(0)
-            .Top(0)
-            .Width(p.ScreenRect.Size.X)
-            .Height(Constants.Layout.TitleBarHeight)
-            .Enter())
+                   .PositionType(PositionType.SelfDirected)
+                   .Left(0)
+                   .Top(0)
+                   .Width(p.ScreenRect.Size.X)
+                   .Height(Constants.Layout.TitleBarHeight)
+                   .Enter())
         {
             ElementBuilder dragArea = p.Box("window-drag-area").Height(Constants.Layout.TitleBarHeight);
             if (!nativeFrame)
             {
                 dragArea.OnDoubleClick(_ => ToggleMaximized())
-                    .OnDragStart(_ => _windowDragOffset = new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y))
+                    .OnDragStart(_ =>
+                        _windowDragOffset = new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y))
                     .OnDragging(_ =>
                     {
                         if (window.WindowState == WindowState.Normal)
                         {
-                            window.Location += new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y) - _windowDragOffset;
+                            window.Location += new Vector2i((int)window.MousePosition.X, (int)window.MousePosition.Y) -
+                                               _windowDragOffset;
                         }
                     });
             }
 
-            using (p.Row("window-controls").Width(ControlsWidth(store.Settings)).Height(Constants.Layout.TitleBarHeight).Enter())
+            using (p.Row("window-controls").Width(ControlsWidth(store.Settings)).Height(Constants.Layout.TitleBarHeight)
+                       .Enter())
             {
                 if (store.Settings.ShowFps)
                 {
@@ -66,13 +71,15 @@ sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool 
                         .Alignment(TextAlignment.MiddleCenter)
                         .IsNotInteractable();
                 }
+
                 DrawLanguagePicker(p);
                 WindowControl(p, "minimize-window", "launcher.window.minimize", LauncherIcons.Minimize,
                     () => window.WindowState = WindowState.Minimized);
                 bool maximized = window.WindowState == WindowState.Maximized;
                 WindowControl(p, "maximize-window", maximized ? "launcher.window.restore" : "launcher.window.maximize",
                     maximized ? OrigamiIconSet.Duplicate : OrigamiIconSet.Expand, ToggleMaximized);
-                WindowControl(p, "close-window", "launcher.common.close", OrigamiIconSet.Close, () => window.Close(), true);
+                WindowControl(p, "close-window", "launcher.common.close", OrigamiIconSet.Close, () => window.Close(),
+                    true);
             }
         }
     }
@@ -97,6 +104,7 @@ sealed class TitleBar(LauncherStore store, Controls ui, GameWindow window, bool 
             _languageTheme = _languageThemeSource.Clone();
             _languageTheme.BorderStrong = Color.Transparent;
         }
+
         using IDisposable theme = Origami.PushTheme(_languageTheme!);
         string locale = store.Settings.Locale ?? "en";
         Origami.Dropdown(p, "title-language", locale, value =>

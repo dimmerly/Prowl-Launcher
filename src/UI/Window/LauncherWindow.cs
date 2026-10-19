@@ -8,6 +8,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 
 using Prowl.PaperUI;
 using Prowl.Vector;
+
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
@@ -103,7 +104,8 @@ public sealed partial class Launcher
         private void SetButton(MouseButton button, bool down)
         {
             Float2 point = owner.Pointer(MousePosition.X, MousePosition.Y);
-            PaperMouseBtn paperButton = button == MouseButton.Left ? PaperMouseBtn.Left : button == MouseButton.Right ? PaperMouseBtn.Right : PaperMouseBtn.Middle;
+            PaperMouseBtn paperButton = button == MouseButton.Left ? PaperMouseBtn.Left :
+                button == MouseButton.Right ? PaperMouseBtn.Right : PaperMouseBtn.Middle;
             owner._paper?.SetPointerState(paperButton, point.X, point.Y, down, false);
         }
 
@@ -134,6 +136,7 @@ public sealed partial class Launcher
             {
                 name = "Num" + name[1];
             }
+
             if (Enum.TryParse(name, out PaperKey paperKey))
             {
                 owner._paper?.SetKeyState(paperKey, down);
@@ -143,7 +146,7 @@ public sealed partial class Launcher
         protected override void OnFileDrop(FileDropEventArgs args)
         {
             base.OnFileDrop(args);
-            if (args.FileNames.FirstOrDefault() is {} path)
+            if (args.FileNames.FirstOrDefault() is { } path)
             {
                 owner.OpenExternalProject(path);
             }

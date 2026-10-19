@@ -5,12 +5,14 @@ using System.Security.Cryptography;
 using System.Text.Json;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlLauncherTests", Guid.NewGuid().ToString("N"));
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlLauncherTests", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
     {
@@ -19,7 +21,8 @@ public sealed class LauncherTests : IDisposable
             Directory.Delete(_home, true);
         }
     }
-    private LauncherStore Store() => new( _home );
+
+    private LauncherStore Store() => new(_home);
 
     [Fact]
     public void InstallationMetadata_UsesVersionAndPlatformDirectory()
@@ -49,38 +52,39 @@ public sealed class LauncherTests : IDisposable
     [InlineData("")]
     public void InstallationTagCannotEscapeVersionDirectory(string tag)
     {
-        InstalledEditor editor = new( 1, tag, "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow );
+        InstalledEditor editor = new(1, tag, "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow);
         Assert.Throws<InvalidDataException>(() => Store().InstallPath(editor));
     }
 
     private static byte[] Archive(params (string path, string text)[] files)
     {
         using MemoryStream stream = new();
-        using (ZipArchive zip = new( stream, ZipArchiveMode.Create, true ))
+        using (ZipArchive zip = new(stream, ZipArchiveMode.Create, true))
         {
             foreach ((string path, string text) in files)
             {
-                using StreamWriter writer = new( zip.CreateEntry(path).Open() );
+                using StreamWriter writer = new(zip.CreateEntry(path).Open());
                 writer.Write(text);
             }
         }
+
         return stream.ToArray();
     }
 
-    private static EditorRelease Release(byte[] archive, long id = 1, string? digest = null, string tag = "v1.0-preview-4") => new( id, tag, true, false,
+    private static EditorRelease Release(byte[] archive, long id = 1, string? digest = null,
+        string tag = "v1.0-preview-4") => new(id, tag, true, false,
         DateTimeOffset.UtcNow, $"https://github.com/ProwlEngine/Prowl/releases/tag/{tag}", "Notes",
         [
-            new ReleaseAsset($"Prowl-{tag}-win-x64.zip", "https://github.com/ProwlEngine/Prowl/releases/download/test/editor.zip", archive.Length,
+            new ReleaseAsset($"Prowl-{tag}-win-x64.zip",
+                "https://github.com/ProwlEngine/Prowl/releases/download/test/editor.zip", archive.Length,
                 digest ?? "sha256:" + Convert.ToHexString(SHA256.HashData(archive)))
-        ] );
+        ]);
 
     private static byte[] EditorArchive(string text = "editor") => Archive(("Prowl/Prowl.Editor.exe", text),
         ("Prowl/Prowl.Editor.runtimeconfig.json", "{\"runtimeOptions\":{\"tfm\":\"net10.0\"}}"));
 
-    private static HttpClient Client(byte[] content) => new( new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new ByteArrayContent(content)
-    }) );
+    private static HttpClient Client(byte[] content) => new(new Handler(_ =>
+        new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(content) }));
 
     [Fact]
     public async Task Install_Repair_SideBySide_Uninstall_PreserveProjects()
@@ -88,7 +92,7 @@ public sealed class LauncherTests : IDisposable
         LauncherStore store = Store();
         byte[] bytes = EditorArchive();
         using HttpClient http = Client(bytes);
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor editor = await installer.InstallAsync(Release(bytes), "win-x64");
         Assert.Equal(editor.Key, store.Settings.DefaultEditorKey);
         Assert.Equal("editor", File.ReadAllText(store.ExecutablePath(editor)));
@@ -104,11 +108,7 @@ public sealed class LauncherTests : IDisposable
         added.EditorKey = editor.Key;
         store.Save();
         ProcessStartInfo launch = installer.LaunchInfo(editor, project);
-        Assert.Equal(new[]
-        {
-            "--project",
-            project
-        }, launch.ArgumentList);
+        Assert.Equal(new[] { "--project", project }, launch.ArgumentList);
         installer.Uninstall(editor);
         Assert.Single(store.InstalledEditors());
         Assert.True(File.Exists(store.ExecutablePath(other)));
@@ -122,7 +122,7 @@ public sealed class LauncherTests : IDisposable
         LauncherStore store = Store();
         byte[] bytes = EditorArchive();
         using HttpClient http = Client(bytes);
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         EditorRelease release = Release(bytes);
         InstalledEditor official = await installer.InstallAsync(release, "win-x64");
         string projectPath = Path.Combine(_home, "PinnedGame");
@@ -161,9 +161,10 @@ public sealed class LauncherTests : IDisposable
         LauncherStore store = Store();
         byte[] good = EditorArchive();
         using HttpClient http = Client(good);
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor editor = await installer.InstallAsync(Release(good), "win-x64");
-        await Assert.ThrowsAsync<InvalidDataException>(() => installer.InstallAsync(Release(good, digest: "sha256:" + new string('0', 64)), "win-x64"));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            installer.InstallAsync(Release(good, digest: "sha256:" + new string('0', 64)), "win-x64"));
         Assert.Equal("editor", File.ReadAllText(store.ExecutablePath(editor)));
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
     }
@@ -188,11 +189,12 @@ public sealed class LauncherTests : IDisposable
         Directory.CreateDirectory(_home);
         string archive = Path.Combine(_home, "link.zip");
         using (FileStream stream = File.Create(archive))
-        using (ZipArchive zip = new( stream, ZipArchiveMode.Create ))
+        using (ZipArchive zip = new(stream, ZipArchiveMode.Create))
         {
             ZipArchiveEntry link = zip.CreateEntry("Prowl/link");
             link.ExternalAttributes = unchecked((int)0xA1FF0000);
         }
+
         Assert.Throws<InvalidDataException>(() => ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "stage")));
     }
 
@@ -204,7 +206,8 @@ public sealed class LauncherTests : IDisposable
         using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
         LauncherStore store = Store();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new EditorInstallerService(http, store).InstallAsync(Release(bytes), "win-x64", token: cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new EditorInstallerService(http, store).InstallAsync(Release(bytes), "win-x64", token: cancellation.Token));
         Assert.Empty(store.InstalledEditors());
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
     }
@@ -214,15 +217,12 @@ public sealed class LauncherTests : IDisposable
     {
         byte[] bytes = EditorArchive();
         EditorRelease release = Release(bytes);
-        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
-        {
-            release
-        }));
+        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { release }));
         LauncherStore store = Store();
-        GitHubReleasesService github = new( http, store );
+        GitHubReleasesService github = new(http, store);
         Assert.True((await github.GetAsync()).Single().Preview);
-        using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
-        GitHubReleasesService cached = new( offline, store );
+        using HttpClient offline = new(new Handler(_ => throw new HttpRequestException("Offline")));
+        GitHubReleasesService cached = new(offline, store);
         Assert.Equal(release.Tag, (await cached.GetAsync()).Single().Tag);
         Assert.True(cached.UsedCache);
     }
@@ -233,23 +233,19 @@ public sealed class LauncherTests : IDisposable
         LauncherStore store = Store();
         EditorRelease editor = Release([]);
         EditorRelease launcher = Release([], 2, tag: "v2.0.0");
-        using HttpClient editorHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
-        {
-            editor
-        }));
-        using HttpClient launcherHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
-        {
-            launcher
-        }));
+        using HttpClient editorHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { editor }));
+        using HttpClient launcherHttp = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { launcher }));
         await new GitHubReleasesService(editorHttp, store).GetAsync();
         string editorCache = File.ReadAllText(GitHubReleasesService.CachePath(store));
         await new GitHubReleasesService(launcherHttp, store, store.Settings.LauncherRepository).GetAsync();
         Assert.Equal(editorCache, File.ReadAllText(GitHubReleasesService.CachePath(store)));
 
-        Assert.Equal(Path.Combine(_home, "releases.json"), Assert.Single(Directory.EnumerateFiles(_home, "releases*.json")));
-        using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
+        Assert.Equal(Path.Combine(_home, "releases.json"),
+            Assert.Single(Directory.EnumerateFiles(_home, "releases*.json")));
+        using HttpClient offline = new(new Handler(_ => throw new HttpRequestException("Offline")));
         Assert.Equal(editor.Id, (await new GitHubReleasesService(offline, store).GetAsync()).Single().Id);
-        await Assert.ThrowsAsync<HttpRequestException>(() => new GitHubReleasesService(offline, store, store.Settings.LauncherRepository).GetAsync());
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            new GitHubReleasesService(offline, store, store.Settings.LauncherRepository).GetAsync());
     }
 
     [Fact]
@@ -257,13 +253,10 @@ public sealed class LauncherTests : IDisposable
     {
         LauncherStore store = Store();
         string originalRepository = store.Settings.ProwlRepository;
-        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[]
-        {
-            Release([])
-        }));
+        using HttpClient http = Client(JsonSerializer.SerializeToUtf8Bytes(new[] { Release([]) }));
         await new GitHubReleasesService(http, store).GetAsync();
         store.Settings.ProwlRepository = "someone/custom-editor";
-        using HttpClient offline = new( new Handler(_ => throw new HttpRequestException("Offline")) );
+        using HttpClient offline = new(new Handler(_ => throw new HttpRequestException("Offline")));
         await Assert.ThrowsAsync<HttpRequestException>(() => new GitHubReleasesService(offline, store).GetAsync());
 
         await new GitHubReleasesService(http, store).GetAsync();
@@ -280,7 +273,7 @@ public sealed class LauncherTests : IDisposable
         string marker = Path.Combine(project, "Project.prowl");
         const string original = "{\"name\":\"My game\",\"version\":\"1.0-preview.4\"}";
         File.WriteAllText(marker, original);
-        InstalledEditor editor = new( 1, "v1.0-preview-4", "win-x64", "Prowl/Prowl.Editor.exe", DateTimeOffset.UtcNow );
+        InstalledEditor editor = new(1, "v1.0-preview-4", "win-x64", "Prowl/Prowl.Editor.exe", DateTimeOffset.UtcNow);
         JsonFile.Write(Path.Combine(store.InstallPath(editor), "installation.json"), editor);
         Project added = store.AddProject(marker);
         Assert.Equal("My game", added.Name);
@@ -297,22 +290,13 @@ public sealed class LauncherTests : IDisposable
         string project = Path.Combine(_home, "Project");
         Directory.CreateDirectory(Path.Combine(project, "Assets"));
         string recent = Path.Combine(_home, "recent.json");
-        JsonFile.Write(recent, new[]
-        {
-            new Project
-            {
-                Path = project
-            },
-            new Project
-            {
-                Path = Path.Combine(_home, "Missing")
-            }
-        });
+        JsonFile.Write(recent,
+            new[] { new Project { Path = project }, new Project { Path = Path.Combine(_home, "Missing") } });
         store.ImportRecentProjects(recent);
         Assert.Single(store.Settings.Projects);
         store.Settings.Projects.Clear();
         store.Save();
-        LauncherStore reopened = new( _home );
+        LauncherStore reopened = new(_home);
         reopened.ImportRecentProjects(recent);
         Assert.Empty(reopened.Settings.Projects);
     }
@@ -341,14 +325,17 @@ public sealed class LauncherTests : IDisposable
     {
         EditorRelease Preview(int number) => Release([], number) with
         {
-            Tag = $"v1.0.0-preview-{number}", Preview = true, Assets = [new ReleaseAsset($"Prowl Launcher-1.0.0-preview-{number}-win-x64.zip", "", 0, null)]
+            Tag = $"v1.0.0-preview-{number}",
+            Preview = true,
+            Assets = [new ReleaseAsset($"Prowl Launcher-1.0.0-preview-{number}-win-x64.zip", "", 0, null)]
         };
 
         EditorRelease nine = Preview(9), ten = Preview(10), eleven = Preview(11);
         EditorRelease[] releases = reverseOrder ? [ten, nine] : [nine, ten];
         Assert.Null(LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.0.0-preview-10", true));
         Assert.Same(ten, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.0.0-preview-9", true));
-        Assert.Same(eleven, LauncherUpdaterService.FindUpdate([.. releases, eleven], "win-x64", "1.0.0-preview-10", true));
+        Assert.Same(eleven,
+            LauncherUpdaterService.FindUpdate([.. releases, eleven], "win-x64", "1.0.0-preview-10", true));
     }
 
     [Fact]
@@ -356,7 +343,13 @@ public sealed class LauncherTests : IDisposable
     {
         EditorRelease WithLauncher(long id, string editorVersion, string launcherVersion) => Release([], id) with
         {
-            Tag = editorVersion, Preview = false, Assets = [new ReleaseAsset($"Prowl Launcher-{launcherVersion}-win-x64.zip", "https://example.com/launcher.zip", 1, null)]
+            Tag = editorVersion,
+            Preview = false,
+            Assets =
+            [
+                new ReleaseAsset($"Prowl Launcher-{launcherVersion}-win-x64.zip",
+                    "https://example.com/launcher.zip", 1, null)
+            ]
         };
 
         EditorRelease initial = WithLauncher(1, "v2.0.0", "1.0.0");
@@ -365,14 +358,8 @@ public sealed class LauncherTests : IDisposable
 
         EditorRelease newer = WithLauncher(3, "v4.0.0", "1.2.0");
         EditorRelease republishedOlder = WithLauncher(4, "v5.0.0", "1.1.0");
-        EditorRelease preview = WithLauncher(5, "v6.0.0-preview.1", "2.0.0") with
-        {
-            Preview = true
-        };
-        EditorRelease draft = WithLauncher(6, "v7.0.0", "3.0.0") with
-        {
-            Draft = true
-        };
+        EditorRelease preview = WithLauncher(5, "v6.0.0-preview.1", "2.0.0") with { Preview = true };
+        EditorRelease draft = WithLauncher(6, "v7.0.0", "3.0.0") with { Draft = true };
         EditorRelease[] releases = [draft, preview, republishedOlder, newer, editorOnly, initial];
         Assert.Equal(newer, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.0.0"));
         Assert.Null(LauncherUpdaterService.FindUpdate(releases, "linux-x64", "1.0.0"));
@@ -390,20 +377,16 @@ public sealed class LauncherTests : IDisposable
         };
         EditorRelease preview = stable with
         {
-            Id = 2, Preview = true, Assets = [new ReleaseAsset("Prowl Launcher-1.2.0-preview-1-win-x64.zip", "", 0, null)]
+            Id = 2,
+            Preview = true,
+            Assets = [new ReleaseAsset("Prowl Launcher-1.2.0-preview-1-win-x64.zip", "", 0, null)]
         };
-        EditorRelease draft = preview with
-        {
-            Id = 3, Draft = true
-        };
+        EditorRelease draft = preview with { Id = 3, Draft = true };
         Assert.Equal(includePrereleases ? preview : stable,
             LauncherUpdaterService.FindUpdate([draft, preview, stable], "win-x64", "1.0.0", includePrereleases));
         Assert.Null(LauncherUpdaterService.FindUpdate([preview], "win-x64", "1.2.0", includePrereleases));
         Assert.Null(LauncherUpdaterService.FindUpdate([
-            preview with
-            {
-                Preview = false
-            }
+            preview with { Preview = false }
         ], "win-x64", "1.0.0"));
     }
 
@@ -430,7 +413,7 @@ public sealed class LauncherTests : IDisposable
             ]
         };
         using HttpClient http = Client(bytes);
-        LauncherUpdaterService updater = new( http, new LauncherStore(_home) );
+        LauncherUpdaterService updater = new(http, new LauncherStore(_home));
         if (optIn)
         {
             Assert.Equal("preview", File.ReadAllText(await updater.InstallAsync(release, "win-x64")));
@@ -448,16 +431,11 @@ public sealed class LauncherTests : IDisposable
         {
             Preview = false, Assets = [new ReleaseAsset($"Prowl Launcher-{version}-win-x64.zip", "", 0, null)]
         };
+
         EditorRelease older = Stable(1, "1.0.0");
         EditorRelease latest = Stable(2, "1.1.0");
-        EditorRelease preview = Stable(3, "1.2.0-preview-2") with
-        {
-            Preview = true
-        };
-        EditorRelease draft = Stable(4, "2.0.0") with
-        {
-            Draft = true
-        };
+        EditorRelease preview = Stable(3, "1.2.0-preview-2") with { Preview = true };
+        EditorRelease draft = Stable(4, "2.0.0") with { Draft = true };
         EditorRelease[] releases = [draft, preview, older, latest];
         Assert.Equal(latest, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.2.0-preview-1"));
         Assert.Equal(preview, LauncherUpdaterService.FindUpdate(releases, "win-x64", "1.2.0-preview-1", true));
@@ -481,7 +459,7 @@ public sealed class LauncherTests : IDisposable
             ]
         };
         using HttpClient http = Client(bytes);
-        LauncherUpdaterService updater = new( http, store );
+        LauncherUpdaterService updater = new(http, store);
         string official = await updater.InstallAsync(release, "win-x64");
         store.Settings.LauncherRepository = "someone/custom-launcher";
         store.Save();
@@ -490,10 +468,7 @@ public sealed class LauncherTests : IDisposable
         {
             DownloadUrl = "https://github.com/someone/custom-launcher/releases/download/v1.1.0/launcher.zip"
         };
-        string custom = await updater.InstallAsync(release with
-        {
-            Assets = [asset]
-        }, "win-x64");
+        string custom = await updater.InstallAsync(release with { Assets = [asset] }, "win-x64");
         Assert.NotEqual(official, custom);
         Assert.True(File.Exists(official));
         Assert.Equal("launcher", File.ReadAllText(custom));
@@ -538,21 +513,19 @@ public sealed class LauncherTests : IDisposable
             Preview = false,
             Assets =
             [
-                new ReleaseAsset("Prowl Launcher-1.1.0-win-x64.zip", "https://github.com/dimmerly/Prowl-Launcher/releases/download/test/launcher.zip",
+                new ReleaseAsset("Prowl Launcher-1.1.0-win-x64.zip",
+                    "https://github.com/dimmerly/Prowl-Launcher/releases/download/test/launcher.zip",
                     bytes.Length, "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)))
             ]
         };
         LauncherStore store = Store();
         using HttpClient http = Client(bytes);
-        LauncherUpdaterService updater = new( http, store );
+        LauncherUpdaterService updater = new(http, store);
         string executable = await updater.InstallAsync(release, "win-x64");
         Assert.Equal("launcher", File.ReadAllText(executable));
         Assert.Null(new LauncherStore(_home).Settings.LauncherExecutable);
         Assert.Equal(executable, await updater.InstallAsync(release, "win-x64"));
-        Assert.Equal(executable, await updater.InstallAsync(release with
-        {
-            Id = 99, Tag = "v10.0.0"
-        }, "win-x64"));
+        Assert.Equal(executable, await updater.InstallAsync(release with { Id = 99, Tag = "v10.0.0" }, "win-x64"));
     }
 
     [Fact]
@@ -567,8 +540,8 @@ public sealed class LauncherTests : IDisposable
                     "https://github.com/someone/another-repo/releases/download/v1.1.0/launcher.zip", 1, null)
             ]
         };
-        using HttpClient http = new( new Handler(_ => throw new Exception("Should not download an untrusted update.")) );
-        LauncherUpdaterService updater = new( http, Store() );
+        using HttpClient http = new(new Handler(_ => throw new Exception("Should not download an untrusted update.")));
+        LauncherUpdaterService updater = new(http, Store());
         await Assert.ThrowsAsync<InvalidDataException>(() => updater.InstallAsync(release, "win-x64"));
     }
 
@@ -579,15 +552,12 @@ public sealed class LauncherTests : IDisposable
         store.Settings.ProwlRepository = "someone/custom-editor";
         store.Settings.LauncherRepository = "someone/custom-launcher";
         Uri? requested = null;
-        using HttpClient http = new( new Handler(request =>
+        using HttpClient http = new(new Handler(request =>
         {
             requested = request.RequestUri;
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("[]")
-            };
-        }) );
-        GitHubReleasesService github = new( http, store, store.Settings.LauncherRepository );
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") };
+        }));
+        GitHubReleasesService github = new(http, store, store.Settings.LauncherRepository);
         await github.GetAsync();
         Assert.Equal($"/repos/{store.Settings.LauncherRepository}/releases", requested!.AbsolutePath);
     }
@@ -597,13 +567,10 @@ public sealed class LauncherTests : IDisposable
     public async Task LiveGitHubRelease_DownloadsVerifiesAndInstallsCurrentPlatform()
     {
         LauncherStore store = Store();
-        using HttpClient http = new()
-        {
-            Timeout = TimeSpan.FromMinutes(5)
-        };
-        GitHubReleasesService github = new( http, store );
+        using HttpClient http = new() { Timeout = TimeSpan.FromMinutes(5) };
+        GitHubReleasesService github = new(http, store);
         EditorRelease release = (await github.GetAsync()).First(r => r.AssetFor(Platform.Identifier) != null);
-        EditorInstallerService installer = new( http, store );
+        EditorInstallerService installer = new(http, store);
         InstalledEditor editor = await installer.InstallAsync(release, Platform.Identifier);
         Assert.True(new FileInfo(store.ExecutablePath(editor)).Length > 0);
         Assert.Single(store.InstalledEditors());

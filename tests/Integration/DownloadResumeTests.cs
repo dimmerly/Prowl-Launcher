@@ -2,13 +2,17 @@ using System.Net;
 using System.Security.Cryptography;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class DownloadResumeTests : IDisposable
 {
     private readonly byte[] _file = RandomNumberGenerator.GetBytes(256 * 1024);
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlDownloadTests", Guid.NewGuid().ToString("N"));
+
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlDownloadTests", Guid.NewGuid().ToString("N"));
+
     private string Partials => Path.Combine(_home, "Downloads");
 
     public void Dispose()
@@ -47,6 +51,7 @@ public sealed class DownloadResumeTests : IDisposable
                     Content = new StreamContent(new DroppingStream(_file, 100_000))
                 };
             }
+
             HttpResponseMessage response = new(HttpStatusCode.PartialContent)
             {
                 Content = new ByteArrayContent(_file[(int)from..])
@@ -54,7 +59,8 @@ public sealed class DownloadResumeTests : IDisposable
             return response;
         }));
 
-        await Assert.ThrowsAsync<IOException>(() => ReleasePackage.DownloadVerifiedAsync(http, Asset(), Archive(), partialDirectory: Partials));
+        await Assert.ThrowsAsync<IOException>(() =>
+            ReleasePackage.DownloadVerifiedAsync(http, Asset(), Archive(), partialDirectory: Partials));
         Assert.Equal(100_000, new FileInfo(Assert.Single(Directory.GetFiles(Partials, "*.part"))).Length);
 
         string archive = Archive();
@@ -92,7 +98,8 @@ public sealed class DownloadResumeTests : IDisposable
             Content = new ByteArrayContent(_file[(int)request.Headers.Range!.Ranges.Single().From!.Value..])
         }));
 
-        await Assert.ThrowsAsync<InvalidDataException>(() => ReleasePackage.DownloadVerifiedAsync(http, Asset(), Archive(), partialDirectory: Partials));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            ReleasePackage.DownloadVerifiedAsync(http, Asset(), Archive(), partialDirectory: Partials));
         Assert.Empty(Directory.GetFiles(Partials));
     }
 
@@ -118,7 +125,12 @@ public sealed class DownloadResumeTests : IDisposable
         public override bool CanSeek => false;
         public override bool CanWrite => false;
         public override long Length => data.Length;
-        public override long Position { get => _position; set => throw new NotSupportedException(); }
+
+        public override long Position
+        {
+            get => _position;
+            set => throw new NotSupportedException();
+        }
 
         public override int Read(byte[] buffer, int offset, int length)
         {
@@ -126,13 +138,17 @@ public sealed class DownloadResumeTests : IDisposable
             {
                 throw new IOException("The connection was reset.");
             }
+
             int read = Math.Min(length, count - _position);
             Array.Copy(data, _position, buffer, offset, read);
             _position += read;
             return read;
         }
 
-        public override void Flush() { }
+        public override void Flush()
+        {
+        }
+
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int length) => throw new NotSupportedException();

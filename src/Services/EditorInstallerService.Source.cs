@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 public sealed partial class EditorInstallerService
 {
-
     /// <summary>
     ///     Clones or resets the repository's main branch into Source/, then publishes and installs the
     ///     editor for that commit unless it is already installed.
@@ -20,19 +20,21 @@ public sealed partial class EditorInstallerService
         Func<ProcessStartInfo, CancellationToken, Task<string>>? runCommand = null)
     {
         string repository = GitHubRepository.Normalize(sourceRepository ?? store.Settings.ProwlRepository);
-        InstalledEditor editor = new( 0, "main", platform, Platform.ExecutableName(EditorName, platform), DateTimeOffset.UtcNow )
-        {
-            Repository = repository
-        };
+        InstalledEditor editor =
+            new(0, "main", platform, Platform.ExecutableName(EditorName, platform), DateTimeOffset.UtcNow)
+            {
+                Repository = repository
+            };
         // Validate the platform before doing any source work.
         store.InstallPath(editor);
 
         string sources = Path.Combine(store.Home, "Source");
         using FileStream operation = BeginOperation(sources);
-        using InstallWorkspace workspace = new( store );
+        using InstallWorkspace workspace = new(store);
         string checkout = Path.Combine(sources, GitHubRepository.CacheKey(repository));
 
         Task<string> Git(string directory, params string[] arguments) => RunAsync("git", directory, arguments);
+
         Task<string> RunAsync(string executable, string directory, params string[] arguments)
         {
             ProcessStartInfo info = ProcessHelper.Captured(executable, directory, arguments);
@@ -64,12 +66,10 @@ public sealed partial class EditorInstallerService
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
         }
-        editor = editor with
-        {
-            Tag = "main-" + commit[..7], SourceCommit = commit
-        };
 
-        if (FindInstalledBuild(commit, platform, repository) is {} installed)
+        editor = editor with { Tag = "main-" + commit[..7], SourceCommit = commit };
+
+        if (FindInstalledBuild(commit, platform, repository) is { } installed)
         {
             progress?.Report(new TransferProgress("launcher.versions.main_current", 1));
             return new SourceBuildResult(installed, true);
@@ -89,7 +89,8 @@ public sealed partial class EditorInstallerService
 
         editor = editor with
         {
-            EditorVersion = FileVersionInfo.GetVersionInfo(Path.Combine(workspace.Staging, EditorName + ".dll")).ProductVersion
+            EditorVersion = FileVersionInfo.GetVersionInfo(Path.Combine(workspace.Staging, EditorName + ".dll"))
+                .ProductVersion
         };
         CommitInstall(editor, workspace, store.InstallPath(editor), token);
         progress?.Report(new TransferProgress("launcher.versions.main_ready", 1));
@@ -115,33 +116,29 @@ public sealed partial class EditorInstallerService
     {
         const int MaxRetainedLines = 30;
 
-        using Process process = new()
-        {
-            StartInfo = info
-        };
+        using Process process = new() { StartInfo = info };
         try
         {
             process.Start();
         }
         catch (Win32Exception error)
         {
-            throw new IOException(Loc.Get("launcher.versions.main_tool_missing", new
-            {
-                tool = info.FileName
-            }), error);
+            throw new IOException(Loc.Get("launcher.versions.main_tool_missing", new { tool = info.FileName }), error);
         }
 
         List<string> output = [];
         List<string> errors = [];
+
         async Task Drain(StreamReader reader, List<string> lines)
         {
-            while (await reader.ReadLineAsync(token) is {} line)
+            while (await reader.ReadLineAsync(token) is { } line)
             {
                 lines.Add(line);
                 if (lines.Count > MaxRetainedLines)
                 {
                     lines.RemoveAt(0);
                 }
+
                 progress?.Report(new TransferProgress(line));
             }
         }
@@ -158,13 +155,14 @@ public sealed partial class EditorInstallerService
                                  ?? $"{info.FileName} exited with code {process.ExitCode}.";
                 throw new IOException(summary + "\n" + string.Join('\n', output.Concat(errors)));
             }
+
             return string.Join('\n', output);
         }
         finally
         {
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
+                process.Kill(true);
                 await process.WaitForExitAsync(CancellationToken.None);
             }
         }

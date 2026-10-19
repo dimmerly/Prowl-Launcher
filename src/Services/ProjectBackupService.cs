@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.IO.Enumeration;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>
@@ -11,7 +12,7 @@ namespace Prowl.Launcher;
 ///     after its zip is complete, so an interrupted backup is never mistaken for a finished one. Backups are
 ///     restored as a copy next to the project, so restoring never touches the original.
 /// </summary>
-sealed class ProjectBackupService(LauncherStore store)
+internal sealed class ProjectBackupService(LauncherStore store)
 {
     private const string LockFile = "backup.lock";
     private const string PartialSuffix = ".partial";
@@ -20,9 +21,10 @@ sealed class ProjectBackupService(LauncherStore store)
     private static readonly DateTime ZipLimit = new(2107, 12, 30, 0, 0, 0, DateTimeKind.Local);
 
     /// <summary>The project's backups, newest first. Incomplete or orphaned files are ignored.</summary>
-    public IReadOnlyList<ProjectBackup> List(Project project) => FolderFor(project) is {} folder && Directory.Exists(folder)
-        ? Completed(folder).OrderByDescending(backup => backup.CreatedAt).ToArray()
-        : [];
+    public IReadOnlyList<ProjectBackup> List(Project project) =>
+        FolderFor(project) is { } folder && Directory.Exists(folder)
+            ? Completed(folder).OrderByDescending(backup => backup.CreatedAt).ToArray()
+            : [];
 
     /// <summary>Every project's backups, newest first, including backups of projects no longer in the list.</summary>
     public IReadOnlyList<ProjectBackup> ListAll()
@@ -31,8 +33,10 @@ sealed class ProjectBackupService(LauncherStore store)
         {
             return [];
         }
+
         return Directory.EnumerateDirectories(store.BackupsPath)
-            .Where(folder => Guid.TryParseExact(Path.GetFileName(folder), "N", out _) && !FileSystemHelper.IsLink(folder))
+            .Where(folder =>
+                Guid.TryParseExact(Path.GetFileName(folder), "N", out _) && !FileSystemHelper.IsLink(folder))
             .SelectMany(Completed)
             .OrderByDescending(backup => backup.CreatedAt)
             .ToArray();
@@ -47,21 +51,26 @@ sealed class ProjectBackupService(LauncherStore store)
         DeleteFile(FileSystemHelper.SafeChildPath(folder, backup.Id + ".zip"));
     });
 
-    public Task<Project> RestoreAsCopyAsync(ProjectBackup backup, IProgress<TransferProgress>? progress, CancellationToken token) =>
+    public Task<Project> RestoreAsCopyAsync(ProjectBackup backup, IProgress<TransferProgress>? progress,
+        CancellationToken token) =>
         Task.Run(() => RestoreAsCopy(backup, progress, token), token);
 
     /// <summary>
     ///     Unzips <paramref name="backup" /> into a new folder next to the original project (or in the default
     ///     projects folder when that's gone) and adds it to the project list. The original is never touched.
     /// </summary>
-    internal Project RestoreAsCopy(ProjectBackup backup, IProgress<TransferProgress>? progress = null, CancellationToken token = default)
+    internal Project RestoreAsCopy(ProjectBackup backup, IProgress<TransferProgress>? progress = null,
+        CancellationToken token = default)
     {
         string archive = FileSystemHelper.SafeChildPath(BackupFolder(backup), backup.Id + ".zip");
-        string? original = Path.IsPathFullyQualified(backup.ProjectPath) ? Path.GetDirectoryName(backup.ProjectPath) : null;
+        string? original = Path.IsPathFullyQualified(backup.ProjectPath)
+            ? Path.GetDirectoryName(backup.ProjectPath)
+            : null;
         string parent = original != null && Directory.Exists(original) ? original : EditorSettings.ProjectsDirectory();
         Directory.CreateDirectory(parent);
 
-        string name = $"{Path.GetFileName(backup.ProjectPath.TrimEnd('/', '\\'))} ({Loc.Get("launcher.backups.restored_suffix")} {backup.CreatedAt.ToLocalTime():yyyy-MM-dd HH-mm})";
+        string name =
+            $"{Path.GetFileName(backup.ProjectPath.TrimEnd('/', '\\'))} ({Loc.Get("launcher.backups.restored_suffix")} {backup.CreatedAt.ToLocalTime():yyyy-MM-dd HH-mm})";
         string destination = FileSystemHelper.SafeChildPath(parent, name);
         for (int i = 2; Directory.Exists(destination) || File.Exists(destination); i++)
         {
@@ -77,6 +86,7 @@ sealed class ProjectBackupService(LauncherStore store)
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.backup_damaged"));
             }
+
             Directory.Move(staging, destination);
         }
         finally
@@ -86,6 +96,7 @@ sealed class ProjectBackupService(LauncherStore store)
                 FileSystemHelper.DeleteDirectory(staging);
             }
         }
+
         return store.AddProject(destination);
     }
 
@@ -105,6 +116,7 @@ sealed class ProjectBackupService(LauncherStore store)
         {
             throw new DirectoryNotFoundException(Loc.Get("launcher.errors.missing_project_assets"));
         }
+
         string folder = EnsureFolder(project);
         using FileStream backupLock = AcquireLock(folder);
 
@@ -146,6 +158,7 @@ sealed class ProjectBackupService(LauncherStore store)
             {
                 DeleteFile(archive);
             }
+
             throw;
         }
     }
@@ -160,12 +173,14 @@ sealed class ProjectBackupService(LauncherStore store)
         {
             return;
         }
+
         foreach (string folder in Directory.EnumerateDirectories(store.BackupsPath))
         {
             if (!Guid.TryParseExact(Path.GetFileName(folder), "N", out _) || FileSystemHelper.IsLink(folder))
             {
                 continue;
             }
+
             try
             {
                 using FileStream backupLock = AcquireLock(folder);
@@ -174,8 +189,8 @@ sealed class ProjectBackupService(LauncherStore store)
                     string name = Path.GetFileName(file);
                     bool unfinished = name.EndsWith(PartialSuffix, StringComparison.Ordinal)
                                       || name.EndsWith(".tmp", StringComparison.Ordinal)
-                                      || name.EndsWith(".zip", StringComparison.Ordinal)
-                                      && !File.Exists(Path.ChangeExtension(file, ".json"));
+                                      || (name.EndsWith(".zip", StringComparison.Ordinal)
+                                          && !File.Exists(Path.ChangeExtension(file, ".json")));
                     if (unfinished)
                     {
                         File.Delete(file);
@@ -214,15 +229,16 @@ sealed class ProjectBackupService(LauncherStore store)
                 }
                 catch (OperationCanceledException)
                 {
-                    process.Kill(entireProcessTree: true);
+                    process.Kill(true);
                     throw;
                 }
+
                 string output = await stdout;
                 await stderr;
                 return (process.ExitCode, output);
             }
             catch (Exception e) when (e is Win32Exception or IOException
-                                      || e is OperationCanceledException && !token.IsCancellationRequested)
+                                      || (e is OperationCanceledException && !token.IsCancellationRequested))
             {
                 return null;
             }
@@ -239,7 +255,8 @@ sealed class ProjectBackupService(LauncherStore store)
         {
             token.ThrowIfCancellationRequested();
             bool atRoot = directory == root;
-            foreach (FileSystemInfo item in new DirectoryInfo(directory).EnumerateFileSystemInfos().OrderBy(i => i.Name, StringComparer.Ordinal))
+            foreach (FileSystemInfo item in new DirectoryInfo(directory).EnumerateFileSystemInfos()
+                         .OrderBy(i => i.Name, StringComparer.Ordinal))
             {
                 if ((item.Attributes & FileAttributes.ReparsePoint) != 0)
                 {
@@ -247,12 +264,15 @@ sealed class ProjectBackupService(LauncherStore store)
                     LauncherLog.Append(store.Home, $"Backup skipped the link {item.FullName}.");
                     continue;
                 }
+
                 string entry = Path.GetRelativePath(root, item.FullName);
                 if (Path.DirectorySeparatorChar != '\\' && entry.Contains('\\'))
                 {
-                    LauncherLog.Append(store.Home, $"Backup skipped {item.FullName}: its name can't be stored portably.");
+                    LauncherLog.Append(store.Home,
+                        $"Backup skipped {item.FullName}: its name can't be stored portably.");
                     continue;
                 }
+
                 entry = entry.Replace(Path.DirectorySeparatorChar, '/');
                 if (item is DirectoryInfo)
                 {
@@ -260,24 +280,28 @@ sealed class ProjectBackupService(LauncherStore store)
                     {
                         continue;
                     }
+
                     entries.Add((item.FullName, entry + "/", true));
                     pending.Push(item.FullName);
                 }
-                else if (!Constants.Backups.ExcludedFiles.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, item.Name)))
+                else if (!Constants.Backups.ExcludedFiles.Any(pattern =>
+                             FileSystemName.MatchesSimpleExpression(pattern, item.Name)))
                 {
                     entries.Add((item.FullName, entry, false));
                 }
             }
         }
+
         return entries;
     }
 
     private static bool IsExcludedFolder(string name, bool atRoot) =>
         Constants.Backups.ExcludedFolders.Contains(name, StringComparer.OrdinalIgnoreCase)
-        || atRoot && Constants.Backups.ExcludedRootFolders.Contains(name, StringComparer.OrdinalIgnoreCase);
+        || (atRoot && Constants.Backups.ExcludedRootFolders.Contains(name, StringComparer.OrdinalIgnoreCase));
 
     /// <summary>Writes the archive, keeping Unix modes so unzipped scripts stay executable. Returns the file count.</summary>
-    private static int WriteArchive(string path, List<(string Path, string Entry, bool IsDirectory)> entries, long total,
+    private static int WriteArchive(string path, List<(string Path, string Entry, bool IsDirectory)> entries,
+        long total,
         IProgress<TransferProgress>? progress, CancellationToken token)
     {
         const int UnixRegularFile = 0x8000, UnixDirectory = 0x4000;
@@ -285,40 +309,47 @@ sealed class ProjectBackupService(LauncherStore store)
         int files = 0;
         long written = 0, lastReport = 0;
         Stopwatch clock = Stopwatch.StartNew();
-        using FileStream output = new( path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, Constants.Network.TransferBufferSize );
-        using ZipArchive zip = new( output, ZipArchiveMode.Create );
+        using FileStream output = new(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None,
+            Constants.Network.TransferBufferSize);
+        using ZipArchive zip = new(output, ZipArchiveMode.Create);
         foreach ((string source, string name, bool isDirectory) in entries)
         {
             token.ThrowIfCancellationRequested();
-            ZipArchiveEntry entry = zip.CreateEntry(name, isDirectory ? CompressionLevel.NoCompression : CompressionLevel.Fastest);
+            ZipArchiveEntry entry = zip.CreateEntry(name,
+                isDirectory ? CompressionLevel.NoCompression : CompressionLevel.Fastest);
             DateTime modified = isDirectory ? Directory.GetLastWriteTime(source) : File.GetLastWriteTime(source);
             entry.LastWriteTime = modified < ZipEpoch ? ZipEpoch : modified > ZipLimit ? ZipLimit : modified;
             if (!OperatingSystem.IsWindows())
             {
-                entry.ExternalAttributes = ((isDirectory ? UnixDirectory : UnixRegularFile) | (int)File.GetUnixFileMode(source)) << 16;
+                entry.ExternalAttributes =
+                    ((isDirectory ? UnixDirectory : UnixRegularFile) | (int)File.GetUnixFileMode(source)) << 16;
             }
+
             if (isDirectory)
             {
                 continue;
             }
 
             // The editor may still have files open; share rather than fail, but never skip a file silently.
-            using (FileStream input = new( source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete ))
+            using (FileStream input = new(source, FileMode.Open, FileAccess.Read,
+                       FileShare.ReadWrite | FileShare.Delete))
             using (Stream stream = entry.Open())
             {
                 input.CopyTo(stream);
                 written += input.Length;
             }
+
             files++;
             if (clock.ElapsedMilliseconds - lastReport > Constants.Network.ProgressIntervalMilliseconds)
             {
-                progress?.Report(new TransferProgress(Loc.Get("launcher.backups.progress", new
-                {
-                    count = files, total = entries.Count(e => !e.IsDirectory)
-                }), total > 0 ? Math.Min(1, (double)written / total) : null));
+                progress?.Report(new TransferProgress(
+                    Loc.Get("launcher.backups.progress",
+                        new { count = files, total = entries.Count(e => !e.IsDirectory) }),
+                    total > 0 ? Math.Min(1, (double)written / total) : null));
                 lastReport = clock.ElapsedMilliseconds;
             }
         }
+
         return files;
     }
 
@@ -347,7 +378,8 @@ sealed class ProjectBackupService(LauncherStore store)
             return item.Backup;
         });
 
-    private static IEnumerable<ProjectBackup> Completed(string folder) => Manifests(folder).Where(backup => File.Exists(backup.Archive));
+    private static IEnumerable<ProjectBackup> Completed(string folder) =>
+        Manifests(folder).Where(backup => File.Exists(backup.Archive));
 
     /// <summary>The folder holding a listed backup, which must be one of the launcher's backup folders.</summary>
     private string BackupFolder(ProjectBackup backup)
@@ -357,10 +389,11 @@ sealed class ProjectBackupService(LauncherStore store)
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.path_outside_folder"));
         }
+
         return folder;
     }
 
-    private string? FolderFor(Project project) => project.BackupId is {} id && Guid.TryParseExact(id, "N", out _)
+    private string? FolderFor(Project project) => project.BackupId is { } id && Guid.TryParseExact(id, "N", out _)
         ? FileSystemHelper.SafeChildPath(store.BackupsPath, id)
         : null;
 
@@ -371,6 +404,7 @@ sealed class ProjectBackupService(LauncherStore store)
             project.BackupId = Guid.NewGuid().ToString("N");
             store.Save();
         }
+
         Directory.CreateDirectory(store.BackupsPath);
         FileSystemHelper.RejectLink(store.BackupsPath);
         string folder = FolderFor(project)!;
@@ -384,7 +418,8 @@ sealed class ProjectBackupService(LauncherStore store)
     {
         try
         {
-            return new FileStream(Path.Combine(folder, LockFile), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            return new FileStream(Path.Combine(folder, LockFile), FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                FileShare.None);
         }
         catch (IOException error)
         {

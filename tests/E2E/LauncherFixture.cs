@@ -2,30 +2,21 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+
 namespace Prowl.Launcher.Test.E2E;
 
-sealed class LauncherFixture : IDisposable
+internal sealed class LauncherFixture : IDisposable
 {
-    internal string Root { get; }
-    internal string Home => Path.Combine(Root, "home");
-    internal string Projects => Path.Combine(Root, "projects");
-    internal LauncherStore Store { get; }
-    internal HttpClient Http { get; }
-    internal EditorRelease EditorRelease { get; }
-    internal List<EditorRelease> EditorReleases { get; }
-    internal EditorRelease StableUpdate { get; }
-    internal EditorRelease PreviewUpdate { get; }
-    internal string LaunchRecord => Path.Combine(Home, "editor-launch.json");
     private readonly byte[] _editorZip;
     private readonly byte[] _launcherZip;
-    private EditorRelease? _sampleRelease;
-    private byte[]? _sampleZip;
     internal bool CorruptDownload;
     internal bool DelaySampleDownload;
     internal int Downloads;
     internal int LauncherChecks;
     internal int SampleDownloads;
     internal bool SlowDownload;
+    private EditorRelease? _sampleRelease;
+    private byte[]? _sampleZip;
 
     internal LauncherFixture(string root)
     {
@@ -43,24 +34,36 @@ sealed class LauncherFixture : IDisposable
             Store.Settings.InstallationPromptHandled = true;
             Store.Save();
         }
+
         _editorZip = ProbeArchive("Prowl.Editor");
         _launcherZip = ProbeArchive("Prowl.Launcher");
         string platform = Platform.Identifier;
         EditorRelease = Release(11, "v1.0.0", false, "ProwlEngine/Prowl", $"Prowl-v1.0.0-{platform}.zip", _editorZip);
         EditorReleases = [EditorRelease];
-        StableUpdate = Release(201, "v2.0.0", false, "dimmerly/Prowl-Launcher", $"Prowl-Launcher-2.0.0-{platform}.zip", _launcherZip);
-        PreviewUpdate = Release(202, "v3.0.0-preview.1", true, "dimmerly/Prowl-Launcher", $"Prowl-Launcher-3.0.0-preview.1-{platform}.zip", _launcherZip);
-        Http = new HttpClient(new Handler(Respond))
-        {
-            Timeout = TimeSpan.FromSeconds(20)
-        };
+        StableUpdate = Release(201, "v2.0.0", false, "dimmerly/Prowl-Launcher", $"Prowl-Launcher-2.0.0-{platform}.zip",
+            _launcherZip);
+        PreviewUpdate = Release(202, "v3.0.0-preview.1", true, "dimmerly/Prowl-Launcher",
+            $"Prowl-Launcher-3.0.0-preview.1-{platform}.zip", _launcherZip);
+        Http = new HttpClient(new Handler(Respond)) { Timeout = TimeSpan.FromSeconds(20) };
     }
+
+    internal string Root { get; }
+    internal string Home => Path.Combine(Root, "home");
+    internal string Projects => Path.Combine(Root, "projects");
+    internal LauncherStore Store { get; }
+    internal HttpClient Http { get; }
+    internal EditorRelease EditorRelease { get; }
+    internal List<EditorRelease> EditorReleases { get; }
+    internal EditorRelease StableUpdate { get; }
+    internal EditorRelease PreviewUpdate { get; }
+    internal string LaunchRecord => Path.Combine(Home, "editor-launch.json");
 
     public void Dispose() => Http.Dispose();
 
     internal async Task<InstalledEditor> InstallEditor()
     {
-        InstalledEditor installed = await new EditorInstallerService(Http, Store).InstallAsync(EditorRelease, Platform.Identifier);
+        InstalledEditor installed =
+            await new EditorInstallerService(Http, Store).InstallAsync(EditorRelease, Platform.Identifier);
         return installed;
     }
 
@@ -68,10 +71,7 @@ sealed class LauncherFixture : IDisposable
     {
         string path = Path.Combine(Projects, name);
         Directory.CreateDirectory(Path.Combine(path, "Assets"));
-        JsonFile.Write(Path.Combine(path, name + ".prowl"), new
-        {
-            name, version = "1.0.0"
-        });
+        JsonFile.Write(Path.Combine(path, name + ".prowl"), new { name, version = "1.0.0" });
         File.WriteAllText(Path.Combine(path, "Assets", "keep.txt"), "User project data");
         Project project = Store.AddProject(path);
         if (editor != null)
@@ -79,6 +79,7 @@ sealed class LauncherFixture : IDisposable
             project.EditorKey = editor.Key;
             Store.Save();
         }
+
         return project;
     }
 
@@ -87,27 +88,30 @@ sealed class LauncherFixture : IDisposable
     internal void PublishSamples(bool newer = false)
     {
         using MemoryStream output = new();
-        using (ZipArchive zip = new( output, ZipArchiveMode.Create, true ))
+        using (ZipArchive zip = new(output, ZipArchiveMode.Create, true))
         {
-            using MemoryStream hostBytes = new( ProbeArchive("Prowl.SampleHost") );
-            using ZipArchive host = new( hostBytes, ZipArchiveMode.Read );
+            using MemoryStream hostBytes = new(ProbeArchive("Prowl.SampleHost"));
+            using ZipArchive host = new(hostBytes, ZipArchiveMode.Read);
             foreach (ZipArchiveEntry entry in host.Entries)
             {
                 using Stream source = entry.Open();
                 using Stream target = zip.CreateEntry(entry.FullName.Replace("Probe/", "Host/")).Open();
                 source.CopyTo(target);
             }
+
             void Add(string path, string text)
             {
-                using StreamWriter writer = new( zip.CreateEntry(path).Open() );
+                using StreamWriter writer = new(zip.CreateEntry(path).Open());
                 writer.Write(text);
             }
+
             Add("Host/Prowl.SampleHost.dll", "probe");
             Add("Host/Prowl.SampleHost.runtimeconfig.json", "{}");
             Add("samples.json", "[\"HelloProwl\",\"PhysicsShowcase\"]");
             Add("Samples/HelloProwl/HelloProwl.dll", newer ? "new sample" : "sample");
             Add("Samples/PhysicsShowcase/PhysicsShowcase.dll", "sample");
         }
+
         _sampleZip = output.ToArray();
         _sampleRelease = Release(newer ? 302 : 301, "v2.0.0", false, Store.Settings.LauncherRepository,
             $"Prowl-Samples-{Platform.Identifier}.zip", _sampleZip);
@@ -122,18 +126,13 @@ sealed class LauncherFixture : IDisposable
             {
                 return Json(EditorReleases);
             }
+
             Interlocked.Increment(ref LauncherChecks);
-            return Json(_sampleRelease == null ? new[]
-            {
-                PreviewUpdate,
-                StableUpdate
-            } : new[]
-            {
-                _sampleRelease,
-                PreviewUpdate,
-                StableUpdate
-            });
+            return Json(_sampleRelease == null
+                ? new[] { PreviewUpdate, StableUpdate }
+                : new[] { _sampleRelease, PreviewUpdate, StableUpdate });
         }
+
         Interlocked.Increment(ref Downloads);
         byte[] archive = path.Contains("/ProwlEngine/Prowl/", StringComparison.Ordinal) ? _editorZip : _launcherZip;
         if (path.Contains("Prowl-Samples-", StringComparison.Ordinal))
@@ -145,6 +144,7 @@ sealed class LauncherFixture : IDisposable
                 return DelayedSampleResponse(archive, token);
             }
         }
+
         if (SlowDownload)
         {
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -152,42 +152,38 @@ sealed class LauncherFixture : IDisposable
                 Content = new StreamContent(new WaitingStream())
             });
         }
+
         if (CorruptDownload)
         {
             archive = archive.Select((b, i) => i == 20 ? (byte)(b ^ 255) : b).ToArray();
         }
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(archive)
-        });
+
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) });
     }
 
     private static async Task<HttpResponseMessage> DelayedSampleResponse(byte[] archive, CancellationToken token)
     {
         await Task.Delay(1500, token);
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(archive)
-        };
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) };
     }
 
-    private static Task<HttpResponseMessage> Json<T>(T value) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new StringContent(JsonSerializer.Serialize(value))
-    });
+    private static Task<HttpResponseMessage> Json<T>(T value) => Task.FromResult(
+        new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value)) });
 
-    private static EditorRelease Release(long id, string tag, bool preview, string repository, string name, byte[] bytes) =>
-        new( id, tag, preview, false, DateTimeOffset.UtcNow, $"https://github.com/{repository}/releases/tag/{tag}",
-            "## Fixture release notes\n\n- **New feature:** reliable workflows\n- Fixes and improvements\n\n[Full details](https://github.com/" + repository + ")",
+    private static EditorRelease Release(long id, string tag, bool preview, string repository, string name,
+        byte[] bytes) =>
+        new(id, tag, preview, false, DateTimeOffset.UtcNow, $"https://github.com/{repository}/releases/tag/{tag}",
+            "## Fixture release notes\n\n- **New feature:** reliable workflows\n- Fixes and improvements\n\n[Full details](https://github.com/" +
+            repository + ")",
             [
                 new ReleaseAsset(name, $"https://github.com/{repository}/releases/download/{tag}/{name}", bytes.Length,
                     "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)))
-            ] );
+            ]);
 
     private static byte[] ProbeArchive(string name)
     {
         using MemoryStream output = new();
-        using (ZipArchive archive = new( output, ZipArchiveMode.Create, true ))
+        using (ZipArchive archive = new(output, ZipArchiveMode.Create, true))
         {
             // The same test executable has a tiny probe entry point; no extra project is needed.
             string executable = "Prowl.Launcher.Test" + (OperatingSystem.IsWindows() ? ".exe" : "");
@@ -196,25 +192,33 @@ sealed class LauncherFixture : IDisposable
             {
                 throw new FileNotFoundException("Build the test executable before running E2E tests.", probe);
             }
+
             string? graphics = Environment.GetEnvironmentVariable("PROWL_SMOKE_OPENGL_DIRECTORY");
-            HashSet<string> graphicsLibraries = graphics == null ? [] : Directory.GetFiles(graphics, "*.dll")
-                .Select(file => Path.GetFileName(file)!).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (string file in Directory.EnumerateFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
+            HashSet<string> graphicsLibraries = graphics == null
+                ? []
+                : Directory.GetFiles(graphics, "*.dll")
+                    .Select(file => Path.GetFileName(file)!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in
+                     Directory.EnumerateFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(AppContext.BaseDirectory, file).Replace('\\', '/');
-                if (relative.StartsWith("e2e/", StringComparison.Ordinal) || relative.StartsWith("TestResults/", StringComparison.Ordinal))
+                if (relative.StartsWith("e2e/", StringComparison.Ordinal) ||
+                    relative.StartsWith("TestResults/", StringComparison.Ordinal))
                 {
                     continue;
                 }
+
                 if (graphicsLibraries.Contains(Path.GetFileName(file)))
                 {
                     continue;
                 }
+
                 string extension = Path.GetExtension(file);
                 if (file != probe && extension is not (".dll" or ".json" or ".so" or ".dylib"))
                 {
                     continue;
                 }
+
                 string entryName = file == probe ? name + (OperatingSystem.IsWindows() ? ".exe" : "") : relative;
                 ZipArchiveEntry entry = archive.CreateEntry("Probe/" + entryName, CompressionLevel.Fastest);
                 entry.ExternalAttributes = unchecked((int)(file == probe ? 0x81ed0000 : 0x81a40000));
@@ -222,12 +226,14 @@ sealed class LauncherFixture : IDisposable
                 using Stream source = File.OpenRead(file);
                 source.CopyTo(target);
             }
+
             if (name == "Prowl.Editor")
             {
-                using StreamWriter config = new( archive.CreateEntry("Probe/Prowl.Editor.runtimeconfig.json").Open() );
+                using StreamWriter config = new(archive.CreateEntry("Probe/Prowl.Editor.runtimeconfig.json").Open());
                 config.Write("{\"runtimeOptions\":{\"tfm\":\"net10.0\"}}");
             }
         }
+
         return output.ToArray();
     }
 
@@ -238,15 +244,18 @@ sealed class LauncherFixture : IDisposable
         {
             return;
         }
+
         foreach (string library in Directory.GetFiles(graphics, "*.dll"))
         {
             File.Copy(library, Path.Combine(AppContext.BaseDirectory, Path.GetFileName(library)), true);
         }
     }
 
-    private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
+    private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+        : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request, token);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) =>
+            respond(request, token);
     }
 
     private sealed class WaitingStream : Stream
@@ -255,12 +264,19 @@ sealed class LauncherFixture : IDisposable
         public override bool CanSeek => false;
         public override bool CanWrite => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => 0; set => throw new NotSupportedException(); }
+
+        public override long Position
+        {
+            get => 0;
+            set => throw new NotSupportedException();
+        }
+
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken token = default)
         {
             await Task.Delay(Timeout.Infinite, token);
             return 0;
         }
+
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         public override void Flush() => throw new NotSupportedException();
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();

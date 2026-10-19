@@ -5,10 +5,11 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>The sample catalog: run a sample, and update the sample bundle when a newer one exists.</summary>
-sealed class SamplesView(
+internal sealed class SamplesView(
     LauncherStore store,
     Controls ui,
     NotificationCenter notifications,
@@ -93,10 +94,11 @@ sealed class SamplesView(
             card.Transition(GuiProp.ScaleX, 0.16f).Transition(GuiProp.ScaleY, 0.16f);
             card.Hovered.Scale(1.025f, 1.025f);
         }
+
         using (card.Enter())
         {
             using (p.Box(id + "image").PositionType(PositionType.SelfDirected)
-                .Left(0).Top(0).Size(width, width).Clip().IsNotInteractable().Enter())
+                       .Left(0).Top(0).Size(width, width).Clip().IsNotInteractable().Enter())
             {
                 TextureTK? texture = _sampleThumbnails.Get(sample);
                 if (texture is not null)
@@ -104,6 +106,7 @@ sealed class SamplesView(
                     Controls.DrawCoverImage(p, texture, rounding, rounding, rounding, rounding);
                 }
             }
+
             float captionHeight = Math.Max(80, width * 0.25f);
             p.Box(id + "shade").PositionType(PositionType.SelfDirected)
                 .Left(0).Top(width - captionHeight - 12).Size(width, captionHeight + 12)
@@ -112,7 +115,7 @@ sealed class SamplesView(
                     Color.FromArgb(0, 5, 8, 13), Color.FromArgb(245, 5, 8, 13))
                 .IsNotInteractable();
             using (p.Column(id + "footer").Height(UnitValue.Auto).Padding(10).Gap(4)
-                .IsNotInteractable().Enter())
+                       .IsNotInteractable().Enter())
             {
                 p.Box(id + "title").Height(UnitValue.Auto).IsNotInteractable()
                     .Text(sample.Name, ui.Bold).FontSize(21).TextColor(Color.White)
@@ -129,11 +132,11 @@ sealed class SamplesView(
             if (_launchingSampleId == sample.Id)
             {
                 using (p.Column(id + "loading").PositionType(PositionType.SelfDirected)
-                    .Left(0).Top(0).Size(width, width)
-                    .Rounded(rounding)
-                    .BackgroundColor(Color.FromArgb(160, 5, 8, 13))
-                    .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
-                    .IsNotInteractable().Enter())
+                           .Left(0).Top(0).Size(width, width)
+                           .Rounded(rounding)
+                           .BackgroundColor(Color.FromArgb(160, 5, 8, 13))
+                           .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
+                           .IsNotInteractable().Enter())
                 {
                     Origami.Spinner(p, id + "spinner").XL().Tint(Color.White).Show();
                 }
@@ -152,6 +155,7 @@ sealed class SamplesView(
             {
                 ui.Operations.Title = "launcher.samples.downloading";
             }
+
             await samples.EnsureDownloadedAsync(ui.Operations.Transfer(), token, !offline);
             ui.Operations.ImmediateProgress = false;
             ui.Operations.Title = "launcher.samples.run";

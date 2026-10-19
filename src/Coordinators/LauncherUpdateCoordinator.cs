@@ -1,8 +1,9 @@
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>The launcher's own updates: background checks, the update prompt and the restart handoff.</summary>
-sealed class LauncherUpdateCoordinator(
+internal sealed class LauncherUpdateCoordinator(
     HttpClient http,
     LauncherStore store,
     OperationCoordinator operations,
@@ -13,6 +14,7 @@ sealed class LauncherUpdateCoordinator(
 ) : IDisposable
 {
     private readonly CancellationTokenSource _cancellation = new();
+
     // Bumped whenever settings change so an in-flight background check can't publish a stale result.
     private int _checkGeneration;
     private LauncherUpdateCheck? _pending;
@@ -41,6 +43,7 @@ sealed class LauncherUpdateCoordinator(
         {
             return;
         }
+
         try
         {
             LauncherUpdateCheck check = await new LauncherUpdaterService(http, store)
@@ -74,15 +77,19 @@ sealed class LauncherUpdateCoordinator(
             _pending = null;
             return;
         }
-        if (_pending is not { Release: {} release } check || operations.Busy || userBusy)
+
+        if (_pending is not { Release: { } release } check || operations.Busy || userBusy)
         {
             return;
         }
+
         _pending = null;
-        if (!check.Matches(store.Settings) || LauncherUpdaterService.IsDismissed(store.Settings, check.Repository, release.Id))
+        if (!check.Matches(store.Settings) ||
+            LauncherUpdaterService.IsDismissed(store.Settings, check.Repository, release.Id))
         {
             return;
         }
+
         operations.Start(token => OfferAsync(check, token), "launcher.updates.checking");
     }
 
@@ -141,8 +148,10 @@ sealed class LauncherUpdateCoordinator(
         {
             return;
         }
-        bool switchToStable = !store.Settings.LauncherPrereleases && VersionHelper.IsPreview(VersionHelper.LauncherVersion);
-        if (check.Release is not {} release)
+
+        bool switchToStable = !store.Settings.LauncherPrereleases &&
+                              VersionHelper.IsPreview(VersionHelper.LauncherVersion);
+        if (check.Release is not { } release)
         {
             notifications.Notify(
                 switchToStable ? "launcher.updates.no_stable_release" : "launcher.updates.launcher_up_to_date",
@@ -150,13 +159,13 @@ sealed class LauncherUpdateCoordinator(
             return;
         }
 
-        string version = LauncherUpdaterService.VersionFor(LauncherUpdaterService.AssetFor(release, Platform.Identifier)!, Platform.Identifier)!;
+        string version =
+            LauncherUpdaterService.VersionFor(LauncherUpdaterService.AssetFor(release, Platform.Identifier)!,
+                Platform.Identifier)!;
         bool accepted = await dialogs.ConfirmAsync(
             switchToStable ? "launcher.updates.stable_title" : "launcher.updates.confirm_title",
-            Loc.Get(switchToStable ? "launcher.updates.stable_description" : "launcher.updates.confirm_description", new
-            {
-                version
-            }),
+            Loc.Get(switchToStable ? "launcher.updates.stable_description" : "launcher.updates.confirm_description",
+                new { version }),
             "launcher.updates.restart",
             token,
             changelog: release);
@@ -167,18 +176,18 @@ sealed class LauncherUpdateCoordinator(
             return;
         }
 
-        operations.Title = Loc.Get("launcher.updates.installing", new
-        {
-            version
-        });
+        operations.Title = Loc.Get("launcher.updates.installing", new { version });
         operations.ImmediateProgress = true;
         using (FileStream update = LauncherUpdaterService.LockUpdates(store))
         {
-            string executable = await new LauncherUpdaterService(http, store).InstallAsync(release, Platform.Identifier, operations.Transfer(), token);
+            string executable =
+                await new LauncherUpdaterService(http, store).InstallAsync(release, Platform.Identifier,
+                    operations.Transfer(), token);
             await LauncherStartupService.StartAsync(executable, store.Home, [], token);
             store.Settings.LauncherExecutable = executable;
             store.Save();
         }
+
         operations.CloseWhenDone = true;
         Cleanup();
     }

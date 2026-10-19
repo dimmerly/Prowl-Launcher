@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -22,14 +23,15 @@ public sealed class SampleHelperTests : IDisposable
     }
 
     [Fact]
-    public void CatalogRejectsPathsAndDeduplicatesNames() => Assert.Equal(["HelloProwl", "NewSample"], SampleService.Discover(
+    public void CatalogRejectsPathsAndDeduplicatesNames() => Assert.Equal(["HelloProwl", "NewSample"], SampleService
+        .Discover(
             ["NewSample", "HelloProwl", "HelloProwl", "../Escape", "/Escape", "Other.dll", "Bad\n"])
         .Select(sample => sample.Id));
 
     [Fact]
     public void LauncherEmbedsOnlyTheCatalogAndThumbnails()
     {
-        string[] resources = typeof( Launcher ).Assembly.GetManifestResourceNames();
+        string[] resources = typeof(Launcher).Assembly.GetManifestResourceNames();
         Assert.Contains("Prowl.Launcher.Samples.catalog.json", resources);
         Assert.DoesNotContain(resources, name => name.EndsWith(".zip"));
         Assert.NotEmpty(SampleService.Samples);
@@ -38,15 +40,16 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task DownloadContainsAllSamplesAndIsReusedAcrossInstancesOffline()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         string first = await samples.ExtractAsync(new Sample("HelloProwl"), Path.Combine(_home, "first"));
         Assert.Equal("fixture assembly", File.ReadAllText(first));
         Assert.Contains(samples.Catalog, sample => sample.Id == "NewSample");
         Assert.Equal(1, fixture.Downloads);
 
-        SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
-        string second = await restarted.ExtractAsync(new Sample("NewSample"), Path.Combine(_home, "second"), allowNetwork: false);
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
+        string second = await restarted.ExtractAsync(new Sample("NewSample"), Path.Combine(_home, "second"),
+            allowNetwork: false);
         Assert.Equal("fixture assembly", File.ReadAllText(second));
         Assert.Equal(1, fixture.Downloads);
         Assert.Equal(1, fixture.Checks);
@@ -62,9 +65,9 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task ConcurrentInstancesShareOneDownload()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService first = new( fixture.Http, fixture.Store );
-        SampleService second = new( fixture.Http, new LauncherStore(_home) );
+        using BundleFixture fixture = new(_home);
+        SampleService first = new(fixture.Http, fixture.Store);
+        SampleService second = new(fixture.Http, new LauncherStore(_home));
         await Task.WhenAll(first.EnsureDownloadedAsync(), second.EnsureDownloadedAsync());
         Assert.True(first.IsCached && second.IsCached);
         Assert.Equal(1, fixture.Downloads);
@@ -73,8 +76,8 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task BackgroundCheckDownloadsOnlyWhenTheUserChoosesToUpdate()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         await samples.EnsureDownloadedAsync();
         Assert.False(await samples.HasUpdateAsync());
         fixture.PublishUpdate();
@@ -92,8 +95,8 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task SwitchingRepositoriesReplacesTheSingleBundle()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         await samples.EnsureDownloadedAsync();
         Assert.True(samples.IsCached);
         string previousRepository = fixture.Store.Settings.LauncherRepository;
@@ -125,14 +128,15 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task FailedUpdateLeavesTheLocalBundleUsableOffline()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         await samples.EnsureDownloadedAsync();
         fixture.PublishUpdate("missing-host");
         await Assert.ThrowsAsync<InvalidDataException>(() => samples.EnsureDownloadedAsync(checkForUpdates: true));
-        SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
         Assert.True(restarted.IsCached);
-        string assembly = await restarted.ExtractAsync(new Sample("HelloProwl"), Path.Combine(_home, "offline"), allowNetwork: false);
+        string assembly = await restarted.ExtractAsync(new Sample("HelloProwl"), Path.Combine(_home, "offline"),
+            allowNetwork: false);
         Assert.Equal("fixture assembly", File.ReadAllText(assembly));
         Assert.Empty(Directory.EnumerateDirectories(fixture.Store.WorkPath));
     }
@@ -140,14 +144,15 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task RestartRestoresABundleMovedAsideBeforeACrash()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
         string cache = Path.Combine(_home, "Samples");
         string backup = cache + ".previous";
         Directory.Move(cache, backup);
-        SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
         Assert.True(restarted.IsCached);
-        string assembly = await restarted.ExtractAsync(new Sample("HelloProwl"), Path.Combine(_home, "offline"), allowNetwork: false);
+        string assembly = await restarted.ExtractAsync(new Sample("HelloProwl"), Path.Combine(_home, "offline"),
+            allowNetwork: false);
         Assert.Equal("fixture assembly", File.ReadAllText(assembly));
         Assert.Equal(1, fixture.Downloads);
         Assert.False(Directory.Exists(backup));
@@ -156,8 +161,8 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task RestartRetainsACompleteReplacementAndRemovesItsBackup()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         await samples.EnsureDownloadedAsync();
         string cache = Path.Combine(_home, "Samples");
         string retained = Path.Combine(_home, "retained");
@@ -166,7 +171,7 @@ public sealed class SampleHelperTests : IDisposable
         await samples.EnsureDownloadedAsync(checkForUpdates: true);
         Directory.Move(retained, cache + ".previous");
 
-        SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
         Assert.True(restarted.IsCached);
         Assert.Equal("second", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
         Assert.False(Directory.Exists(cache + ".previous"));
@@ -175,13 +180,13 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task RestartRestoresTheBackupWhenTheReplacementIsIncomplete()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
         string cache = Path.Combine(_home, "Samples");
         Directory.Move(cache, cache + ".previous");
         Directory.CreateDirectory(cache);
         File.WriteAllText(Path.Combine(cache, "partial"), "interrupted");
-        SampleService restarted = new( fixture.Http, new LauncherStore(_home) );
+        SampleService restarted = new(fixture.Http, new LauncherStore(_home));
         Assert.True(restarted.IsCached);
         Assert.Equal("first", File.ReadAllText(Path.Combine(cache, "content", "revision.txt")));
         Assert.False(File.Exists(Path.Combine(cache, "partial")));
@@ -191,18 +196,19 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task StartupDoesNotRecoverWhileAnotherInstanceOwnsTheBundleLock()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         await new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync();
         string cache = Path.Combine(_home, "Samples");
         string lockPath = Path.Combine(_home, "samples.lock");
         SampleService restarted;
-        using (FileStream operation = new( lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None ))
+        using (FileStream operation = new(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
         {
             Directory.Move(cache, cache + ".previous");
             restarted = new SampleService(fixture.Http, new LauncherStore(_home));
             Assert.False(restarted.IsCached);
             Assert.True(Directory.Exists(cache + ".previous"));
         }
+
         await restarted.EnsureDownloadedAsync(allowNetwork: false);
         Assert.True(restarted.IsCached);
         Assert.Equal(1, fixture.Downloads);
@@ -211,11 +217,8 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task CancelledDownloadCanBeRetriedWithoutPartialFiles()
     {
-        using BundleFixture fixture = new( _home )
-        {
-            Stall = true
-        };
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home) { Stall = true };
+        SampleService samples = new(fixture.Http, fixture.Store);
         using CancellationTokenSource cancellation = new();
         Task download = samples.EnsureDownloadedAsync(token: cancellation.Token);
         await fixture.DownloadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -239,8 +242,8 @@ public sealed class SampleHelperTests : IDisposable
     [InlineData("invalid-catalog")]
     public async Task InvalidBundleNeverActivatesOrLeavesStagingFiles(string failure)
     {
-        using BundleFixture fixture = new( _home, failure );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home, failure);
+        SampleService samples = new(fixture.Http, fixture.Store);
         await Assert.ThrowsAsync<InvalidDataException>(() => samples.EnsureDownloadedAsync());
         Assert.False(samples.IsCached);
         Assert.Empty(Directory.EnumerateDirectories(fixture.Store.WorkPath));
@@ -250,7 +253,7 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task BundleFromAnotherRepositoryIsRejectedBeforeDownload()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         fixture.Releases[0] = fixture.Releases[0] with
         {
             Assets =
@@ -261,14 +264,15 @@ public sealed class SampleHelperTests : IDisposable
                 }
             ]
         };
-        await Assert.ThrowsAsync<InvalidDataException>(() => new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync());
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync());
         Assert.Equal(0, fixture.Downloads);
     }
 
     [Fact]
     public async Task OfflineFirstUseExplainsThatADownloadIsRequired()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new SampleService(fixture.Http, fixture.Store).EnsureDownloadedAsync(allowNetwork: false));
         Assert.Equal(0, fixture.Checks);
@@ -277,13 +281,15 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public async Task UnknownSampleAndCancelledExtractionCreateNoOutput()
     {
-        using BundleFixture fixture = new( _home );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home);
+        SampleService samples = new(fixture.Http, fixture.Store);
         string output = Path.Combine(_home, "output");
-        await Assert.ThrowsAsync<InvalidOperationException>(() => samples.ExtractAsync(new Sample("../HelloProwl"), output));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            samples.ExtractAsync(new Sample("../HelloProwl"), output));
         using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => samples.ExtractAsync(new Sample("HelloProwl"), output, cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            samples.ExtractAsync(new Sample("HelloProwl"), output, cancellation.Token));
         Assert.False(Directory.Exists(output));
         Assert.Equal(0, fixture.Checks);
     }
@@ -291,7 +297,7 @@ public sealed class SampleHelperTests : IDisposable
     [Fact]
     public void SelectionUsesLatestAvailablePlatformBundleAndRespectsPrereleases()
     {
-        using BundleFixture fixture = new( _home );
+        using BundleFixture fixture = new(_home);
         EditorRelease stable = fixture.Releases[0];
         EditorRelease preview = stable with
         {
@@ -301,33 +307,31 @@ public sealed class SampleHelperTests : IDisposable
             Published = stable.Published.AddDays(1),
             Assets = stable.Assets
         };
-        EditorRelease missing = stable with
-        {
-            Id = 3, Published = stable.Published.AddDays(2), Assets = []
-        };
-        Assert.Equal(stable.Id, SampleService.SelectBundle([preview, missing, stable], Platform.Identifier, false)!.Value.Release.Id);
-        Assert.Equal(preview.Id, SampleService.SelectBundle([missing, stable, preview], Platform.Identifier, true)!.Value.Release.Id);
+        EditorRelease missing = stable with { Id = 3, Published = stable.Published.AddDays(2), Assets = [] };
+        Assert.Equal(stable.Id,
+            SampleService.SelectBundle([preview, missing, stable], Platform.Identifier, false)!.Value.Release.Id);
+        Assert.Equal(preview.Id,
+            SampleService.SelectBundle([missing, stable, preview], Platform.Identifier, true)!.Value.Release.Id);
         Assert.Null(SampleService.SelectBundle([stable], "unsupported-platform", true));
         Assert.Null(SampleService.SelectBundle([
-            stable with
-            {
-                Draft = true
-            }
+            stable with { Draft = true }
         ], Platform.Identifier, true));
     }
 
     [SampleBundleFact]
     public async Task ReleaseBundleDownloadsAndExtractsEveryCompiledSample()
     {
-        using BundleFixture fixture = new( _home, archive: Environment.GetEnvironmentVariable("PROWL_SAMPLE_BUNDLE") );
-        SampleService samples = new( fixture.Http, fixture.Store );
+        using BundleFixture fixture = new(_home, archive: Environment.GetEnvironmentVariable("PROWL_SAMPLE_BUNDLE"));
+        SampleService samples = new(fixture.Http, fixture.Store);
         await samples.EnsureDownloadedAsync();
         foreach (Sample sample in samples.Catalog)
         {
             string assembly = await samples.ExtractAsync(sample, Path.Combine(_home, "runs", sample.Id));
             Assert.Equal(sample.Id, AssemblyName.GetAssemblyName(assembly).Name);
-            Assert.Empty(Directory.EnumerateFiles(Path.GetDirectoryName(assembly)!, "*.cs", SearchOption.AllDirectories));
+            Assert.Empty(
+                Directory.EnumerateFiles(Path.GetDirectoryName(assembly)!, "*.cs", SearchOption.AllDirectories));
         }
+
         Assert.Equal(1, fixture.Downloads);
     }
 
@@ -344,14 +348,10 @@ public sealed class SampleHelperTests : IDisposable
 
     private sealed class BundleFixture : IDisposable
     {
-        internal LauncherStore Store { get; }
-        internal HttpClient Http { get; }
-        internal List<EditorRelease> Releases { get; }
-        internal TaskCompletionSource DownloadStarted { get; } = new( TaskCreationOptions.RunContinuationsAsynchronously );
-        private byte[] _archive;
         internal int Checks;
         internal int Downloads;
         internal bool Stall;
+        private byte[] _archive;
 
         internal BundleFixture(string home, string? failure = null, string? archive = null)
         {
@@ -363,12 +363,20 @@ public sealed class SampleHelperTests : IDisposable
             [
                 new EditorRelease(1, "v1.0.0", false, false, DateTimeOffset.UtcNow, "", null,
                 [
-                    new ReleaseAsset(name, $"https://github.com/{Store.Settings.LauncherRepository}/releases/download/v1.0.0/{name}",
+                    new ReleaseAsset(name,
+                        $"https://github.com/{Store.Settings.LauncherRepository}/releases/download/v1.0.0/{name}",
                         _archive.Length, "sha256:" + digest)
                 ])
             ];
             Http = new HttpClient(new Handler(Respond));
         }
+
+        internal LauncherStore Store { get; }
+        internal HttpClient Http { get; }
+        internal List<EditorRelease> Releases { get; }
+
+        internal TaskCompletionSource DownloadStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void Dispose() => Http.Dispose();
 
@@ -382,16 +390,15 @@ public sealed class SampleHelperTests : IDisposable
                     Content = new StringContent(JsonSerializer.Serialize(Releases))
                 };
             }
+
             Interlocked.Increment(ref Downloads);
             DownloadStarted.TrySetResult();
             if (Stall)
             {
                 await Task.Delay(Timeout.Infinite, token);
             }
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new ByteArrayContent(_archive)
-            };
+
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_archive) };
         }
 
         internal void PublishUpdate(string? failure = null)
@@ -407,7 +414,9 @@ public sealed class SampleHelperTests : IDisposable
                 [
                     previous.Assets[0] with
                     {
-                        DownloadUrl = previous.Assets[0].DownloadUrl.Replace("/v1.0.0/", "/v2.0.0/"), Size = _archive.Length, Digest = "sha256:" + Convert.ToHexString(SHA256.HashData(_archive))
+                        DownloadUrl = previous.Assets[0].DownloadUrl.Replace("/v1.0.0/", "/v2.0.0/"),
+                        Size = _archive.Length,
+                        Digest = "sha256:" + Convert.ToHexString(SHA256.HashData(_archive))
                     }
                 ]
             };
@@ -416,21 +425,25 @@ public sealed class SampleHelperTests : IDisposable
         private static byte[] CreateArchive(string? failure, string revision = "first")
         {
             using MemoryStream output = new();
-            using (ZipArchive zip = new( output, ZipArchiveMode.Create, true ))
+            using (ZipArchive zip = new(output, ZipArchiveMode.Create, true))
             {
                 void Add(string name, string text, int attributes = 0)
                 {
                     ZipArchiveEntry entry = zip.CreateEntry(name);
                     entry.ExternalAttributes = attributes;
-                    using StreamWriter writer = new( entry.Open() );
+                    using StreamWriter writer = new(entry.Open());
                     writer.Write(text);
                 }
-                Add("samples.json", failure == "invalid-catalog" ? "[\"../Escape\"]" : "[\"HelloProwl\",\"NewSample\"]");
+
+                Add("samples.json",
+                    failure == "invalid-catalog" ? "[\"../Escape\"]" : "[\"HelloProwl\",\"NewSample\"]");
                 Add("revision.txt", revision);
                 if (failure != "missing-host")
                 {
-                    Add("Host/" + (OperatingSystem.IsWindows() ? "Prowl.SampleHost.exe" : "Prowl.SampleHost"), "fixture host");
+                    Add("Host/" + (OperatingSystem.IsWindows() ? "Prowl.SampleHost.exe" : "Prowl.SampleHost"),
+                        "fixture host");
                 }
+
                 Add("Host/Prowl.SampleHost.dll", "fixture runtime");
                 Add("Host/Prowl.SampleHost.runtimeconfig.json", "{}");
                 Add("Samples/HelloProwl/HelloProwl.dll", "fixture assembly");
@@ -438,22 +451,27 @@ public sealed class SampleHelperTests : IDisposable
                 {
                     Add("Samples/NewSample/NewSample.dll", "fixture assembly");
                 }
+
                 Add("Samples/HelloProwl/Assets/keep.txt", "sample asset");
                 if (failure == "traversal")
                 {
                     Add("../escape.txt", "escape");
                 }
+
                 if (failure == "symlink")
                 {
                     Add("Host/link", "elsewhere", unchecked((int)0xa1ff0000));
                 }
             }
+
             return output.ToArray();
         }
 
-        private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
+        private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+            : HttpMessageHandler
         {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request, token);
+            protected override Task<HttpResponseMessage>
+                SendAsync(HttpRequestMessage request, CancellationToken token) => respond(request, token);
         }
     }
 }

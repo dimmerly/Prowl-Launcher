@@ -1,4 +1,5 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 public sealed class ProjectVersionTests
@@ -44,7 +45,7 @@ public sealed class ProjectVersionTests
     [Fact]
     public void EditorsUseTheirReportedVersionBeforeTheirTag()
     {
-        InstalledEditor editor = new( 1, "v1.0-preview-4", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow )
+        InstalledEditor editor = new(1, "v1.0-preview-4", "win-x64", "Prowl.Editor.exe", DateTimeOffset.UtcNow)
         {
             EditorVersion = "1.0-preview.5+abc"
         };

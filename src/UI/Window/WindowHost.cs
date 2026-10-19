@@ -12,18 +12,13 @@ using Prowl.PaperUI;
 using Prowl.Quill;
 using Prowl.Vector;
 
-using Image=Prowl.Aperture.Image;
-using PixelFormat=Prowl.Aperture.PixelFormat;
+using Image = Prowl.Aperture.Image;
+using PixelFormat = Prowl.Aperture.PixelFormat;
+
 namespace Prowl.Launcher;
 
 public sealed partial class Launcher
 {
-
-    private float UiScale => WindowScale.ClampInterfaceScale(store.Settings.UiScale);
-    private float DisplayScale => _windowScale.Rendering;
-
-    /// <summary>Scale for sizing modals in layout units, guarded against a zero display scale.</summary>
-    private float ModalScale => Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
     private UiContext _context = null!;
     private float _deltaTime;
     private bool _forceClose;
@@ -34,7 +29,13 @@ public sealed partial class Launcher
     private LauncherWindow _window = null!;
     private WindowFrame? _windowFrame;
     private bool _windowResizing;
-    private WindowScale _windowScale = new( 1, 1 );
+    private WindowScale _windowScale = new(1, 1);
+
+    private float UiScale => WindowScale.ClampInterfaceScale(store.Settings.UiScale);
+    private float DisplayScale => _windowScale.Rendering;
+
+    /// <summary>Scale for sizing modals in layout units, guarded against a zero display scale.</summary>
+    private float ModalScale => Math.Max(0.01f, DisplayScale / UiScale) * UiScale;
 
     public void Run(string title, int width, int height)
     {
@@ -49,16 +50,15 @@ public sealed partial class Launcher
     {
         UpdateWindowScale();
         _window.VSync = VSyncMode.On;
-        using (Stream iconStream = typeof( Launcher ).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
+        using (Stream iconStream = typeof(Launcher).Assembly.GetManifestResourceStream("Prowl.Launcher.prowl.png")
                                    ?? throw new InvalidDataException("The launcher icon is missing."))
         using (Image icon = Image.Load(iconStream,
-            new DecodeOptions
-            {
-                TargetPixelFormat = PixelFormat.Rgba8
-            }))
+                   new DecodeOptions { TargetPixelFormat = PixelFormat.Rgba8 }))
         {
-            _window.Icon = new WindowIcon(new OpenTK.Windowing.Common.Input.Image(icon.Width, icon.Height, icon.Pixels.ToArray()));
+            _window.Icon =
+                new WindowIcon(new OpenTK.Windowing.Common.Input.Image(icon.Width, icon.Height, icon.Pixels.ToArray()));
         }
+
         if (OperatingSystem.IsWindows())
         {
             _windowFrame = new WindowFrame(
@@ -105,7 +105,8 @@ public sealed partial class Launcher
         }
 
         bool scrolling = _lastScroll != 0 && Stopwatch.GetElapsedTime(_lastScroll).TotalSeconds < 1;
-        _window.UpdateFrequency = _window.IsFocused || _mouseOverWindow || _windowResizing || scrolling || Capturing ? 0 : 5;
+        _window.UpdateFrequency =
+            _window.IsFocused || _mouseOverWindow || _windowResizing || scrolling || Capturing ? 0 : 5;
     }
 
     private void RenderWindow(float delta)
@@ -122,6 +123,7 @@ public sealed partial class Launcher
         {
             _ = LauncherStartupService.ReportReadyAsync();
         }
+
         CaptureScreenshot();
     }
 
@@ -154,17 +156,17 @@ public sealed partial class Launcher
         _paper.DisplayFramebufferScale = new Float2(DisplayScale, DisplayScale);
     }
 
-    private Float2 Pointer(float x, float y) => new( x / _windowScale.Input, y / _windowScale.Input );
+    private Float2 Pointer(float x, float y) => new(x / _windowScale.Input, y / _windowScale.Input);
 
     private bool HandleCloseRequested()
     {
-        if (!_operations.Busy)
+        if (!Operations.Busy)
         {
             return true;
         }
 
-        _operations.CloseWhenDone = true;
-        _operations.Cancel();
+        Operations.CloseWhenDone = true;
+        Operations.Cancel();
         return false;
     }
 

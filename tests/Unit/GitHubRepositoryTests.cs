@@ -1,4 +1,5 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Unit")]

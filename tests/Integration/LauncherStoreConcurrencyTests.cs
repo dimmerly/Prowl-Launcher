@@ -1,10 +1,12 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherStoreConcurrencyTests : IDisposable
 {
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsTests", Guid.NewGuid().ToString("N"));
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlSettingsTests", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
     {
@@ -13,6 +15,7 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
             Directory.Delete(_home, true);
         }
     }
+
     private string ProjectFolder(string name)
     {
         string path = Path.Combine(_home, name);
@@ -23,11 +26,11 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     [Fact]
     public void StaleSettingsSavePreservesOtherInstancesProjects()
     {
-        LauncherStore first = new( _home ), second = new( _home );
+        LauncherStore first = new(_home), second = new(_home);
         first.AddProject(ProjectFolder("Game"));
         second.Settings.Locale = "fr";
         second.Save();
-        LauncherStore saved = new( _home );
+        LauncherStore saved = new(_home);
         Assert.Single(saved.Settings.Projects);
         Assert.Equal("fr", saved.Settings.Locale);
         first.Settings.ShowFps = true;
@@ -38,9 +41,9 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     [Fact]
     public void ConcurrentProjectEditsMergeByFieldAndKeepLiveReferences()
     {
-        LauncherStore first = new( _home );
+        LauncherStore first = new(_home);
         Project original = first.AddProject(ProjectFolder("Game"));
-        LauncherStore second = new( _home );
+        LauncherStore second = new(_home);
         original.Favorite = true;
         first.Save();
         second.Settings.Projects[0].EditorKey = "pinned-editor";
@@ -55,9 +58,9 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     [Fact]
     public void UnchangedStaleProjectDoesNotUndoRemoval()
     {
-        LauncherStore first = new( _home );
+        LauncherStore first = new(_home);
         first.AddProject(ProjectFolder("Game"));
-        LauncherStore second = new( _home );
+        LauncherStore second = new(_home);
         first.Settings.Projects.Clear();
         first.Save();
         second.Settings.Locale = "fr";
@@ -68,15 +71,9 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     [Fact]
     public async Task SimultaneousSavesPreserveBothAddedProjects()
     {
-        LauncherStore first = new( _home ), second = new( _home );
-        first.Settings.Projects.Add(new Project
-        {
-            Path = ProjectFolder("One"), Name = "One"
-        });
-        second.Settings.Projects.Add(new Project
-        {
-            Path = ProjectFolder("Two"), Name = "Two"
-        });
+        LauncherStore first = new(_home), second = new(_home);
+        first.Settings.Projects.Add(new Project { Path = ProjectFolder("One"), Name = "One" });
+        second.Settings.Projects.Add(new Project { Path = ProjectFolder("Two"), Name = "Two" });
         await Task.WhenAll(Task.Run(first.Save), Task.Run(second.Save));
         Assert.Equal(2, new LauncherStore(_home).Settings.Projects.Count);
     }

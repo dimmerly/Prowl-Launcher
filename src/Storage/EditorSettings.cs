@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Prowl.Launcher.Theming;
+
 namespace Prowl.Launcher;
 
 /// <summary>Read-only access to the editor's own settings files, which the launcher follows where it can.</summary>
@@ -16,7 +17,7 @@ public static class EditorSettings
     public static string ProjectsDirectory()
     {
         if (ReadProperty("DefaultProjectsPath") is { ValueKind: JsonValueKind.String } value
-            && value.GetString() is {} path
+            && value.GetString() is { } path
             && !string.IsNullOrWhiteSpace(path)
             && Path.IsPathFullyQualified(path))
         {

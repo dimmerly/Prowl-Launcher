@@ -2,10 +2,11 @@ using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>The project list with its toolbar, or the new-project form while that is open.</summary>
-sealed class ProjectsView(
+internal sealed class ProjectsView(
     LauncherStore store,
     Controls ui,
     Dialogs dialogs,
@@ -30,7 +31,8 @@ sealed class ProjectsView(
         }
 
         ui.Label(p, "projects-title", "launcher.projects.title", 18, ui.Ink, 30, true);
-        Project[] projects = store.Settings.Projects.Where(project => (project.Name + project.Path).Contains(_search, StringComparison.OrdinalIgnoreCase))
+        Project[] projects = store.Settings.Projects.Where(project =>
+                (project.Name + project.Path).Contains(_search, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(project => project.Favorite)
             .ThenByDescending(project => project.LastOpened)
             .ToArray();
@@ -72,18 +74,23 @@ sealed class ProjectsView(
                     {
                         if (folderExists)
                         {
-                            menu.Item(Loc.Get("launcher.projects.show_in_folder"), () => ProcessHelper.OpenInShell(project.Path));
+                            menu.Item(Loc.Get("launcher.projects.show_in_folder"),
+                                () => ProcessHelper.OpenInShell(project.Path));
                         }
                         else
                         {
-                            menu.Item(Loc.Get("launcher.projects.locate"), () => ui.Operations.Start(token => LocateProjectAsync(project, token), "launcher.projects.locate"));
+                            menu.Item(Loc.Get("launcher.projects.locate"),
+                                () => ui.Operations.Start(token => LocateProjectAsync(project, token),
+                                    "launcher.projects.locate"));
                         }
 
                         if (folderExists)
                         {
                             menu.Item(Loc.Get("launcher.backups.backup"),
-                                () => ui.Operations.Start(token => backups.BackUpAsync(project, token), "launcher.backups.back_up_now"));
+                                () => ui.Operations.Start(token => backups.BackUpAsync(project, token),
+                                    "launcher.backups.back_up_now"));
                         }
+
                         menu.Item(Loc.Get("launcher.projects.copy_path"), () => p.SetClipboard(project.Path));
                         menu.Item(
                             Loc.Get(project.Favorite ? "launcher.projects.unfavourite" : "launcher.projects.favourite"),
@@ -104,15 +111,15 @@ sealed class ProjectsView(
                     }
                 );
                 using ((wide ? p.Row(id + "row") : p.Column(id + "row")).Height(UnitValue.Auto)
-                    .Gap(12)
-                    .AlignItems(LayoutAlignment.Center)
-                    .Enter())
+                       .Gap(12)
+                       .AlignItems(LayoutAlignment.Center)
+                       .Enter())
                 {
                     using (p.Column(id + "info")
-                        .Height(UnitValue.Auto)
-                        .Gap(2)
-                        .Clip()
-                        .Enter())
+                               .Height(UnitValue.Auto)
+                               .Gap(2)
+                               .Clip()
+                               .Enter())
                     {
                         ui.Label(p, id + "name", project.Name, 19, ui.Ink, 28, true);
                         ElementBuilder path = p.Box(id + "path")
@@ -138,37 +145,43 @@ sealed class ProjectsView(
                         {
                             path.IsNotInteractable();
                         }
+
                         if (project.LastOpened != default)
                         {
-                            ui.Label(p, id + "last-opened", RelativeDate.FormatElapsed(project.LastOpened), 12, ui.Muted, 22);
+                            ui.Label(p, id + "last-opened", RelativeDate.FormatElapsed(project.LastOpened), 12,
+                                ui.Muted, 22);
                         }
 
                         if (!folderExists)
                         {
-                            ui.Label(p, id + "missing", "launcher.projects.folder_unavailable", 12, ui.Appearance.Theme.Red.C500, 24);
+                            ui.Label(p, id + "missing", "launcher.projects.folder_unavailable", 12,
+                                ui.Appearance.Theme.Red.C500, 24);
                         }
                     }
 
                     using (p.Column(id + "actions")
-                        .Width(wide ? UnitValue.Pixels(248) : UnitValue.Stretch())
-                        .Height(UnitValue.Auto)
-                        .Gap(8)
-                        .Enter())
+                               .Width(wide ? UnitValue.Pixels(248) : UnitValue.Stretch())
+                               .Height(UnitValue.Auto)
+                               .Gap(8)
+                               .Enter())
                     {
                         using (p.Row(id + "buttons")
-                            .Height(40)
-                            .Gap(8)
-                            .JustifyContent(LayoutJustification.End)
-                            .Enter())
+                                   .Height(40)
+                                   .Gap(8)
+                                   .JustifyContent(LayoutJustification.End)
+                                   .Enter())
                         {
-                            ui.Button(p, id + "remove", "launcher.projects.remove", token => RemoveProjectAsync(project, token), width: 90);
+                            ui.Button(p, id + "remove", "launcher.projects.remove",
+                                token => RemoveProjectAsync(project, token), width: 90);
                             if (folderExists)
                             {
-                                ui.Button(p, id + "open", "launcher.projects.open", token => OpenProjectAsync(project, token), true, 90);
+                                ui.Button(p, id + "open", "launcher.projects.open",
+                                    token => OpenProjectAsync(project, token), true, 90);
                             }
                             else
                             {
-                                ui.Button(p, id + "locate", "launcher.projects.locate", token => LocateProjectAsync(project, token), true, 90);
+                                ui.Button(p, id + "locate", "launcher.projects.locate",
+                                    token => LocateProjectAsync(project, token), true, 90);
                             }
                         }
 
@@ -184,7 +197,9 @@ sealed class ProjectsView(
                                 },
                                 keys
                             )
-                            .Display(key => editors.Installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
+                            .Display(key =>
+                                editors.Installed.FirstOrDefault(e => e.Key == key)?.ToString() ??
+                                Loc.Get("launcher.projects.choose_editor"))
                             .Width(UnitValue.Stretch())
                             .IsItemEnabled(_ => !ui.Busy)
                             .Show();
@@ -208,6 +223,7 @@ sealed class ProjectsView(
                 Origami.Button(p, "project-logs", Loc.Get("launcher.console.logs"))
                     .Width(76).Height(40).Variant(OrigamiVariant.Subtle).OnClick(logs.Show).Show();
             }
+
             ui.Button(p, "backups", "launcher.backups.title", _ =>
             {
                 backups.Request();
@@ -223,7 +239,7 @@ sealed class ProjectsView(
 
     private async Task AddProjectAsync(CancellationToken token)
     {
-        if (await dialogs.PickFolderAsync(EditorSettings.ProjectsDirectory(), token) is {} path)
+        if (await dialogs.PickFolderAsync(EditorSettings.ProjectsDirectory(), token) is { } path)
         {
             notifications.Notify("launcher.projects.added", store.AddProject(path).Name);
         }
@@ -244,7 +260,7 @@ sealed class ProjectsView(
     {
         string? previous = Path.GetDirectoryName(project.Path);
         string start = previous != null && Directory.Exists(previous) ? previous : EditorSettings.ProjectsDirectory();
-        if (await dialogs.PickFolderAsync(start, token) is {} path)
+        if (await dialogs.PickFolderAsync(start, token) is { } path)
         {
             store.RelocateProject(project, path);
             notifications.Notify("launcher.projects.located", project.Name);

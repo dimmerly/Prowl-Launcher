@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 public static class Platform

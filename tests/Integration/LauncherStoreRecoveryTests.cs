@@ -1,13 +1,16 @@
 using System.Text.Json;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
 public sealed class LauncherStoreRecoveryTests : IDisposable
 {
+    private readonly string _home =
+        Path.Combine(Path.GetTempPath(), "ProwlSettingsRecovery", Guid.NewGuid().ToString("N"));
+
     private string SettingsPath => Path.Combine(_home, "settings.json");
-    private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSettingsRecovery", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
     {
@@ -23,7 +26,7 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
     [InlineData("{\"Projects\":42}")]
     public void DamagedSettingsArePreservedAndRestoredFromTheLatestBackup(string damage)
     {
-        LauncherStore original = new( _home );
+        LauncherStore original = new(_home);
         original.Settings.Locale = "fr";
         original.Settings.Projects.Add(new Project
         {
@@ -32,7 +35,7 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
         original.Save();
         File.WriteAllText(SettingsPath, damage);
 
-        LauncherStore recovered = new( _home );
+        LauncherStore recovered = new(_home);
         Assert.Equal("fr", recovered.Settings.Locale);
         Assert.True(Assert.Single(recovered.Settings.Projects).Favorite);
         recovered.Save();
@@ -46,7 +49,7 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
     {
         Directory.CreateDirectory(_home);
         File.WriteAllText(SettingsPath, "{broken");
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         store.Save();
         Assert.Empty(store.Settings.Projects);
         Assert.Equal("{broken", File.ReadAllText(Assert.Single(Directory.GetFiles(_home, "settings.json.corrupt-*"))));
@@ -56,8 +59,9 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
     public void NullCollectionsAndRepositoriesAreNormalized()
     {
         Directory.CreateDirectory(_home);
-        File.WriteAllText(SettingsPath, "{\"Projects\":null,\"DismissedLauncherReleases\":null,\"ProwlRepository\":null,\"LauncherRepository\":\"../bad\"}");
-        LauncherStore store = new( _home );
+        File.WriteAllText(SettingsPath,
+            "{\"Projects\":null,\"DismissedLauncherReleases\":null,\"ProwlRepository\":null,\"LauncherRepository\":\"../bad\"}");
+        LauncherStore store = new(_home);
         store.Save();
         Assert.Empty(store.Settings.Projects);
         Assert.Empty(store.Settings.DismissedLauncherReleases);
@@ -71,26 +75,22 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
     {
         Directory.CreateDirectory(_home);
         string projectPath = Path.Combine(_home, "Game");
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new
-        {
-            Projects = new Project?[]
+        File.WriteAllText(SettingsPath,
+            JsonSerializer.Serialize(new
             {
-                null,
-                new()
+                Projects = new Project?[]
                 {
-                    Path = ""
-                },
-                new()
-                {
-                    Path = projectPath, Name = "Game"
-                },
-                new()
-                {
-                    Path = projectPath, Favorite = true, EditorKey = "pinned", LastOpened = DateTimeOffset.UtcNow
+                    null, new() { Path = "" }, new() { Path = projectPath, Name = "Game" },
+                    new()
+                    {
+                        Path = projectPath,
+                        Favorite = true,
+                        EditorKey = "pinned",
+                        LastOpened = DateTimeOffset.UtcNow
+                    }
                 }
-            }
-        }));
-        LauncherStore store = new( _home );
+            }));
+        LauncherStore store = new(_home);
         Project project = Assert.Single(store.Settings.Projects);
         Assert.True(project.Favorite);
         Assert.Equal("pinned", project.EditorKey);
@@ -102,13 +102,13 @@ public sealed class LauncherStoreRecoveryTests : IDisposable
     [Fact]
     public void AStaleInstanceRecoversDiskDamageWithoutLosingItsEdits()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         store.Settings.Locale = "fr";
         store.Save();
         store.Settings.ShowFps = true;
         File.WriteAllText(SettingsPath, "{broken");
         store.Save();
-        LauncherStore saved = new( _home );
+        LauncherStore saved = new(_home);
         Assert.Equal("fr", saved.Settings.Locale);
         Assert.True(saved.Settings.ShowFps);
     }

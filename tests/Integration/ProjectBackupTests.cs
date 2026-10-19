@@ -1,6 +1,9 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO.Compression;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Collection("Localization")]
@@ -17,18 +20,16 @@ public sealed class ProjectBackupTests : IDisposable
         }
     }
 
-    private (LauncherStore Store, ProjectBackupService Backups, Project Project) CreateProject(string name = "Game", string version = "1.0")
+    private (LauncherStore Store, ProjectBackupService Backups, Project Project) CreateProject(string name = "Game",
+        string version = "1.0")
     {
         string path = Path.Combine(_home, "Projects", name);
         Directory.CreateDirectory(Path.Combine(path, "Assets", "Empty"));
         Directory.CreateDirectory(Path.Combine(path, "ProjectSettings"));
-        JsonFile.Write(Path.Combine(path, name + ".prowl"), new
-        {
-            name, version
-        });
+        JsonFile.Write(Path.Combine(path, name + ".prowl"), new { name, version });
         File.WriteAllText(Path.Combine(path, "Assets", "Scene.scene"), "original scene");
         File.WriteAllText(Path.Combine(path, "ProjectSettings", "Physics.json"), "{}");
-        LauncherStore store = new( Path.Combine(_home, "Home") );
+        LauncherStore store = new(Path.Combine(_home, "Home"));
         return (store, new ProjectBackupService(store), store.AddProject(path));
     }
 
@@ -43,11 +44,16 @@ public sealed class ProjectBackupTests : IDisposable
     public void BackupsLeaveOutCachesBuildsVersionControlAndGeneratedFiles()
     {
         (_, ProjectBackupService backups, Project project) = CreateProject();
-        foreach (string excluded in new[] { "Library/cache/a.bin", "Temp/b", "Logs/c.log", "Builds/win-x64/Game.exe", "Backups/old.zip", ".git/HEAD",
-                     "Game.csproj", "Game.slnx", "Assets/Scripts/bin/Debug/x.dll", "Assets/Scripts/obj/y" })
+        foreach (string excluded in new[]
+                 {
+                     "Library/cache/a.bin", "Temp/b", "Logs/c.log", "Builds/win-x64/Game.exe", "Backups/old.zip",
+                     ".git/HEAD", "Game.csproj", "Game.slnx", "Assets/Scripts/bin/Debug/x.dll",
+                     "Assets/Scripts/obj/y"
+                 })
         {
             Write(project.Path, excluded);
         }
+
         Write(project.Path, "Assets/Library/kept.txt");
 
         ProjectBackup backup = backups.Create(project, BackupReason.Manual);
@@ -59,7 +65,8 @@ public sealed class ProjectBackupTests : IDisposable
         Assert.Contains("Assets/Empty/", entries);
         Assert.Contains("Assets/Library/kept.txt", entries);
         Assert.Contains("ProjectSettings/Physics.json", entries);
-        Assert.DoesNotContain(entries, e => e.StartsWith("Library") || e.StartsWith("Temp") || e.StartsWith("Logs") || e.StartsWith("Builds")
+        Assert.DoesNotContain(entries, e => e.StartsWith("Library") || e.StartsWith("Temp") || e.StartsWith("Logs") ||
+                                            e.StartsWith("Builds")
                                             || e.StartsWith("Backups") || e.StartsWith(".git") || e.EndsWith(".csproj")
                                             || e.EndsWith(".slnx") || e.Contains("/bin/") || e.Contains("/obj/"));
         Assert.DoesNotContain(entries, e => e.Contains('\\'));
@@ -144,7 +151,8 @@ public sealed class ProjectBackupTests : IDisposable
         using CancellationTokenSource cancelled = new();
         cancelled.Cancel();
 
-        Assert.ThrowsAny<OperationCanceledException>(() => backups.Create(project, BackupReason.Manual, token: cancelled.Token));
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            backups.Create(project, BackupReason.Manual, token: cancelled.Token));
         Assert.Empty(backups.List(project));
         string folder = Assert.Single(Directory.EnumerateDirectories(store.BackupsPath));
         Assert.DoesNotContain(Directory.EnumerateFiles(folder), f => Path.GetFileName(f) != "backup.lock");
@@ -172,12 +180,14 @@ public sealed class ProjectBackupTests : IDisposable
         (LauncherStore store, ProjectBackupService backups, Project project) = CreateProject();
         store.Settings.BackupRetention = 2;
         ProjectBackup manual = backups.Create(project, BackupReason.Manual);
-        ProjectBackup[] automatic = Enumerable.Range(0, 4).Select(_ => backups.Create(project, BackupReason.PreUpgrade)).ToArray();
+        ProjectBackup[] automatic = Enumerable.Range(0, 4).Select(_ => backups.Create(project, BackupReason.PreUpgrade))
+            .ToArray();
 
         IReadOnlyList<ProjectBackup> kept = backups.List(project);
         Assert.Equal(3, kept.Count);
         Assert.Contains(kept, b => b.Id == manual.Id);
-        Assert.Equal(automatic.TakeLast(2).Select(b => b.Id).Order(), kept.Where(b => b.Automatic).Select(b => b.Id).Order());
+        Assert.Equal(automatic.TakeLast(2).Select(b => b.Id).Order(),
+            kept.Where(b => b.Automatic).Select(b => b.Id).Order());
         Assert.Equal(3, Directory.EnumerateFiles(Path.GetDirectoryName(manual.Archive)!, "*.zip").Count());
     }
 
@@ -206,6 +216,7 @@ public sealed class ProjectBackupTests : IDisposable
             // git isn't installed.
             return;
         }
+
         File.WriteAllText(Path.Combine(project.Path, ".gitignore"), "Library/\n");
         Write(project.Path, "Library/cache.bin");
         Assert.False(await ProjectBackupService.IsCommittedInGitAsync(project.Path));
@@ -223,14 +234,17 @@ public sealed class ProjectBackupTests : IDisposable
         {
             try
             {
-                using System.Diagnostics.Process process = System.Diagnostics.Process.Start(ProcessHelper.Captured("git", directory,
-                    ["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", .. arguments]))!;
+                using Process process = Process.Start(ProcessHelper.Captured("git", directory,
+                [
+                    "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false",
+                    .. arguments
+                ]))!;
                 process.StandardOutput.ReadToEnd();
                 process.StandardError.ReadToEnd();
                 process.WaitForExit();
                 return process.ExitCode == 0;
             }
-            catch (System.ComponentModel.Win32Exception)
+            catch (Win32Exception)
             {
                 return false;
             }

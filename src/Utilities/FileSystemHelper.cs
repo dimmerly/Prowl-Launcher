@@ -1,8 +1,9 @@
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>Path comparison, containment and link checks for the folders the launcher manages.</summary>
-static class FileSystemHelper
+internal static class FileSystemHelper
 {
     internal static StringComparison PathComparison =>
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -48,6 +49,7 @@ static class FileSystemHelper
                 }
             }
         }
+
         Directory.Delete(path, true);
     }
 

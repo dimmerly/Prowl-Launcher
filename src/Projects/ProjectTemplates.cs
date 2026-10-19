@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>Creates the editor's blank project layout, stamped for the selected installed editor.</summary>
@@ -14,7 +15,8 @@ public static class ProjectTemplates
                            || name.EndsWith('.')
                            || name.IndexOfAny(['/', '\\', ':', '<', '>', '"', '|', '?', '*']) >= 0
                            || name.Any(char.IsControl)
-                           || Regex.IsMatch(name, "^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)", RegexOptions.IgnoreCase);
+                           || Regex.IsMatch(name, "^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)",
+                               RegexOptions.IgnoreCase);
         if (invalidName)
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_project_name"));
@@ -38,27 +40,18 @@ public static class ProjectTemplates
         try
         {
             foreach (string folder in new[]
-                {
-                    "Assets",
-                    "Library/cache",
-                    "Library/thumbnails",
-                    "Library/ScriptAssemblies",
-                    "ProjectSettings",
-                    "Packages",
-                    "Temp",
-                    "Logs"
-                }
-            )
+                     {
+                         "Assets", "Library/cache", "Library/thumbnails", "Library/ScriptAssemblies",
+                         "ProjectSettings", "Packages", "Temp", "Logs"
+                     }
+                    )
             {
                 Directory.CreateDirectory(Path.Combine(staging, folder));
             }
 
             JsonFile.Write(
                 Path.Combine(staging, name + ".prowl"),
-                new
-                {
-                    name, engine = "Prowl", version, created = DateTimeOffset.UtcNow
-                }
+                new { name, engine = "Prowl", version, created = DateTimeOffset.UtcNow }
             );
             File.WriteAllText(
                 Path.Combine(staging, ".gitignore"),
@@ -80,7 +73,8 @@ public static class ProjectTemplates
         }
     }
 
-    private static string ProjectVersionFor(InstalledEditor editor) => (editor.EditorVersion ?? editor.Tag).Split('+')[0].TrimStart('v')
+    private static string ProjectVersionFor(InstalledEditor editor) =>
+        (editor.EditorVersion ?? editor.Tag).Split('+')[0].TrimStart('v')
         .Replace("-preview-", "-preview.")
         .Replace("-alpha-", "-alpha.")
         .Replace("-beta-", "-beta.");

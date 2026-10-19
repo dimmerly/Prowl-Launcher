@@ -3,27 +3,12 @@ using System.Drawing;
 using Prowl.Launcher.Theming;
 using Prowl.OrigamiUI;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>Uses the editor's theme data and presets, with independent launcher settings.</summary>
-sealed class LauncherAppearance
+internal sealed class LauncherAppearance
 {
-    public EditorThemeData Data
-    {
-        get;
-        private set;
-    }
-    public OrigamiTheme Theme
-    {
-        get;
-        private set;
-    } = null!;
-    public Color Ink => Theme.Ink.C500;
-    public Color Muted => Theme.Ink.C300;
-    public Color Accent => Theme.Primary.C500;
-    public Color Background => ColorRamp.ParseHex(Data.BackgroundStyle == EditorBackgroundStyle.Color ? Data.BackgroundColorA : Data.BackgroundVoidColor);
-    public Color Panel => Opaque(Theme.Neutral.C500);
-    public Color Card => Opaque(Theme.Neutral.C300);
     private readonly FontFile _bold;
     private readonly FontFile _font;
     private readonly string _path;
@@ -36,6 +21,29 @@ sealed class LauncherAppearance
         Data = EditorThemeData.ImportFromFile(_path) ?? ReadEditorTheme();
         Apply();
     }
+
+    public EditorThemeData Data
+    {
+        get;
+        private set;
+    }
+
+    public OrigamiTheme Theme
+    {
+        get;
+        private set;
+    } = null!;
+
+    public Color Ink => Theme.Ink.C500;
+    public Color Muted => Theme.Ink.C300;
+    public Color Accent => Theme.Primary.C500;
+
+    public Color Background => ColorRamp.ParseHex(Data.BackgroundStyle == EditorBackgroundStyle.Color
+        ? Data.BackgroundColorA
+        : Data.BackgroundVoidColor);
+
+    public Color Panel => Opaque(Theme.Neutral.C500);
+    public Color Card => Opaque(Theme.Neutral.C300);
 
     public void UseEditorTheme()
     {

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -20,7 +21,7 @@ public sealed class LauncherStartupTests : IDisposable
     [Fact]
     public void InvalidUpdateFallsBackAndClearsTheSavedTarget()
     {
-        LauncherStore store = new( _home );
+        LauncherStore store = new(_home);
         string executable = Path.Combine(LauncherUpdaterService.UpdatesPath(store), "broken", "Prowl.Launcher.exe");
         Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
         File.WriteAllText(executable, "invalid executable");
@@ -31,8 +32,9 @@ public sealed class LauncherStartupTests : IDisposable
     }
 
     [Fact]
-    public async Task EarlyExitCannotPassStartupHealthCheck() => await Assert.ThrowsAsync<IOException>(() => LauncherStartupService.StartAsync(
-        "unused", _home, [], start: _ => StartHelper("exit 0")));
+    public async Task EarlyExitCannotPassStartupHealthCheck() => await Assert.ThrowsAsync<IOException>(() =>
+        LauncherStartupService.StartAsync(
+            "unused", _home, [], start: _ => StartHelper("exit 0")));
 
     [Fact]
     public async Task UnresponsiveChildIsTerminatedOnTimeout()
@@ -65,19 +67,13 @@ public sealed class LauncherStartupTests : IDisposable
         await LauncherStartupService.StartAsync("unused", _home, ["--offline"], start: info =>
         {
             Assert.Equal(_home, info.Environment["PROWL_LAUNCHER_HOME"]);
-            Assert.Equal(new[]
-            {
-                "--offline"
-            }, info.ArgumentList);
+            Assert.Equal(new[] { "--offline" }, info.ArgumentList);
             string name = info.Environment["PROWL_LAUNCHER_READY_PIPE"]!;
             acknowledgement = Task.Run(async () =>
             {
-                await using NamedPipeClientStream pipe = new( ".", name, PipeDirection.Out, PipeOptions.Asynchronous );
+                await using NamedPipeClientStream pipe = new(".", name, PipeDirection.Out, PipeOptions.Asynchronous);
                 await pipe.ConnectAsync(5000);
-                await pipe.WriteAsync(new byte[]
-                {
-                    1
-                });
+                await pipe.WriteAsync(new byte[] { 1 });
                 await pipe.FlushAsync();
             });
             Process child = StartHelper(OperatingSystem.IsWindows() ? "Start-Sleep -Seconds 30" : "sleep 30");
@@ -93,13 +89,13 @@ public sealed class LauncherStartupTests : IDisposable
         finally
         {
             using Process child = Process.GetProcessById(childId);
-            child.Kill(entireProcessTree: true);
+            child.Kill(true);
         }
     }
 
     private static Process StartHelper(string command)
     {
-        ProcessStartInfo info = new( OperatingSystem.IsWindows() ? "powershell" : "/bin/sh" )
+        ProcessStartInfo info = new(OperatingSystem.IsWindows() ? "powershell" : "/bin/sh")
         {
             UseShellExecute = false, CreateNoWindow = true
         };
@@ -113,6 +109,7 @@ public sealed class LauncherStartupTests : IDisposable
         {
             info.ArgumentList.Add("-c");
         }
+
         info.ArgumentList.Add(command);
         return Process.Start(info)!;
     }

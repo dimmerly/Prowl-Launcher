@@ -1,7 +1,8 @@
 using System.ComponentModel;
+
 namespace Prowl.Launcher;
 
-static class Program
+internal static class Program
 {
     [STAThread]
     public static void Main(string[] args)
@@ -19,8 +20,10 @@ static class Program
                     Console.Error.WriteLine(error.Message);
                     Environment.ExitCode = 1;
                 }
+
                 return;
             }
+
             LauncherStartupService.CaptureReadyPipe();
             LauncherStore store = new();
             // Source builds share the user's settings, so they would otherwise hand off to the installed update.
@@ -99,7 +102,8 @@ static class Program
             return true;
         }
         catch (Exception exception) when (exception is IOException or Win32Exception
-            or OperationCanceledException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+                                              or OperationCanceledException or InvalidDataException
+                                              or UnauthorizedAccessException or ArgumentException)
         {
             store.Settings.LauncherExecutable = null;
             store.Save();

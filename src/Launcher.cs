@@ -4,6 +4,7 @@ using Prowl.OrigamiUI;
 using Prowl.Rosetta;
 using Prowl.Scribe;
 using Prowl.Vector;
+
 namespace Prowl.Launcher;
 
 /// <summary>
@@ -21,43 +22,69 @@ public sealed partial class Launcher(
 )
 {
     private readonly BackgroundWork _background = new();
-    private readonly HttpClient _http = new()
-    {
-        Timeout = Constants.Network.DownloadTimeout
-    };
+
+    private readonly HttpClient _http = new() { Timeout = Constants.Network.DownloadTimeout };
+
     private readonly Navigation _navigation = new(initialTab);
     private readonly LauncherPreviews _previews = previews ?? new LauncherPreviews();
 
-    private LauncherAppearance _appearance = null!;
     private FontFile _bold = null!;
     private Dialogs _dialogs = null!;
-    private EditorCoordinator _editors = null!;
     private FontFile _font = null!;
     private InstallationDialog _installation = null!;
     private LaunchView _launchView = null!;
-    private LogsDialog _logs = null!;
-    private NewsSection _news = null!;
-    private NotificationCenter _notifications = null!;
     private OperationPanel _operationPanel = null!;
-    private OperationCoordinator _operations = null!;
     private ProjectsView _projects = null!;
-    private SamplesView _samples = null!;
     private SettingsView _settings = null!;
     private Sidebar _sidebar = null!;
-    private UninstallDialog _uninstall = null!;
     private TitleBar _titleBar = null!;
     private Controls _ui = null!;
+    private UninstallDialog _uninstall = null!;
     private LauncherUpdateCoordinator _updates = null!;
     private VersionsView _versions = null!;
 
     // Exposed for the E2E tests, which drive the real launcher.
-    internal OperationCoordinator Operations => _operations;
-    internal NotificationCenter Notifications => _notifications;
-    internal EditorCoordinator Editors => _editors;
-    internal NewsSection News => _news;
-    internal SamplesView Samples => _samples;
-    internal LogsDialog Logs => _logs;
-    internal LauncherAppearance Appearance => _appearance;
+    internal OperationCoordinator Operations
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal NotificationCenter Notifications
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal EditorCoordinator Editors
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal NewsSection News
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal SamplesView Samples
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal LogsDialog Logs
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal LauncherAppearance Appearance
+    {
+        get;
+        private set;
+    } = null!;
 
     private bool Capturing => screenshot != null;
 
@@ -65,7 +92,7 @@ public sealed partial class Launcher(
     {
         _font = Fonts.Load("Geist-Regular.ttf");
         _bold = Fonts.Load("Geist-Bold.ttf");
-        _appearance = new LauncherAppearance(store.Home, _font, _bold);
+        Appearance = new LauncherAppearance(store.Home, _font, _bold);
         InitializeLocalization();
 
         CenterWindow();
@@ -74,12 +101,14 @@ public sealed partial class Launcher(
         CreateComponents();
         InitializeServices();
         ShowPreviewChangelog();
-        _installation.Pending = _previews.Installation || !Capturing && LauncherInstallationService.ShouldOffer(store);
+        _installation.Pending =
+            _previews.Installation || (!Capturing && LauncherInstallationService.ShouldOffer(store));
 
         if (StartPreviewOperation())
         {
             return;
         }
+
         if (openProject != null && !Capturing)
         {
             OpenExternalProject(openProject);
@@ -87,7 +116,7 @@ public sealed partial class Launcher(
 
         if (!offline)
         {
-            _ = _editors.RefreshInBackgroundAsync(_background.Token);
+            _ = Editors.RefreshInBackgroundAsync(_background.Token);
             if (!Capturing)
             {
                 _ = _updates.CheckInBackgroundAsync();
@@ -95,7 +124,7 @@ public sealed partial class Launcher(
         }
         else if (!Capturing)
         {
-            _notifications.Notify("launcher.network.offline", "launcher.network.offline_description", ToastType.Info);
+            Notifications.Notify("launcher.network.offline", "launcher.network.offline_description", ToastType.Info);
         }
     }
 
@@ -118,41 +147,40 @@ public sealed partial class Launcher(
     /// <summary>Builds the services, coordinators and views. Localization must be configured first.</summary>
     private void CreateComponents()
     {
-        _notifications = new NotificationCenter(_appearance);
-        _operations = new OperationCoordinator(_notifications, LogError);
-        _ui = new Controls(_appearance, _font, _bold, _operations,
+        Notifications = new NotificationCenter(Appearance);
+        Operations = new OperationCoordinator(Notifications, LogError);
+        _ui = new Controls(Appearance, _font, _bold, Operations,
             () => new Float2(_window.FramebufferSize.X / ModalScale, _window.FramebufferSize.Y / ModalScale));
         _dialogs = new Dialogs(_ui);
 
         ProjectBackupService backups = new(store);
-        _editors = new EditorCoordinator(store, _http, new GitHubReleasesService(_http, store),
-            new EditorInstallerService(_http, store), backups, _operations, _dialogs, _notifications, LogError);
-        _updates = new LauncherUpdateCoordinator(_http, store, _operations, _dialogs, _notifications, LogError,
+        Editors = new EditorCoordinator(store, _http, new GitHubReleasesService(_http, store),
+            new EditorInstallerService(_http, store), backups, Operations, _dialogs, Notifications, LogError);
+        _updates = new LauncherUpdateCoordinator(_http, store, Operations, _dialogs, Notifications, LogError,
             !offline && !Capturing);
 
         _titleBar = new TitleBar(store, _ui, _window, _windowFrame != null);
-        _sidebar = new Sidebar(store, _ui, _navigation, _editors);
+        _sidebar = new Sidebar(store, _ui, _navigation, Editors);
         _operationPanel = new OperationPanel(_ui);
         _installation = new InstallationDialog(store, _ui, _previews.Installation);
-        _uninstall = new UninstallDialog(store, _ui)
-        {
-            Pending = uninstall && !Capturing
-        };
-        _logs = new LogsDialog(_ui, _editors);
-        _news = new NewsSection(store, _ui, _http, LogError, _background, offline, Capturing);
-        _projects = new ProjectsView(store, _ui, _dialogs, _editors, _notifications, _logs,
-            new BackupsDialog(store, _ui, _dialogs, backups, _notifications),
-            new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
-        _versions = new VersionsView(store, _ui, _dialogs, _editors);
-        _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, _background, offline, Capturing);
-        _settings = new SettingsView(store, _ui, _notifications, _editors, _updates, _installation, _uninstall, _background);
-        _launchView = new LaunchView(_ui, _navigation, _editors, _logs, _titleBar);
+        _uninstall = new UninstallDialog(store, _ui) { Pending = uninstall && !Capturing };
+        Logs = new LogsDialog(_ui, Editors);
+        News = new NewsSection(store, _ui, _http, LogError, _background, offline, Capturing);
+        _projects = new ProjectsView(store, _ui, _dialogs, Editors, Notifications, Logs,
+            new BackupsDialog(store, _ui, _dialogs, backups, Notifications),
+            new NewProjectView(store, _ui, _dialogs, Editors, Notifications, _previews.NewProject));
+        _versions = new VersionsView(store, _ui, _dialogs, Editors);
+        Samples = new SamplesView(store, _ui, Notifications, new SampleService(_http, store), LogError, _background,
+            offline, Capturing);
+        _settings = new SettingsView(store, _ui, Notifications, Editors, _updates, _installation, _uninstall,
+            _background);
+        _launchView = new LaunchView(_ui, _navigation, Editors, Logs, _titleBar);
 
-        _operations.Finished += _editors.ReloadInstalled;
-        _operations.CloseRequested += ForceClose;
-        _editors.SessionStarted += _ =>
+        Operations.Finished += Editors.ReloadInstalled;
+        Operations.CloseRequested += ForceClose;
+        Editors.SessionStarted += _ =>
         {
-            _logs.Reset();
+            Logs.Reset();
             _navigation.Tab = LauncherTab.Launch;
         };
     }
@@ -161,7 +189,7 @@ public sealed partial class Launcher(
     {
         try
         {
-            _editors.RecoverInterruptedOperations();
+            Editors.RecoverInterruptedOperations();
         }
         catch (IOException error)
         {
@@ -169,18 +197,18 @@ public sealed partial class Launcher(
         }
 
         store.ImportRecentProjects();
-        _editors.ReloadInstalled();
+        Editors.ReloadInstalled();
 
         // A newly downloaded child starts before activation. A forwarded active copy
         // can clean up immediately, even though it also uses a startup health check.
         if (LauncherStartupService.ReadyPipe == null
-            || store.Settings.LauncherExecutable is {} active && Environment.ProcessPath is {} current
-                                                              && FileSystemHelper.PathsEqual(active, current))
+            || (store.Settings.LauncherExecutable is { } active && Environment.ProcessPath is { } current
+                                                                && FileSystemHelper.PathsEqual(active, current)))
         {
             _updates.Cleanup();
         }
 
-        _editors.LoadCachedReleases();
+        Editors.LoadCachedReleases();
     }
 
     /// <summary>
@@ -189,16 +217,17 @@ public sealed partial class Launcher(
     /// </summary>
     private void OpenExternalProject(string path)
     {
-        if (_operations.Busy)
+        if (Operations.Busy)
         {
-            _notifications.Notify("launcher.projects.busy", Path.GetFileName(path), ToastType.Warning);
+            Notifications.Notify("launcher.projects.busy", Path.GetFileName(path), ToastType.Warning);
             return;
         }
+
         _navigation.Tab = LauncherTab.Projects;
-        _operations.Start(async token =>
+        Operations.Start(async token =>
         {
             Project project = store.AddProject(path);
-            await _editors.OpenProjectAsync(project, token);
+            await Editors.OpenProjectAsync(project, token);
         }, "launcher.projects.opening");
     }
 
@@ -208,13 +237,14 @@ public sealed partial class Launcher(
     /// </summary>
     private void RefreshEditorConsoles()
     {
-        foreach (EditorConsoleSession session in _editors.Sessions)
+        foreach (EditorConsoleSession session in Editors.Sessions)
         {
             session.Refresh();
-            if (session.State.Ready == null || session.ReadyHandled || _operations.Busy)
+            if (session.State.Ready == null || session.ReadyHandled || Operations.Busy)
             {
                 continue;
             }
+
             session.ReadyHandled = true;
             if (session.CloseWhenReady && session.Active)
             {
@@ -222,12 +252,14 @@ public sealed partial class Launcher(
                 ForceClose();
                 return;
             }
-            if (_navigation.Tab == LauncherTab.Launch && _editors.SelectedSession == session)
+
+            if (_navigation.Tab == LauncherTab.Launch && Editors.SelectedSession == session)
             {
                 if (Modal.IsOpen)
                 {
                     Modal.Pop();
                 }
+
                 _navigation.Tab = LauncherTab.Projects;
             }
         }
@@ -237,12 +269,12 @@ public sealed partial class Launcher(
 
     private void Closing()
     {
-        _editors?.Dispose();
-        _samples?.Dispose();
-        _news?.Dispose();
+        Editors?.Dispose();
+        Samples?.Dispose();
+        News?.Dispose();
         _background.Dispose();
         _updates?.Dispose();
-        _operations?.Dispose();
+        Operations?.Dispose();
         _http.Dispose();
     }
 }

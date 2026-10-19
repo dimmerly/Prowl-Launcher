@@ -1,9 +1,10 @@
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
+
 namespace Prowl.Launcher;
 
-static class ModalLayout
+internal static class ModalLayout
 {
     internal static ModalBuilder CenteredContent(this ModalBuilder builder, Action<Paper> draw) =>
         builder.Content(p =>

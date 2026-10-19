@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 
+using Microsoft.Win32;
+
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 [Trait("Category", "Integration")]
@@ -27,7 +30,7 @@ public sealed class LauncherInstallationTests : IDisposable
     [Fact]
     public void CustomHomeKeepsEditorInstallationsIsolated()
     {
-        LauncherStore store = new( Path.Combine(_work, "Portable") );
+        LauncherStore store = new(Path.Combine(_work, "Portable"));
         Assert.Equal(Path.Combine(store.Home, "Versions"), store.VersionsPath);
     }
 
@@ -38,11 +41,14 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             return;
         }
-        LauncherStore store = new( Path.Combine(_work, "Roaming", "Prowl", "Launcher") );
+
+        LauncherStore store = new(Path.Combine(_work, "Roaming", "Prowl", "Launcher"));
         Assert.Equal(store.Home, LauncherInstallationService.InstallRoot(store));
-        Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Prowl", "Launcher"),
+        Assert.Equal(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Prowl", "Launcher"),
             Platform.DefaultHome);
     }
+
     [Fact]
     public void InstallingCopiesTheDownloadWithoutRemovingIt()
     {
@@ -100,6 +106,7 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         }
+
         string target = Path.Combine(_work, "Installed.app");
         LauncherInstallationService.CopyApplication(source, target, true, default);
         Assert.Equal("application", File.ReadAllText(Path.Combine(target, relative)));
@@ -123,7 +130,7 @@ public sealed class LauncherInstallationTests : IDisposable
     [Fact]
     public void SourceBuildDoesNotOfferSelfInstallation()
     {
-        LauncherStore store = new( _work );
+        LauncherStore store = new(_work);
         Assert.False(LauncherInstallationService.ShouldOffer(store));
     }
 
@@ -146,22 +153,25 @@ public sealed class LauncherInstallationTests : IDisposable
     [InlineData(true)]
     public void UninstallingRemovesTheLauncherButKeepsEditorsAndProjects(bool removeData)
     {
-        LauncherStore store = new( Path.Combine(_work, "Home") );
+        LauncherStore store = new(Path.Combine(_work, "Home"));
         string desktop = Path.Combine(_work, "Desktop"), shortcuts = Path.Combine(_work, "Shortcuts");
         string application = OperatingSystem.IsMacOS()
             ? Path.Combine(_work, "Applications", "Prowl Launcher.app", "Contents", "MacOS", "Prowl.Launcher")
-            : OperatingSystem.IsWindows() ? Path.Combine(store.Home, "Prowl.Launcher.exe")
-            : Path.Combine(LauncherInstallationService.InstallRoot(store), "1.0.0", "Prowl Launcher.AppImage");
+            : OperatingSystem.IsWindows()
+                ? Path.Combine(store.Home, "Prowl.Launcher.exe")
+                : Path.Combine(LauncherInstallationService.InstallRoot(store), "1.0.0", "Prowl Launcher.AppImage");
         string shortcut = OperatingSystem.IsWindows() ? Path.Combine(desktop, "Prowl.lnk")
             : OperatingSystem.IsMacOS() ? Path.Combine(desktop, "Prowl.app") : Path.Combine(desktop, "Prowl.desktop");
         string otherApp = Path.Combine(_work, "Applications", "Other.app", "keep.txt");
         string editor = Path.Combine(store.VersionsPath, "v1.0.0-win-x64", "installation.json");
-        string update = Path.Combine(LauncherUpdaterService.UpdatesPath(store), "repository", "2.0.0", "Prowl.Launcher");
+        string update = Path.Combine(LauncherUpdaterService.UpdatesPath(store), "repository", "2.0.0",
+            "Prowl.Launcher");
         foreach (string file in new[] { application, shortcut, otherApp, editor, update })
         {
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             File.WriteAllText(file, "file");
         }
+
         store.Settings.InstalledLauncherExecutable = application;
         store.Save();
 
@@ -205,19 +215,20 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             return;
         }
+
         string key = @"Software\ProwlLauncherTests\" + Guid.NewGuid().ToString("N");
         string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
         try
         {
             LauncherInstallationService.RegisterWindowsUninstaller(executable, _work, key);
-            using Microsoft.Win32.RegistryKey entry = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(key)!;
+            using RegistryKey entry = Registry.CurrentUser.OpenSubKey(key)!;
             Assert.Equal("Prowl Launcher", entry.GetValue("DisplayName"));
             Assert.Equal($"\"{executable}\" --uninstall", entry.GetValue("UninstallString"));
             Assert.Equal(_work, entry.GetValue("InstallLocation"));
         }
         finally
         {
-            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
         }
     }
 
@@ -228,32 +239,35 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             return;
         }
+
         string classes = @"Software\ProwlLauncherTests\" + Guid.NewGuid().ToString("N");
         string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
         try
         {
             LauncherInstallationService.RegisterWindowsFileAssociation(executable, classes);
-            using (Microsoft.Win32.RegistryKey command = Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project\shell\open\command")!)
+            using (RegistryKey command =
+                   Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project\shell\open\command")!)
             {
                 Assert.Equal($"\"{executable}\" \"%1\"", command.GetValue(""));
             }
 
             LauncherInstallationService.UnregisterWindowsFileAssociation(classes);
-            Assert.Null(Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl"));
-            Assert.Null(Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project"));
+            Assert.Null(Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl"));
+            Assert.Null(Registry.CurrentUser.OpenSubKey($@"{classes}\ProwlLauncher.Project"));
 
             // Another app took over .prowl; uninstalling must leave its association alone.
-            using (Microsoft.Win32.RegistryKey other = Microsoft.Win32.Registry.CurrentUser.CreateSubKey($@"{classes}\.prowl"))
+            using (RegistryKey other = Registry.CurrentUser.CreateSubKey($@"{classes}\.prowl"))
             {
                 other.SetValue("", "SomeEditor.Project");
             }
+
             LauncherInstallationService.UnregisterWindowsFileAssociation(classes);
-            using Microsoft.Win32.RegistryKey kept = Microsoft.Win32.Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl")!;
+            using RegistryKey kept = Registry.CurrentUser.OpenSubKey($@"{classes}\.prowl")!;
             Assert.Equal("SomeEditor.Project", kept.GetValue(""));
         }
         finally
         {
-            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\ProwlLauncherTests", false);
         }
     }
 
@@ -264,6 +278,7 @@ public sealed class LauncherInstallationTests : IDisposable
         {
             return;
         }
+
         string executable = Path.Combine(_work, "Prowl Launcher", "Prowl.Launcher.exe");
         string shortcut = Path.Combine(_work, "Desktop", "Prowl.lnk");
         LauncherInstallationService.CreateWindowsShortcut(shortcut, executable);
@@ -278,7 +293,8 @@ public sealed class LauncherInstallationTests : IDisposable
             dynamic result = link = ((dynamic)shell).CreateShortcut(shortcut);
             Assert.Equal("Prowl", (string)result.Description);
             Assert.True(FileSystemHelper.PathsEqual(executable, (string)result.TargetPath));
-            Assert.True(FileSystemHelper.PathsEqual(Path.GetDirectoryName(executable)!, (string)result.WorkingDirectory));
+            Assert.True(
+                FileSystemHelper.PathsEqual(Path.GetDirectoryName(executable)!, (string)result.WorkingDirectory));
         }
         finally
         {
@@ -286,6 +302,7 @@ public sealed class LauncherInstallationTests : IDisposable
             {
                 Marshal.FinalReleaseComObject(link);
             }
+
             Marshal.FinalReleaseComObject(shell);
         }
     }

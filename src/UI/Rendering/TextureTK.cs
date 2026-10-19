@@ -6,10 +6,11 @@ using OpenTK.Graphics.OpenGL4;
 using Prowl.Aperture;
 using Prowl.Vector;
 
-using PixelFormat=OpenTK.Graphics.OpenGL4.PixelFormat;
+using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
+
 namespace Prowl.Launcher;
 
-sealed class TextureTK(int glHandle) : IDisposable
+internal sealed class TextureTK(int glHandle) : IDisposable
 {
     public readonly int Handle = glHandle;
     public uint Height;
@@ -42,16 +43,14 @@ sealed class TextureTK(int glHandle) : IDisposable
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.BindTexture(TextureTarget.Texture2D, handle);
         // Create empty texture
-        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, (int)width, (int)height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, (int)width, (int)height, 0,
+            PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
         // Set texture parameters 
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-        return new TextureTK(handle)
-        {
-            Width = width, Height = height
-        };
+        return new TextureTK(handle) { Width = width, Height = height };
     }
 
     // Set the texture data for a specific region of the texture
@@ -62,7 +61,8 @@ sealed class TextureTK(int glHandle) : IDisposable
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.BindTexture(TextureTarget.Texture2D, Handle);
         // Set the texture data
-        GL.TexSubImage2D(TextureTarget.Texture2D, 0, bounds.Min.X, bounds.Min.Y, bounds.Size.X, bounds.Size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, data);
+        GL.TexSubImage2D(TextureTarget.Texture2D, 0, bounds.Min.X, bounds.Min.Y, bounds.Size.X, bounds.Size.Y,
+            PixelFormat.Rgba, PixelType.UnsignedByte, data);
     }
 
     // Activate texture

@@ -7,10 +7,11 @@ using Prowl.PaperUI.Markdown;
 using Prowl.Rosetta;
 using Prowl.Scribe;
 using Prowl.Vector;
+
 namespace Prowl.Launcher;
 
 /// <summary>The news strip below the project list: paged preview cards that open full posts.</summary>
-sealed class NewsSection(
+internal sealed class NewsSection(
     LauncherStore store,
     Controls ui,
     HttpClient http,
@@ -22,20 +23,17 @@ sealed class NewsSection(
 {
     private const double NewsSlideDuration = 0.24;
     private const double LoadingOverlayDelay = 0.5;
-
-    private bool NewsSliding => _newsSlideStarted != 0
-                                && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
     private readonly NewsImages _newsImages = new();
     private readonly NewsImages _newsThumbnails = new();
     private NewsService? _news;
     private bool _newsFailed;
     private bool _newsLoading;
     private long _newsLoadingStarted;
-    private NewsPost? _newsOpening;
-    private long _newsOpeningStarted;
     private DateTime? _newsLocalStamp;
     private MarkdownBuilder? _newsMarkdown;
     private DateTime _newsNextCheck;
+    private NewsPost? _newsOpening;
+    private long _newsOpeningStarted;
     private int _newsPage;
     private IReadOnlyList<NewsPost> _newsPosts = [];
     private int _newsPreviousPage;
@@ -44,17 +42,20 @@ sealed class NewsSection(
     private NewsPost? _newsSelected;
     private long _newsSlideStarted;
 
+    private bool NewsSliding => _newsSlideStarted != 0
+                                && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
+
     /// <summary>Loading overlays wait briefly so instant loads never flash them.</summary>
     private bool ShowNewsLoading => _newsLoading && OverlayDue(_newsLoadingStarted);
-
-    private static bool OverlayDue(long started) =>
-        Stopwatch.GetElapsedTime(started).TotalSeconds >= LoadingOverlayDelay;
 
     public void Dispose()
     {
         _newsImages.Dispose();
         _newsThumbnails.Dispose();
     }
+
+    private static bool OverlayDue(long started) =>
+        Stopwatch.GetElapsedTime(started).TotalSeconds >= LoadingOverlayDelay;
 
     private void ChangeNewsPage(int page)
     {
@@ -95,6 +96,7 @@ sealed class NewsSection(
             _newsLocalStamp = _news.LocalIndexStamp;
             _newsNextCheck = default;
         }
+
         if (!_newsLoading && _news?.IsLocal == true && DateTime.UtcNow >= _newsNextCheck)
         {
             _newsNextCheck = DateTime.UtcNow.AddSeconds(1);
@@ -104,12 +106,13 @@ sealed class NewsSection(
                 _newsRequested = false;
             }
         }
+
         if (_news?.IsLocal == false && DateTime.UtcNow >= _newsNextCheck)
         {
             _newsRequested = false;
         }
 
-        if (!_newsRequested && !_newsLoading && (_news?.IsLocal == true || !offline && !capturing))
+        if (!_newsRequested && !_newsLoading && (_news?.IsLocal == true || (!offline && !capturing)))
         {
             _ = RefreshNewsAsync();
         }
@@ -143,11 +146,12 @@ sealed class NewsSection(
             float contentWidth = Math.Max(1, available - 2 * sideSpace);
             bool sliding = NewsSliding;
             float progress = sliding
-                ? (float)(Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds / NewsSlideDuration) : 1;
+                ? (float)(Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds / NewsSlideDuration)
+                : 1;
             float eased = 1 - MathF.Pow(1 - progress, 3);
             int direction = Math.Sign(_newsPage - _newsPreviousPage);
             using (p.Box("news-preview-viewport").PositionType(PositionType.SelfDirected)
-                .Left(sideSpace).Top(0).Size(contentWidth, 88).Clip().Enter())
+                       .Left(sideSpace).Top(0).Size(contentWidth, 88).Clip().Enter())
             {
                 if (sliding)
                 {
@@ -158,22 +162,23 @@ sealed class NewsSection(
                 DrawNewsPreviewPage(p, _newsPage, contentWidth,
                     direction * (1 - eased) * (contentWidth + 12), sliding);
             }
+
             if (_newsPage > 0)
             {
                 using (p.Box("news-newer-slot").PositionType(PositionType.SelfDirected).AnchorLeft(0).AnchorTop(0)
-                    .Size(20, 88).Enter())
+                           .Size(20, 88).Enter())
                 {
                     Origami.Button(p, "news-newer", Loc.Get("launcher.news.newer"))
                         .IconOnly().LeadingIcon(OrigamiIconSet.ChevronLeft).Ghost().Width(20).Height(88)
                         .Tooltip(Loc.Get("launcher.news.newer")).Disabled(sliding)
                         .OnClick(() => ChangeNewsPage(Math.Max(0, _newsPage - 1))).Show();
                 }
-
             }
+
             if (_newsPage < lastPage)
             {
                 using (p.Box("news-older-slot").PositionType(PositionType.SelfDirected).AnchorRight(0).AnchorTop(0)
-                    .Size(20, 88).Enter())
+                           .Size(20, 88).Enter())
                 {
                     Origami.Button(p, "news-older", Loc.Get("launcher.news.older"))
                         .IconOnly().LeadingIcon(OrigamiIconSet.ChevronRight).Ghost().Width(20).Height(88)
@@ -181,14 +186,15 @@ sealed class NewsSection(
                         .OnClick(() => ChangeNewsPage(Math.Min(lastPage, _newsPage + 1))).Show();
                 }
             }
+
             if (ShowNewsLoading)
             {
                 using (p.Column("news-loading").PositionType(PositionType.SelfDirected)
-                    .Left(0).Top(0).Size(available, 88)
-                    .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
-                    .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
-                    .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center).Gap(8)
-                    .IsNotInteractable().Enter())
+                           .Left(0).Top(0).Size(available, 88)
+                           .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
+                           .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
+                           .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center).Gap(8)
+                           .IsNotInteractable().Enter())
                 {
                     Origami.Spinner(p, "news-loading-spinner").Tint(ui.Muted).Show();
                     p.Box("news-loading-text").Width(UnitValue.Auto).Height(UnitValue.Auto).IsNotInteractable()
@@ -208,8 +214,8 @@ sealed class NewsSection(
 
         float width = Math.Max(1, (contentWidth - 24) / 3);
         using (p.Row("news-preview-page-" + page).PositionType(PositionType.SelfDirected)
-            .Left(0).Top(0).Size(contentWidth, 88).TranslateX(offset).Gap(12)
-            .JustifyContent(LayoutJustification.Start).Enter())
+                   .Left(0).Top(0).Size(contentWidth, 88).TranslateX(offset).Gap(12)
+                   .JustifyContent(LayoutJustification.Start).Enter())
         {
             foreach (NewsPost post in posts)
             {
@@ -241,6 +247,7 @@ sealed class NewsSection(
                             DrawNewsThumbnail(p, thumbnail);
                         }
                     }
+
                     using (p.Column("info").Height(88).Padding(12).Gap(2).IsNotInteractable().Enter())
                     {
                         p.Box("title").Height(UnitValue.Auto).MaxHeight(40).Clip().IsNotInteractable()
@@ -248,13 +255,14 @@ sealed class NewsSection(
                         p.Box("byline-space").Height(UnitValue.Stretch()).IsNotInteractable();
                         DrawNewsByline(p, post, 13);
                     }
+
                     if (_newsOpening == post && OverlayDue(_newsOpeningStarted))
                     {
                         using (p.Column("opening").PositionType(PositionType.SelfDirected)
-                            .Left(0).Top(0).Size(width, 88)
-                            .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
-                            .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
-                            .IsNotInteractable().Enter())
+                                   .Left(0).Top(0).Size(width, 88)
+                                   .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
+                                   .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
+                                   .IsNotInteractable().Enter())
                         {
                             Origami.Spinner(p, "opening-spinner").Tint(ui.Muted).Show();
                         }
@@ -292,7 +300,7 @@ sealed class NewsSection(
 
     private async Task RefreshNewsAsync()
     {
-        if (_news == null || _newsLoading || offline && !_news.IsLocal)
+        if (_news == null || _newsLoading || (offline && !_news.IsLocal))
         {
             return;
         }
@@ -329,6 +337,7 @@ sealed class NewsSection(
                 _newsFailed = true;
                 _newsNextCheck = DateTime.UtcNow.AddMinutes(1);
             }
+
             logError(error);
         }
         finally
@@ -363,12 +372,14 @@ sealed class NewsSection(
                     int lineEnd = content.IndexOf('\n');
                     markdown = lineEnd < 0 ? "" : content[(lineEnd + 1)..];
                 }
-                _newsMarkdown = new MarkdownBuilder(ui.Font).Fonts(bold: ui.Bold).FontSize(18).Source(markdown)
+
+                _newsMarkdown = new MarkdownBuilder(ui.Font).Fonts(ui.Bold).FontSize(18).Source(markdown)
                     .Images(href => _newsImages.Get(service, post, href, !offline && !capturing,
                         background.Token, logError)!)
                     .OnLink(href =>
                     {
-                        if (Uri.TryCreate(service.Page(post.File), href, out Uri? uri) && uri.Scheme is "https" or "http")
+                        if (Uri.TryCreate(service.Page(post.File), href, out Uri? uri) &&
+                            uri.Scheme is "https" or "http")
                         {
                             ProcessHelper.OpenInShell(uri.AbsoluteUri);
                         }
@@ -385,6 +396,7 @@ sealed class NewsSection(
             {
                 _newsFailed = true;
             }
+
             logError(error);
         }
         finally

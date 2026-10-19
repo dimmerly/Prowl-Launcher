@@ -5,10 +5,11 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>The new-project form: template, name, location and editor.</summary>
-sealed class NewProjectView(
+internal sealed class NewProjectView(
     LauncherStore store,
     Controls ui,
     Dialogs dialogs,
@@ -21,7 +22,11 @@ sealed class NewProjectView(
     private string? _editorKey;
     private string _name = Loc.Get("launcher.projects.untitled");
 
-    public bool IsOpen { get; set; } = openInitially;
+    public bool IsOpen
+    {
+        get;
+        set;
+    } = openInitially;
 
     public void Draw(Paper p)
     {
@@ -29,25 +34,25 @@ sealed class NewProjectView(
         _editorKey ??= store.Settings.DefaultEditorKey ?? editors.Installed.FirstOrDefault()?.Key;
         bool wide = Controls.IsWideLayout(p);
         using ((wide ? p.Row("new-project-form") : p.Column("new-project-form"))
-            .Height(UnitValue.Auto)
-            .Gap(18)
-            .Enter())
+               .Height(UnitValue.Auto)
+               .Gap(18)
+               .Enter())
         {
             using (p.Column("project-templates")
-                .Height(UnitValue.Auto)
-                .Gap(12)
-                .Enter())
+                       .Height(UnitValue.Auto)
+                       .Gap(12)
+                       .Enter())
             {
                 ui.Label(p, "templates-title", "launcher.projects.templates", 19, ui.Ink, 28, true);
                 using (p.Column("blank-template")
-                    .Height(UnitValue.Auto)
-                    .Padding(20)
-                    .Gap(10)
-                    .BackgroundColor(ui.Appearance.Theme.Selected)
-                    .BorderColor(ui.Appearance.Accent)
-                    .BorderWidth(1)
-                    .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
-                    .Enter())
+                           .Height(UnitValue.Auto)
+                           .Padding(20)
+                           .Gap(10)
+                           .BackgroundColor(ui.Appearance.Theme.Selected)
+                           .BorderColor(ui.Appearance.Accent)
+                           .BorderWidth(1)
+                           .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
+                           .Enter())
                 {
                     p.Box("blank-icon")
                         .Size(48, 48)
@@ -67,15 +72,15 @@ sealed class NewProjectView(
             }
 
             using (p.Column("new-project-config")
-                .Width(wide ? UnitValue.Pixels(380) : UnitValue.Stretch())
-                .Height(UnitValue.Auto)
-                .Padding(20)
-                .Gap(8)
-                .BackgroundColor(ui.Appearance.Card)
-                .BorderColor(ui.Appearance.Theme.BorderSoft)
-                .BorderWidth(1)
-                .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
-                .Enter())
+                       .Width(wide ? UnitValue.Pixels(380) : UnitValue.Stretch())
+                       .Height(UnitValue.Auto)
+                       .Padding(20)
+                       .Gap(8)
+                       .BackgroundColor(ui.Appearance.Card)
+                       .BorderColor(ui.Appearance.Theme.BorderSoft)
+                       .BorderWidth(1)
+                       .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
+                       .Enter())
             {
                 ui.Label(p, "configure-title", Loc.Get("launcher.projects.configure"), 19, ui.Ink, 28, true);
                 ui.Label(p, "new-name-label", Loc.Get("launcher.projects.name"), 14, ui.Muted, 24);
@@ -84,9 +89,9 @@ sealed class NewProjectView(
                     .Show();
                 ui.Label(p, "new-directory-label", Loc.Get("launcher.projects.path"), 14, ui.Muted, 24);
                 using (p.Row("new-location-row")
-                    .Height(40)
-                    .Gap(8)
-                    .Enter())
+                           .Height(40)
+                           .Gap(8)
+                           .Enter())
                 {
                     Origami.TextField(p, "new-project-directory", _directory, value => _directory = value)
                         .Height(40)
@@ -109,7 +114,9 @@ sealed class NewProjectView(
                         value => _editorKey = value,
                         editors.Installed.Select(e => e.Key).ToArray()
                     )
-                    .Display(key => editors.Installed.FirstOrDefault(e => e.Key == key)?.ToString() ?? Loc.Get("launcher.projects.choose_editor"))
+                    .Display(key =>
+                        editors.Installed.FirstOrDefault(e => e.Key == key)?.ToString() ??
+                        Loc.Get("launcher.projects.choose_editor"))
                     .Width(UnitValue.Stretch())
                     .IsItemEnabled(_ => !ui.Busy)
                     .Show();
@@ -128,10 +135,10 @@ sealed class NewProjectView(
         }
 
         using (p.Row("create-project-actions")
-            .Height(40)
-            .Gap(8)
-            .JustifyContent(LayoutJustification.End)
-            .Enter())
+                   .Height(40)
+                   .Gap(8)
+                   .JustifyContent(LayoutJustification.End)
+                   .Enter())
         {
             ui.Button(
                 p,
@@ -156,7 +163,7 @@ sealed class NewProjectView(
 
     private async Task PickNewProjectDirectoryAsync(CancellationToken token)
     {
-        if (await dialogs.PickFolderAsync(_directory ?? EditorSettings.ProjectsDirectory(), token) is {} selected)
+        if (await dialogs.PickFolderAsync(_directory ?? EditorSettings.ProjectsDirectory(), token) is { } selected)
         {
             _directory = selected;
         }
@@ -166,7 +173,8 @@ sealed class NewProjectView(
     private async Task CreateProjectAsync(CancellationToken token)
     {
         InstalledEditor editor = editors.Installed.FirstOrDefault(e => e.Key == _editorKey)
-                                 ?? throw new InvalidOperationException(Loc.Get("launcher.errors.choose_installed_editor"));
+                                 ?? throw new InvalidOperationException(
+                                     Loc.Get("launcher.errors.choose_installed_editor"));
         // Validate the installation before creating anything on disk.
         editors.Validate(editor);
         string parent = _directory ?? EditorSettings.ProjectsDirectory();

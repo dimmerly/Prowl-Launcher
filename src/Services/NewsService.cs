@@ -4,33 +4,38 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+
 namespace Prowl.Launcher;
 
-sealed class NewsService(HttpClient http, LauncherStore store, string repository, string? localDirectory = null)
+internal sealed class NewsService(
+    HttpClient http,
+    LauncherStore store,
+    string repository,
+    string? localDirectory = null)
 {
     private const string ArticlePathPattern = @"\A(?:[a-zA-Z0-9][a-zA-Z0-9_-]*/)*[a-zA-Z0-9][a-zA-Z0-9_-]*\.md\z";
-    private static readonly JsonSerializerOptions Options = new( JsonSerializerDefaults.Web );
+    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    private readonly string? _localDirectory = localDirectory == null ? null : Path.GetFullPath(localDirectory);
+    private readonly string _repository = GitHubRepository.Normalize(repository);
 
     private string CacheRoot => Path.Combine(store.Home, "News", _repository.Replace('/', '_'));
     private string IndexPath => Path.Combine(_localDirectory ?? CacheRoot, "index.json");
 
     internal bool IsLocal => _localDirectory != null;
     internal DateTime? LocalIndexStamp => IsLocal ? File.GetLastWriteTimeUtc(IndexPath) : null;
-    private readonly string? _localDirectory = localDirectory == null ? null : Path.GetFullPath(localDirectory);
-    private readonly string _repository = GitHubRepository.Normalize(repository);
 
-    internal static string? DevelopmentDirectory() => typeof( NewsService ).Assembly
+    internal static string? DevelopmentDirectory() => typeof(NewsService).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(attribute => attribute.Key == "DevelopmentNewsDirectory")?.Value;
 
-    internal Uri Source(string file) => new( $"https://raw.githubusercontent.com/{_repository}/main/news/{file}" );
-    internal Uri Page(string file) => new( $"https://github.com/{_repository}/blob/main/news/{file}" );
+    internal Uri Source(string file) => new($"https://raw.githubusercontent.com/{_repository}/main/news/{file}");
+    internal Uri Page(string file) => new($"https://github.com/{_repository}/blob/main/news/{file}");
 
     internal static IReadOnlyList<NewsPost> ParseIndex(string json)
     {
         NewsPost[] posts = JsonSerializer.Deserialize<NewsPost[]>(json, Options)
                            ?? throw new InvalidDataException("The news index must be an array.");
-        HashSet<string> files = new( StringComparer.OrdinalIgnoreCase );
+        HashSet<string> files = new(StringComparer.OrdinalIgnoreCase);
         foreach (NewsPost? post in posts)
         {
             ValidatePost(post);
@@ -39,6 +44,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
                 throw new InvalidDataException("The news index contains an invalid or duplicate post.");
             }
         }
+
         return posts.OrderByDescending(post => post.Date)
             .ThenBy(post => post.File, StringComparer.Ordinal)
             .ToArray();
@@ -50,7 +56,8 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         {
             return ParseIndex(File.ReadAllText(IndexPath));
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
+                                          or InvalidDataException)
         {
             return [];
         }
@@ -62,6 +69,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         {
             return ParseIndex(await File.ReadAllTextAsync(IndexPath, token));
         }
+
         string json = await DownloadAsync("index.json", token);
         IReadOnlyList<NewsPost> posts = ParseIndex(json);
         JsonFile.Write(IndexPath, posts);
@@ -75,6 +83,7 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         {
             return await File.ReadAllTextAsync(Path.Combine(_localDirectory, post.File), token);
         }
+
         string cachePath = Path.Combine(CacheRoot, post.File + ".json");
         if (!allowNetwork)
         {
@@ -89,12 +98,13 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
             return markdown;
         }
         catch (Exception error) when (error is HttpRequestException
-                                      || error is OperationCanceledException && !token.IsCancellationRequested)
+                                      || (error is OperationCanceledException && !token.IsCancellationRequested))
         {
-            if (JsonFile.Read<string>(cachePath) is {} cached)
+            if (JsonFile.Read<string>(cachePath) is { } cached)
             {
                 return cached;
             }
+
             throw;
         }
     }
@@ -102,16 +112,18 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
     internal Uri ImageSource(NewsPost post, string href)
     {
         Uri article = IsLocal ? new Uri(Path.Combine(_localDirectory!, post.File)) : Source(post.File);
-        Uri source = new( article, href );
+        Uri source = new(article, href);
         if (IsLocal && source.IsFile)
         {
             LocalImagePath(source);
             return source;
         }
+
         if (source.Scheme != "https")
         {
             throw new InvalidDataException("News images must use HTTPS or local news assets.");
         }
+
         return source;
     }
 
@@ -122,19 +134,23 @@ sealed class NewsService(HttpClient http, LauncherStore store, string repository
         {
             return await File.ReadAllBytesAsync(LocalImagePath(source), token);
         }
+
         if (source.Scheme != "https")
         {
             throw new InvalidDataException("News images must use HTTPS.");
         }
+
         string cachePath = ImageCachePath(source);
-        if (JsonFile.Read<byte[]>(cachePath) is {} cached)
+        if (JsonFile.Read<byte[]>(cachePath) is { } cached)
         {
             return cached;
         }
+
         if (!allowNetwork)
         {
             throw new IOException("This news image has not been cached for offline reading.");
         }
+
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(Constants.Network.ReleaseCheckTimeout);
         byte[] bytes = await http.GetByteArrayAsync(source, deadline.Token);

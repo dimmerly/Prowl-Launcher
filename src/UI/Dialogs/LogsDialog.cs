@@ -2,12 +2,12 @@ using System.Drawing;
 
 using Prowl.OrigamiUI;
 using Prowl.PaperUI;
-using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>Console output of the editors started from this launcher, with search and a problems filter.</summary>
-sealed class LogsDialog(Controls ui, EditorCoordinator editors)
+internal sealed class LogsDialog(Controls ui, EditorCoordinator editors)
 {
     private bool _logsProblemsOnly;
     private string _logsSearch = "";
@@ -26,6 +26,7 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
         {
             return;
         }
+
         _selectedLogSession = editors.SelectedSession;
         float width = Math.Clamp(ui.ScreenSize.X - 48, 25, 1000);
         float height = Math.Clamp(ui.ScreenSize.Y - 180, 1, 600);
@@ -38,7 +39,7 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
 
     private void DrawLogs(Paper p, float width, float height)
     {
-        if (_selectedLogSession is not {} session)
+        if (_selectedLogSession is not { } session)
         {
             return;
         }
@@ -53,15 +54,18 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
                     .Display(key =>
                     {
                         EditorConsoleSession item = editors.Sessions.Single(s => s.Id == key);
-                        return $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+                        return
+                            $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
                     })
                     .Show());
             }
+
             using (p.Row("console-tools").Height(40).Gap(10).Enter())
             {
                 Origami.TextField(p, "console-search", _logsSearch, value => _logsSearch = value)
                     .Placeholder(Loc.Get("launcher.console.search")).Show();
-                Origami.Button(p, "console-problems", Loc.Get(_logsProblemsOnly ? "launcher.console.all_output" : "launcher.console.problems"))
+                Origami.Button(p, "console-problems",
+                        Loc.Get(_logsProblemsOnly ? "launcher.console.all_output" : "launcher.console.problems"))
                     .Width(170).OnClick(() => _logsProblemsOnly = !_logsProblemsOnly).Show();
                 Origami.Button(p, "console-copy", Loc.Get("launcher.console.copy"))
                     .Width(115).OnClick(() => p.SetClipboard(string.Join(Environment.NewLine,
@@ -71,6 +75,7 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
                     .Alignment(TextAlignment.MiddleCenter)
                     .Tooltip(Loc.Get("launcher.console.latest_first"));
             }
+
             Origami.ScrollView(p, "console-output-" + session.Id, width,
                     Math.Max(0, height - 52 - (editors.Sessions.Count > 1 ? 52 : 0)))
                 .OverlayScrollbars(false).Padding(12).SmoothScroll().WheelStep(72).ColSpacing(2)
@@ -85,12 +90,14 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
                         {
                             continue;
                         }
+
                         shown++;
                         p.Box("console-line-" + i).Height(26).Clip()
                             .Text($"{line.Time.ToLocalTime():HH:mm:ss}  {line.Text}", ui.Font).FontSize(15)
                             .TextColor(line.IsError ? Color.IndianRed : line.IsWarning ? Color.Goldenrod : ui.Ink)
                             .Tooltip(line.Text);
                     }
+
                     if (shown == 0)
                     {
                         ui.Label(p, "console-no-output", "launcher.console.no_output", 14, ui.Muted, 32);

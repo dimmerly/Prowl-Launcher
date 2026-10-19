@@ -4,7 +4,7 @@ namespace Prowl.Launcher;
 ///     Replaces a directory with a staged copy, keeping the previous copy until the move succeeds.
 ///     Callers hold their operation lock throughout recovery and replacement.
 /// </summary>
-static class DirectoryReplacement
+internal static class DirectoryReplacement
 {
     /// <summary>Finishes or rolls back a replacement that was interrupted before its backup was removed.</summary>
     internal static void Recover(string target, Func<string, bool> isValid)
@@ -14,6 +14,7 @@ static class DirectoryReplacement
         {
             return;
         }
+
         FileSystemHelper.RejectLink(backup);
         if (Directory.Exists(target))
         {
@@ -23,13 +24,16 @@ static class DirectoryReplacement
                 FileSystemHelper.DeleteDirectory(backup);
                 return;
             }
+
             // Retain both copies when neither can be validated.
             if (!isValid(backup))
             {
                 throw new IOException("The interrupted update has no complete installation; its backup was retained.");
             }
+
             FileSystemHelper.DeleteDirectory(target);
         }
+
         Directory.Move(backup, target);
     }
 
@@ -41,6 +45,7 @@ static class DirectoryReplacement
         {
             throw new IOException("Recover the previous update before replacing it.");
         }
+
         Swap(staging, target, backup);
     }
 
@@ -52,6 +57,7 @@ static class DirectoryReplacement
             FileSystemHelper.RejectLink(target);
             Directory.Move(target, backup);
         }
+
         try
         {
             Directory.Move(staging, target);
@@ -62,8 +68,10 @@ static class DirectoryReplacement
             {
                 Directory.Move(backup, target);
             }
+
             throw;
         }
+
         if (Directory.Exists(backup))
         {
             FileSystemHelper.DeleteDirectory(backup);

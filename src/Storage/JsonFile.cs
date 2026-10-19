@@ -1,13 +1,11 @@
 using System.Text.Json;
+
 namespace Prowl.Launcher;
 
 /// <summary>Tolerant reads and atomic writes for the launcher's JSON files.</summary>
-static class JsonFile
+internal static class JsonFile
 {
-    public static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true
-    };
+    public static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
     /// <summary>Returns <c>default</c> when the file is missing, unreadable or malformed.</summary>
     public static T? Read<T>(string path)

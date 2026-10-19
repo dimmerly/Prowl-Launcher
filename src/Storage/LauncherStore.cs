@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using Prowl.Rosetta;
+
 namespace Prowl.Launcher;
 
 /// <summary>
@@ -13,15 +14,28 @@ namespace Prowl.Launcher;
 /// </summary>
 public sealed class LauncherStore
 {
+    private JsonObject _savedSettings;
+
+    public LauncherStore(string? home = null)
+    {
+        Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable(Constants.Storage.HomeEnvironment) ??
+            Platform.DefaultHome);
+        Directory.CreateDirectory(Home);
+        using FileStream writeLock = AcquireSettingsLock();
+        Settings = LoadSettings();
+        _savedSettings = Snapshot(Settings);
+    }
 
     public string Home
     {
         get;
     }
+
     public Settings Settings
     {
         get;
     }
+
     public string SettingsPath => Path.Combine(Home, "settings.json");
     public string WorkPath => Path.Combine(Home, "Work");
 
@@ -32,19 +46,10 @@ public sealed class LauncherStore
     public string BackupsPath => Path.Combine(Home, "Backups");
 
     // The default home shares its Versions folder with the editor; custom homes stay self-contained.
-    public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome), FileSystemHelper.PathComparison)
-        ? Platform.DefaultVersionsPath
-        : Path.Combine(Home, "Versions");
-    private JsonObject _savedSettings;
-
-    public LauncherStore(string? home = null)
-    {
-        Home = Path.GetFullPath(home ?? Environment.GetEnvironmentVariable(Constants.Storage.HomeEnvironment) ?? Platform.DefaultHome);
-        Directory.CreateDirectory(Home);
-        using FileStream writeLock = AcquireSettingsLock();
-        Settings = LoadSettings();
-        _savedSettings = Snapshot(Settings);
-    }
+    public string VersionsPath =>
+        string.Equals(Home, Path.GetFullPath(Platform.DefaultHome), FileSystemHelper.PathComparison)
+            ? Platform.DefaultVersionsPath
+            : Path.Combine(Home, "Versions");
 
     #region Settings
 
@@ -58,15 +63,16 @@ public sealed class LauncherStore
         NormalizeSettings(Settings);
         JsonObject local = Snapshot(Settings);
         JsonObject merged = Snapshot(LoadSettings());
-        MergeProperties(_savedSettings, local, merged, nameof( Settings.Projects ), nameof( Settings.DismissedLauncherReleases ));
+        MergeProperties(_savedSettings, local, merged, nameof(Settings.Projects),
+            nameof(Settings.DismissedLauncherReleases));
         MergeProperties(
-            (JsonObject)_savedSettings[nameof( Settings.DismissedLauncherReleases )]!,
-            (JsonObject)local[nameof( Settings.DismissedLauncherReleases )]!,
-            (JsonObject)merged[nameof( Settings.DismissedLauncherReleases )]!);
-        merged[nameof( Settings.Projects )] = MergeProjects(
-            (JsonArray)_savedSettings[nameof( Settings.Projects )]!,
-            (JsonArray)local[nameof( Settings.Projects )]!,
-            (JsonArray)merged[nameof( Settings.Projects )]!);
+            (JsonObject)_savedSettings[nameof(Settings.DismissedLauncherReleases)]!,
+            (JsonObject)local[nameof(Settings.DismissedLauncherReleases)]!,
+            (JsonObject)merged[nameof(Settings.DismissedLauncherReleases)]!);
+        merged[nameof(Settings.Projects)] = MergeProjects(
+            (JsonArray)_savedSettings[nameof(Settings.Projects)]!,
+            (JsonArray)local[nameof(Settings.Projects)]!,
+            (JsonArray)merged[nameof(Settings.Projects)]!);
 
         Settings saved = merged.Deserialize<Settings>(JsonFile.Options)!;
         JsonFile.Write(SettingsPath, saved);
@@ -89,13 +95,14 @@ public sealed class LauncherStore
                 CopyProperties(project, current);
             }
         }
+
         saved.Projects = saved.Projects.Select(p => existing.GetValueOrDefault(ProjectKey(p.Path)) ?? p).ToList();
         CopyProperties(saved, Settings);
     }
 
     private static void CopyProperties<T>(T source, T target)
     {
-        foreach (PropertyInfo property in typeof( T ).GetProperties())
+        foreach (PropertyInfo property in typeof(T).GetProperties())
         {
             property.SetValue(target, property.GetValue(source));
         }
@@ -106,7 +113,8 @@ public sealed class LauncherStore
     {
         try
         {
-            return new FileStream(Path.Combine(Home, "operations.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            return new FileStream(Path.Combine(Home, "operations.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                FileShare.None);
         }
         catch (IOException error)
         {
@@ -121,7 +129,8 @@ public sealed class LauncherStore
         {
             try
             {
-                return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                return new FileStream(Path.Combine(Home, "settings.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                    FileShare.None);
             }
             catch (IOException) when (clock.Elapsed < Constants.Storage.SettingsLockTimeout)
             {
@@ -147,6 +156,7 @@ public sealed class LauncherStore
                 PreserveDamagedSettings(path);
                 JsonFile.Write(path, settings);
             }
+
             return settings;
         }
 
@@ -154,6 +164,7 @@ public sealed class LauncherStore
         {
             PreserveDamagedSettings(path);
         }
+
         string backup = path + ".bak";
         settings = ReadSettings(backup);
         bool restored = settings != null;
@@ -161,12 +172,14 @@ public sealed class LauncherStore
         {
             PreserveDamagedSettings(backup);
         }
+
         settings ??= new Settings();
         NormalizeSettings(settings);
         if (restored)
         {
             JsonFile.Write(path, settings);
         }
+
         return settings;
     }
 
@@ -196,6 +209,7 @@ public sealed class LauncherStore
             {
                 continue;
             }
+
             string key;
             try
             {
@@ -205,12 +219,14 @@ public sealed class LauncherStore
             {
                 continue;
             }
+
             project.Name ??= Path.GetFileName(project.Path);
             if (project.BackupId != null && !Guid.TryParseExact(project.BackupId, "N", out _))
             {
                 // Used as a folder name; anything else is a hand edit.
                 project.BackupId = null;
             }
+
             if (projects.TryGetValue(key, out Project? existing))
             {
                 existing.Favorite |= project.Favorite;
@@ -226,10 +242,12 @@ public sealed class LauncherStore
                 projects.Add(key, project);
             }
         }
+
         settings.Projects = projects.Values.ToList();
         settings.BackupRetention = Math.Max(1, settings.BackupRetention);
         settings.ProwlRepository = ValidRepository(settings.ProwlRepository, Constants.Defaults.ProwlRepository);
-        settings.LauncherRepository = ValidRepository(settings.LauncherRepository, Constants.Defaults.LauncherRepository);
+        settings.LauncherRepository =
+            ValidRepository(settings.LauncherRepository, Constants.Defaults.LauncherRepository);
 
         static string ValidRepository(string? value, string fallback)
         {
@@ -237,6 +255,7 @@ public sealed class LauncherStore
             {
                 return fallback;
             }
+
             try
             {
                 return GitHubRepository.Normalize(value);
@@ -248,7 +267,8 @@ public sealed class LauncherStore
         }
     }
 
-    private static JsonObject Snapshot(Settings settings) => (JsonObject)JsonSerializer.SerializeToNode(settings, JsonFile.Options)!;
+    private static JsonObject Snapshot(Settings settings) =>
+        (JsonObject)JsonSerializer.SerializeToNode(settings, JsonFile.Options)!;
 
     /// <summary>
     ///     Copies properties that changed between <paramref name="baseline" /> and <paramref name="local" /> into
@@ -275,6 +295,7 @@ public sealed class LauncherStore
         {
             merged.Remove(removed);
         }
+
         foreach ((string path, JsonObject project) in edits)
         {
             if (before.TryGetValue(path, out JsonObject? original) && JsonNode.DeepEquals(original, project))
@@ -282,6 +303,7 @@ public sealed class LauncherStore
                 // Unchanged here; keep whatever the other process did, including removing it.
                 continue;
             }
+
             if (original != null && merged.TryGetValue(path, out JsonObject? target))
             {
                 MergeProperties(original, project, target);
@@ -291,10 +313,11 @@ public sealed class LauncherStore
                 merged[path] = (JsonObject)project.DeepClone();
             }
         }
+
         return new JsonArray(merged.Values.Select(p => (JsonNode)p.DeepClone()).ToArray());
 
         static Dictionary<string, JsonObject> Index(JsonArray projects) => projects.Cast<JsonObject>()
-            .ToDictionary(p => ProjectKey(p[nameof( Project.Path )]!.GetValue<string>()));
+            .ToDictionary(p => ProjectKey(p[nameof(Project.Path)]!.GetValue<string>()));
     }
 
     #endregion
@@ -330,7 +353,7 @@ public sealed class LauncherStore
         foreach (string folder in Directory.EnumerateDirectories(VersionsPath))
         {
             if (FileSystemHelper.IsLink(folder)
-                || JsonFile.Read<InstalledEditor>(Path.Combine(folder, "installation.json")) is not {} editor)
+                || JsonFile.Read<InstalledEditor>(Path.Combine(folder, "installation.json")) is not { } editor)
             {
                 continue;
             }
@@ -368,6 +391,7 @@ public sealed class LauncherStore
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.invalid_project_folder"));
         }
+
         if (Settings.Projects.Any(p => p != project && FileSystemHelper.PathsEqual(p.Path, root)))
         {
             throw new InvalidOperationException(Loc.Get("launcher.errors.project_already_listed"));
@@ -398,15 +422,13 @@ public sealed class LauncherStore
         InstalledEditor? matching = InstalledEditors().FirstOrDefault(e =>
             e.Repository.Equals(Settings.ProwlRepository, StringComparison.OrdinalIgnoreCase)
             && VersionHelper.EquivalentEditorTags(e.Tag, version));
-        Project project = new()
-        {
-            Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey
-        };
+        Project project = new() { Name = name, Path = root, EditorKey = matching?.Key ?? Settings.DefaultEditorKey };
         Settings.Projects.Add(project);
         if (save)
         {
             Save();
         }
+
         return project;
     }
 
@@ -417,7 +439,8 @@ public sealed class LauncherStore
         {
             return Directory.Exists(root) ? ReadProjectMarker(root).Version : null;
         }
-        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException
+                                      or InvalidOperationException)
         {
             return null;
         }
@@ -440,6 +463,7 @@ public sealed class LauncherStore
         {
             name = n.GetString() ?? name;
         }
+
         return (name, version);
     }
 

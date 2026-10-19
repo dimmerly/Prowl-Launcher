@@ -2,10 +2,11 @@ using Prowl.OrigamiUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>Confirms uninstalling the installed launcher, optionally with its settings and caches, then closes it.</summary>
-sealed class UninstallDialog(LauncherStore store, Controls ui)
+internal sealed class UninstallDialog(LauncherStore store, Controls ui)
 {
     private bool _removeData;
 
@@ -13,7 +14,11 @@ sealed class UninstallDialog(LauncherStore store, Controls ui)
     public bool Available => store.Settings.InstalledLauncherExecutable != null;
 
     /// <summary>Set to show the prompt on the next frame, e.g. when started from Apps &amp; Features.</summary>
-    public bool Pending { get; set; }
+    public bool Pending
+    {
+        get;
+        set;
+    }
 
     public void ShowIfPending()
     {
@@ -21,6 +26,7 @@ sealed class UninstallDialog(LauncherStore store, Controls ui)
         {
             return;
         }
+
         Pending = false;
         if (Available)
         {

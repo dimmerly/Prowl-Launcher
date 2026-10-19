@@ -6,17 +6,19 @@ using Prowl.PaperUI;
 using Prowl.PaperUI.LayoutEngine;
 using Prowl.Rosetta;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
 /// <summary>Toasts. <see cref="Notify" /> is safe from any thread; showing and drawing happen on the UI thread.</summary>
-sealed class NotificationCenter(LauncherAppearance appearance)
+internal sealed class NotificationCenter(LauncherAppearance appearance)
 {
     private readonly List<NotificationToast> _activeToasts = [];
     private readonly ConcurrentQueue<(string Title, string Message, ToastType Type)> _notifications = new();
     private int _nextToastId;
 
     /// <summary>Queues a toast. <paramref name="title" /> and <paramref name="message" /> may be localization keys.</summary>
-    public void Notify(string title, string message, ToastType type = ToastType.Success) => _notifications.Enqueue((title, message, type));
+    public void Notify(string title, string message, ToastType type = ToastType.Success) =>
+        _notifications.Enqueue((title, message, type));
 
     public void ShowPending()
     {
@@ -24,7 +26,8 @@ sealed class NotificationCenter(LauncherAppearance appearance)
         {
             float duration = notification.Type == ToastType.Error ? 6 : 4;
             string title = Loc.Get(notification.Title), message = Loc.Get(notification.Message);
-            NotificationToast? existing = _activeToasts.Find(t => t.Title == title && t.Message == message && t.Type == notification.Type);
+            NotificationToast? existing = _activeToasts.Find(t =>
+                t.Title == title && t.Message == message && t.Type == notification.Type);
             if (existing != null)
             {
                 existing.Count++;
@@ -43,10 +46,11 @@ sealed class NotificationCenter(LauncherAppearance appearance)
     {
         OrigamiTheme theme = appearance.Theme;
         OrigamiMetrics metrics = theme.Metrics;
-        if (theme.Font is not {} font)
+        if (theme.Font is not { } font)
         {
             return;
         }
+
         for (int i = _activeToasts.Count - 1; i >= 0; i--)
         {
             NotificationToast toast = _activeToasts[i];
@@ -61,15 +65,15 @@ sealed class NotificationCenter(LauncherAppearance appearance)
         float textWidth = Math.Max(0, availableWidth - metrics.PaddingLarge * 2
                                                      - metrics.CompactHeight * 2 - metrics.SpacingLarge * 2);
         using (p.Column("notifications")
-            .PositionType(PositionType.SelfDirected)
-            .AnchorRight(metrics.PaddingLarge)
-            .AnchorBottom(metrics.PaddingLarge + (progressVisible ? Constants.Layout.OperationHeight : 0))
-            .Size(UnitValue.Auto)
-            .MaxWidth(availableWidth)
-            .AlignItems(LayoutAlignment.End)
-            .Gap(metrics.SpacingLarge)
-            .Layer(Layer.Overlay + 100000)
-            .Enter())
+                   .PositionType(PositionType.SelfDirected)
+                   .AnchorRight(metrics.PaddingLarge)
+                   .AnchorBottom(metrics.PaddingLarge + (progressVisible ? Constants.Layout.OperationHeight : 0))
+                   .Size(UnitValue.Auto)
+                   .MaxWidth(availableWidth)
+                   .AlignItems(LayoutAlignment.End)
+                   .Gap(metrics.SpacingLarge)
+                   .Layer(Layer.Overlay + 100000)
+                   .Enter())
         {
             foreach (NotificationToast toast in _activeToasts)
             {
@@ -91,14 +95,14 @@ sealed class NotificationCenter(LauncherAppearance appearance)
                 using (p.Box(id).Size(UnitValue.Auto).StopEventPropagation().Enter())
                 {
                     using (p.Row(id + "-card")
-                        .Size(UnitValue.Auto)
-                        .Padding(metrics.PaddingLarge)
-                        .Gap(metrics.SpacingLarge)
-                        .AlignItems(LayoutAlignment.Center)
-                        .BackgroundColor(theme.Popover)
-                        .BorderColor(theme.BorderStrong).BorderWidth(1)
-                        .Rounded(metrics.ContainerRounding)
-                        .Enter())
+                               .Size(UnitValue.Auto)
+                               .Padding(metrics.PaddingLarge)
+                               .Gap(metrics.SpacingLarge)
+                               .AlignItems(LayoutAlignment.Center)
+                               .BackgroundColor(theme.Popover)
+                               .BorderColor(theme.BorderStrong).BorderWidth(1)
+                               .Rounded(metrics.ContainerRounding)
+                               .Enter())
                     {
                         p.Box(id + "-icon")
                             .Size(metrics.CompactHeight)
@@ -109,7 +113,8 @@ sealed class NotificationCenter(LauncherAppearance appearance)
                         using (p.Column(id + "-text").Size(UnitValue.Auto).Gap(metrics.SpacingSmall).Enter())
                         {
                             p.Box(id + "-title").Size(UnitValue.Auto).MaxWidth(textWidth)
-                                .Text(toast.Count > 1 ? $"{toast.Title} (x{toast.Count})" : toast.Title, theme.Medium ?? font)
+                                .Text(toast.Count > 1 ? $"{toast.Title} (x{toast.Count})" : toast.Title,
+                                    theme.Medium ?? font)
                                 .FontSize(metrics.FontSize).TextColor(theme.Ink.C500)
                                 .Wrap(TextWrapMode.Wrap).IsNotInteractable();
                             if (toast.Message.Length > 0)
@@ -120,6 +125,7 @@ sealed class NotificationCenter(LauncherAppearance appearance)
                                     .Wrap(TextWrapMode.Wrap).IsNotInteractable();
                             }
                         }
+
                         p.Box(id + "-close")
                             .Size(metrics.CompactHeight)
                             .Cursor(PaperCursor.Pointer)

@@ -42,6 +42,7 @@ public static class Constants
         public const int SettingsLockRetryMilliseconds = 20;
         public const int SampleLockRetryMilliseconds = 100;
         public static readonly TimeSpan SettingsLockTimeout = TimeSpan.FromSeconds(5);
+
         public static IReadOnlyList<string> SupportedPlatforms
         {
             get;
@@ -52,23 +53,27 @@ public static class Constants
     /// <summary>What project backups leave out: caches the editor regenerates, mirroring the project template's .gitignore.</summary>
     public static class Backups
     {
+        public static readonly TimeSpan GitCheckTimeout = TimeSpan.FromSeconds(10);
+
         public static IReadOnlyList<string> ExcludedRootFolders
         {
             get;
         } = Array.AsReadOnly<string>(["Library", "Temp", "Logs", "Builds", "Backups", ".git", ".hg", ".svn"]);
+
         public static IReadOnlyList<string> ExcludedFolders
         {
             get;
         } = Array.AsReadOnly<string>([".vs", "bin", "obj"]);
+
         public static IReadOnlyList<string> ExcludedFiles
         {
             get;
         } = Array.AsReadOnly<string>(["*.csproj", "*.sln", "*.slnx", ".DS_Store"]);
+
         public static IReadOnlyList<int> RetentionChoices
         {
             get;
-        } = Array.AsReadOnly<int>([1, 3, 5, 10, 20]);
-        public static readonly TimeSpan GitCheckTimeout = TimeSpan.FromSeconds(10);
+        } = Array.AsReadOnly([1, 3, 5, 10, 20]);
     }
 
     public static class Startup

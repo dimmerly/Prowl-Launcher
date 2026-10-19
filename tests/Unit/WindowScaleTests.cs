@@ -1,4 +1,5 @@
 using Xunit;
+
 namespace Prowl.Launcher.Test;
 
 public sealed class WindowScaleTests
@@ -26,7 +27,8 @@ public sealed class WindowScaleTests
     [InlineData(0)]
     [InlineData(float.NaN)]
     [InlineData(float.PositiveInfinity)]
-    public void MissingMonitorScalingFallsBackToTheFramebufferRatio(float contentScale) => Assert.Equal(new WindowScale(2, 1), WindowScale.Calculate(1, contentScale, 2));
+    public void MissingMonitorScalingFallsBackToTheFramebufferRatio(float contentScale) =>
+        Assert.Equal(new WindowScale(2, 1), WindowScale.Calculate(1, contentScale, 2));
 
     [Fact]
     public void MovingBetweenMonitorsChangesScaleWithoutChangingTheUserPreference()

@@ -2,9 +2,10 @@ using System.Reflection;
 
 using Prowl.PaperUI;
 using Prowl.Scribe;
+
 namespace Prowl.Launcher;
 
-static class Fonts
+internal static class Fonts
 {
     /// <summary>Loads an embedded font, e.g. <c>Geist-Regular.ttf</c>.</summary>
     public static FontFile Load(string name)
@@ -32,7 +33,8 @@ static class Fonts
             "Noto Sans"
         ];
         foreach (FontFile font in paper.EnumerateSystemFonts()
-            .Where(f => families.Contains(f.FamilyName, StringComparer.OrdinalIgnoreCase) && f.Style == FontStyle.Regular))
+                     .Where(f => families.Contains(f.FamilyName, StringComparer.OrdinalIgnoreCase) &&
+                                 f.Style == FontStyle.Regular))
         {
             paper.AddFallbackFont(font);
         }
