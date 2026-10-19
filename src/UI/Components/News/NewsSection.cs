@@ -21,6 +21,7 @@ sealed class NewsSection(
 ) : IDisposable
 {
     private const double NewsSlideDuration = 0.24;
+    private const double LoadingOverlayDelay = 0.5;
 
     private bool NewsSliding => _newsSlideStarted != 0
                                 && Stopwatch.GetElapsedTime(_newsSlideStarted).TotalSeconds < NewsSlideDuration;
@@ -29,6 +30,9 @@ sealed class NewsSection(
     private NewsService? _news;
     private bool _newsFailed;
     private bool _newsLoading;
+    private long _newsLoadingStarted;
+    private NewsPost? _newsOpening;
+    private long _newsOpeningStarted;
     private DateTime? _newsLocalStamp;
     private MarkdownBuilder? _newsMarkdown;
     private DateTime _newsNextCheck;
@@ -39,6 +43,12 @@ sealed class NewsSection(
     private bool _newsRequested;
     private NewsPost? _newsSelected;
     private long _newsSlideStarted;
+
+    /// <summary>Loading overlays wait briefly so instant loads never flash them.</summary>
+    private bool ShowNewsLoading => _newsLoading && OverlayDue(_newsLoadingStarted);
+
+    private static bool OverlayDue(long started) =>
+        Stopwatch.GetElapsedTime(started).TotalSeconds >= LoadingOverlayDelay;
 
     public void Dispose()
     {
@@ -110,11 +120,6 @@ sealed class NewsSection(
             ui.Label(p, "news-empty", "launcher.news.empty", 18, ui.Muted, 36);
         }
 
-        if (_newsLoading)
-        {
-            ui.Label(p, "news-loading", "launcher.news.loading", 18, ui.Muted, 36);
-        }
-
         if (_newsFailed)
         {
             ui.Label(p, "news-error", "launcher.news.error", 18, ui.Muted, 48);
@@ -125,7 +130,7 @@ sealed class NewsSection(
     {
         int lastPage = Math.Max(0, (_newsPosts.Count - 1) / 3);
         _newsPage = Math.Clamp(_newsPage, 0, lastPage);
-        if (_newsPosts.Count == 0)
+        if (_newsPosts.Count == 0 && !ShowNewsLoading)
         {
             return;
         }
@@ -176,6 +181,20 @@ sealed class NewsSection(
                         .OnClick(() => ChangeNewsPage(Math.Min(lastPage, _newsPage + 1))).Show();
                 }
             }
+            if (ShowNewsLoading)
+            {
+                using (p.Column("news-loading").PositionType(PositionType.SelfDirected)
+                    .Left(0).Top(0).Size(available, 88)
+                    .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding)
+                    .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
+                    .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center).Gap(8)
+                    .IsNotInteractable().Enter())
+                {
+                    Origami.Spinner(p, "news-loading-spinner").Tint(ui.Muted).Show();
+                    p.Box("news-loading-text").Width(UnitValue.Auto).Height(UnitValue.Auto).IsNotInteractable()
+                        .Text(Loc.Get("launcher.news.loading"), ui.Font).FontSize(16).TextColor(ui.Muted);
+                }
+            }
         }
     }
 
@@ -200,7 +219,7 @@ sealed class NewsSection(
                     .Rounded(ui.Appearance.Theme.Metrics.ContainerRounding).Clip().Cursor(PaperCursor.Pointer)
                     .OnClick(click =>
                     {
-                        if (!_newsLoading && !NewsSliding)
+                        if (!_newsLoading && _newsOpening == null && !NewsSliding)
                         {
                             _ = OpenNewsAsync(post);
                         }
@@ -228,6 +247,17 @@ sealed class NewsSection(
                             .Text(post.Title, ui.Bold).FontSize(18).TextColor(ui.Ink).Wrap(TextWrapMode.Wrap);
                         p.Box("byline-space").Height(UnitValue.Stretch()).IsNotInteractable();
                         DrawNewsByline(p, post, 13);
+                    }
+                    if (_newsOpening == post && OverlayDue(_newsOpeningStarted))
+                    {
+                        using (p.Column("opening").PositionType(PositionType.SelfDirected)
+                            .Left(0).Top(0).Size(width, 88)
+                            .BackgroundColor(OrigamiTheme.WithAlpha(ui.Appearance.Card, 200))
+                            .AlignItems(LayoutAlignment.Center).JustifyContent(LayoutJustification.Center)
+                            .IsNotInteractable().Enter())
+                        {
+                            Origami.Spinner(p, "opening-spinner").Tint(ui.Muted).Show();
+                        }
                     }
                 }
             }
@@ -272,6 +302,7 @@ sealed class NewsSection(
         _newsRequested = true;
         _newsNextCheck = DateTime.UtcNow.AddMinutes(_news?.IsLocal == true ? 0 : 15);
         _newsLoading = true;
+        _newsLoadingStarted = Stopwatch.GetTimestamp();
         _newsFailed = false;
         try
         {
@@ -308,7 +339,7 @@ sealed class NewsSection(
 
     private async Task OpenNewsAsync(NewsPost post)
     {
-        if (_news == null || _newsLoading)
+        if (_news == null || _newsLoading || _newsOpening != null)
         {
             return;
         }
@@ -318,7 +349,8 @@ sealed class NewsSection(
         _newsSelected = post;
         _newsImages.Dispose();
         _newsMarkdown = null;
-        _newsLoading = true;
+        _newsOpening = post;
+        _newsOpeningStarted = Stopwatch.GetTimestamp();
         _newsFailed = false;
         try
         {
@@ -357,7 +389,7 @@ sealed class NewsSection(
         }
         finally
         {
-            _newsLoading = false;
+            _newsOpening = null;
         }
     }
 
