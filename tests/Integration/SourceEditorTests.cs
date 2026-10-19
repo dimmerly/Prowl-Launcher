@@ -155,6 +155,15 @@ public sealed class SourceEditorTests : IDisposable
         Assert.Equal(_commit, updated.SourceCommit);
     }
 
+    [Theory]
+    [InlineData(@"C:\Source\Prowl.Runtime\XR\XR.cs(376,19): error CS0246: The type 'Graphite' could not be found [C:\Source\Prowl.Runtime\Prowl.Runtime.csproj]",
+        "XR.cs(376,19): error CS0246: The type 'Graphite' could not be found")]
+    [InlineData("/src/Program.cs(1,2): error CS1002: ; expected", "Program.cs(1,2): error CS1002: ; expected")]
+    [InlineData("Build FAILED.", null)]
+    [InlineData(@"C:\Source\XR.cs(3,4): warning CS0168: unused [C:\Source\a.csproj]", null)]
+    public void FirstBuildError_ExtractsCompilerErrors(string line, string? expected) =>
+        Assert.Equal(expected, EditorInstallerService.FirstBuildError(line));
+
     [Fact]
     public async Task InstalledCommit_SkipsBuildWithoutChangingMetadata()
     {

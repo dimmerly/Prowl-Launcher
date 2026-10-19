@@ -84,7 +84,7 @@ sealed class OperationCoordinator(NotificationCenter notifications, Action<Excep
             notifications.Notify(Loc.Get("launcher.operations.failed", new
             {
                 action = Loc.Get(title)
-            }), exception.Message, ToastType.Error);
+            }), exception.Message.Split('\n', 2)[0], ToastType.Error);
             logError(exception);
         }
         finally

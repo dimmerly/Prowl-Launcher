@@ -153,7 +153,10 @@ public sealed partial class EditorInstallerService
             await Task.WhenAll(process.WaitForExitAsync(token), stdout, stderr);
             if (process.ExitCode != 0)
             {
-                throw new IOException($"{info.FileName} exited with code {process.ExitCode}.\n" + string.Join('\n', output.Concat(errors)));
+                // Lead with the first compiler error so the toast's single line says what broke.
+                string summary = output.Concat(errors).Select(FirstBuildError).FirstOrDefault(line => line != null)
+                                 ?? $"{info.FileName} exited with code {process.ExitCode}.";
+                throw new IOException(summary + "\n" + string.Join('\n', output.Concat(errors)));
             }
             return string.Join('\n', output);
         }
@@ -166,5 +169,13 @@ public sealed partial class EditorInstallerService
             }
         }
     }
+
+    /// <summary>An MSBuild error line as "File.cs(1,2): error CS0000: text", without its directory and project suffix.</summary>
+    internal static string? FirstBuildError(string line)
+    {
+        Match match = Regex.Match(line, @"([^\\/]+\(\d+,\d+\): error \w+: .*?)(?: \[[^\]]+\])?\s*\z");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
     internal sealed record SourceBuildResult(InstalledEditor Editor, bool AlreadyInstalled);
 }
