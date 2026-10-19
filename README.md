@@ -35,7 +35,7 @@ In **Editor Versions**, enable prereleases, then choose **Latest (main)** and cl
 the editor from the configured Prowl repository's `main` branch. Install Git and the
 .NET 10 SDK first, and make sure both are on your `PATH`.
 
-The launcher clones once, pulls changes with `git pull --ff-only`, updates submodules,
+The launcher clones once, then resets to the latest `origin/main`, updates submodules,
 and builds in Release mode. Launch it or select it for a project like any other
 installed editor. Each commit gets its own installation, identified by its commit ID;
 older builds and project selections stay intact. **Latest (main)** remains available
@@ -43,8 +43,8 @@ for updates. If that commit is already installed, the launcher skips compilation
 A failed or cancelled build keeps all existing builds.
 
 The checkout stays under `Source/<repository-hash>/` in the launcher data folder,
-including after uninstalling the compiled editor. Commit or remove local changes
-before pulling. Source builds can contain unfinished or broken changes.
+including after uninstalling the compiled editor. The launcher owns this checkout and
+discards any local changes in it before each build. Source builds can contain unfinished or broken changes.
 
 ## Opening projects
 
