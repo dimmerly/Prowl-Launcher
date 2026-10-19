@@ -8,6 +8,7 @@ sealed class EditorCoordinator(
     HttpClient http,
     GitHubReleasesService github,
     EditorInstallerService installer,
+    ProjectBackupService backups,
     OperationCoordinator operations,
     Dialogs dialogs,
     NotificationCenter notifications,
@@ -54,8 +55,12 @@ sealed class EditorCoordinator(
         }
     }
 
-    /// <summary>Finishes or rolls back installs that a previous launcher left half done.</summary>
-    public void RecoverInterruptedOperations() => installer.RecoverInterruptedOperations();
+    /// <summary>Finishes or rolls back installs and removes backups that a previous launcher left half done.</summary>
+    public void RecoverInterruptedOperations()
+    {
+        backups.Recover();
+        installer.RecoverInterruptedOperations();
+    }
 
     public void ReloadInstalled() => _installed = store.InstalledEditors()
         .Where(e => e.Platform == Platform.Identifier)
@@ -335,8 +340,9 @@ sealed class EditorCoordinator(
     }
 
     /// <summary>
-    ///     A newer editor migrates the project (backing it up first), after which older editors can't open it; an
-    ///     older editor refuses the project. Both ask first. Unknown versions on either side open without asking.
+    ///     A newer editor migrates the project, after which older editors can't open it, so the launcher backs it up
+    ///     first; an older editor refuses the project. Both ask first. Unknown versions on either side open without
+    ///     asking.
     /// </summary>
     private async Task<bool> ConfirmProjectVersionAsync(Project project, InstalledEditor editor, CancellationToken token)
     {
@@ -352,11 +358,50 @@ sealed class EditorCoordinator(
             project = project.Name, saved = saved.ToString(), editor = target.ToString()
         };
         bool upgrade = target.CompareTo(saved) > 0;
-        return await dialogs.ConfirmAsync(
+        // A clean git checkout already has a restore point: its last commit.
+        bool committed = upgrade && store.Settings.BackupBeforeUpgrade && await ProjectBackupService.IsCommittedInGitAsync(project.Path, token);
+        bool backUp = upgrade && store.Settings.BackupBeforeUpgrade && !committed;
+        bool accepted = await dialogs.ConfirmAsync(
             Loc.Get(upgrade ? "launcher.projects.upgrade_title" : "launcher.projects.downgrade_title", values),
-            Loc.Get(upgrade ? "launcher.projects.upgrade_description" : "launcher.projects.downgrade_description", values),
+            Loc.Get(committed ? "launcher.projects.upgrade_git_description"
+                : backUp ? "launcher.projects.upgrade_backup_description"
+                : upgrade ? "launcher.projects.upgrade_description" : "launcher.projects.downgrade_description", values),
             upgrade ? "launcher.projects.upgrade" : "launcher.projects.open_anyway",
             token);
+        return accepted && (!backUp || await BackUpBeforeUpgradeAsync(project, target, token));
+    }
+
+    /// <summary>Backs the project up before an upgrade. When that fails, asks before upgrading without one.</summary>
+    private async Task<bool> BackUpBeforeUpgradeAsync(Project project, ProjectVersion target, CancellationToken token)
+    {
+        string title = operations.Title;
+        operations.Title = Loc.Get("launcher.backups.creating", new
+        {
+            project = project.Name
+        });
+        operations.ImmediateProgress = true;
+        try
+        {
+            await backups.CreateAsync(project, BackupReason.PreUpgrade, target.ToString(), operations.Transfer(), token);
+            return true;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            logError(error);
+            return await dialogs.ConfirmAsync(
+                "launcher.backups.failed_title",
+                Loc.Get("launcher.backups.failed_description", new
+                {
+                    project = project.Name, error = error.Message.Split('\n', 2)[0]
+                }),
+                "launcher.backups.upgrade_without",
+                token);
+        }
+        finally
+        {
+            operations.Title = title;
+            operations.Fraction = null;
+        }
     }
 
     private Task<bool> ConfirmMissingSdkAsync(int sdk, CancellationToken token) => dialogs.ConfirmAsync(

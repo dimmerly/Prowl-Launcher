@@ -217,6 +217,46 @@ sealed class SettingsView(
                 .Show();
         }
 
+        using (ui.Card(p, "backup-settings"))
+        {
+            ui.Label(p, "backup-settings-title", "launcher.backups.title", 19, ui.Ink, 28, true);
+            Origami.Switch(p, "backup-before-upgrade", store.Settings.BackupBeforeUpgrade, value =>
+                {
+                    store.Settings.BackupBeforeUpgrade = value;
+                    store.Save();
+                })
+                .LabelLeft(Loc.Get("launcher.settings.backup_before_upgrade"))
+                .Stretch()
+                .Show();
+            using (p.Row("backup-retention-row")
+                .Height(42)
+                .Gap(12)
+                .Enter())
+            {
+                ui.Label(p, "backup-retention-label", "launcher.settings.backup_retention", 14, ui.Ink, 44);
+                Origami.Dropdown(
+                        p,
+                        "backup-retention",
+                        store.Settings.BackupRetention,
+                        value =>
+                        {
+                            store.Settings.BackupRetention = value;
+                            store.Save();
+                        },
+                        Constants.Backups.RetentionChoices.Union([store.Settings.BackupRetention]).Order().ToArray()
+                    )
+                    .Display(value => value.ToString())
+                    .Width(260)
+                    .Show();
+            }
+            ui.Button(p, "backups-folder", "launcher.backups.open_folder", _ =>
+            {
+                Directory.CreateDirectory(store.BackupsPath);
+                ProcessHelper.OpenInShell(store.BackupsPath);
+                return Task.CompletedTask;
+            }, width: 170);
+        }
+
         using (ui.Card(p, "launcher-settings"))
         {
             using (p.Row("launcher-storage-heading").Height(28).Enter())

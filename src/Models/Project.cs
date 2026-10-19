@@ -27,4 +27,10 @@ public sealed class Project
         get;
         set;
     }
+    /// <summary>Names the project's folder of launcher backups, so they follow the project when it moves.</summary>
+    public string? BackupId
+    {
+        get;
+        set;
+    }
 }

@@ -28,6 +28,16 @@ public sealed class Settings
         get;
         set;
     }
+    public bool BackupBeforeUpgrade
+    {
+        get;
+        set;
+    } = Constants.Defaults.BackupBeforeUpgrade;
+    public int BackupRetention
+    {
+        get;
+        set;
+    } = Constants.Defaults.BackupRetention;
     public string ProwlRepository
     {
         get;

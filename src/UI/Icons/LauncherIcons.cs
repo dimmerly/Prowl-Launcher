@@ -19,6 +19,7 @@ static class LauncherIcons
     public static readonly SvgIcon ExternalLink = new( "M9 2h5v5M14 2L7 9M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10" );
     public static readonly SvgIcon Refresh = new( "M13 6a5 5 0 1 0 0 4M13 2v4H9" );
     public static readonly SvgIcon Play = new( "M5 2l8 6-8 6z" );
+    public static readonly SvgIcon History = new( "M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2 2.5v3h3M8 5v3l2 1.5" );
 
     private static IOrigamiIcon LoadSvgIcon(string name)
     {
@@ -40,6 +41,9 @@ static class LauncherIcons
         "launcher.projects.create_and_open" => OrigamiIconSet.Plus,
         "launcher.projects.open" or "launcher.versions.launch" or "launcher.samples.run" => Play,
         "launcher.projects.remove" or "launcher.versions.uninstall" or "launcher.uninstall.button" => OrigamiIconSet.Trash,
+        "launcher.backups.back_up_now" => OrigamiIconSet.Duplicate,
+        "launcher.backups.title" => History,
+        "launcher.backups.open_folder" or "launcher.backups.show" => OrigamiIconSet.FolderOpen,
         "launcher.versions.install" => OrigamiIconSet.Download,
         "launcher.versions.repair" or "launcher.versions.refresh" or "launcher.updates.check" => Refresh,
         "launcher.versions.set_default" => OrigamiIconSet.Star,

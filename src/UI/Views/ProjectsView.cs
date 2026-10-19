@@ -12,6 +12,7 @@ sealed class ProjectsView(
     EditorCoordinator editors,
     NotificationCenter notifications,
     LogsDialog logs,
+    BackupsDialog backups,
     NewProjectView newProject
 )
 {
@@ -21,6 +22,7 @@ sealed class ProjectsView(
 
     public void Draw(Paper p)
     {
+        backups.ShowIfPending();
         if (newProject.IsOpen)
         {
             newProject.Draw(p);
@@ -77,6 +79,11 @@ sealed class ProjectsView(
                             menu.Item(Loc.Get("launcher.projects.locate"), () => ui.Operations.Start(token => LocateProjectAsync(project, token), "launcher.projects.locate"));
                         }
 
+                        if (folderExists)
+                        {
+                            menu.Item(Loc.Get("launcher.backups.backup"),
+                                () => ui.Operations.Start(token => backups.BackUpAsync(project, token), "launcher.backups.back_up_now"));
+                        }
                         menu.Item(Loc.Get("launcher.projects.copy_path"), () => p.SetClipboard(project.Path));
                         menu.Item(
                             Loc.Get(project.Favorite ? "launcher.projects.unfavourite" : "launcher.projects.favourite"),
@@ -201,7 +208,12 @@ sealed class ProjectsView(
                 Origami.Button(p, "project-logs", Loc.Get("launcher.console.logs"))
                     .Width(76).Height(40).Variant(OrigamiVariant.Subtle).OnClick(logs.Show).Show();
             }
-            float searchWidth = Math.Clamp(Controls.ContentWidth(p) - 380 - (hasLogs ? 86 : 0), 140, 240);
+            ui.Button(p, "backups", "launcher.backups.title", _ =>
+            {
+                backups.Request();
+                return Task.CompletedTask;
+            }, width: 100);
+            float searchWidth = Math.Clamp(Controls.ContentWidth(p) - 512 - (hasLogs ? 86 : 0), 140, 240);
             Origami.TextField(p, "search", _search, value => _search = value)
                 .Width(searchWidth)
                 .Placeholder(Loc.Get("launcher.projects.search"))

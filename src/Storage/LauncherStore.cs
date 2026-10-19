@@ -28,6 +28,9 @@ public sealed class LauncherStore
     /// <summary>Interrupted downloads, kept so the next attempt can resume them.</summary>
     public string DownloadsPath => Path.Combine(Home, "Downloads");
 
+    /// <summary>Project backups, one folder per project.</summary>
+    public string BackupsPath => Path.Combine(Home, "Backups");
+
     // The default home shares its Versions folder with the editor; custom homes stay self-contained.
     public string VersionsPath => string.Equals(Home, Path.GetFullPath(Platform.DefaultHome), FileSystemHelper.PathComparison)
         ? Platform.DefaultVersionsPath
@@ -203,10 +206,16 @@ public sealed class LauncherStore
                 continue;
             }
             project.Name ??= Path.GetFileName(project.Path);
+            if (project.BackupId != null && !Guid.TryParseExact(project.BackupId, "N", out _))
+            {
+                // Used as a folder name; anything else is a hand edit.
+                project.BackupId = null;
+            }
             if (projects.TryGetValue(key, out Project? existing))
             {
                 existing.Favorite |= project.Favorite;
                 existing.EditorKey ??= project.EditorKey;
+                existing.BackupId ??= project.BackupId;
                 if (project.LastOpened > existing.LastOpened)
                 {
                     existing.LastOpened = project.LastOpened;
@@ -218,6 +227,7 @@ public sealed class LauncherStore
             }
         }
         settings.Projects = projects.Values.ToList();
+        settings.BackupRetention = Math.Max(1, settings.BackupRetention);
         settings.ProwlRepository = ValidRepository(settings.ProwlRepository, Constants.Defaults.ProwlRepository);
         settings.LauncherRepository = ValidRepository(settings.LauncherRepository, Constants.Defaults.LauncherRepository);
 

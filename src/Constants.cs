@@ -9,6 +9,8 @@ public static class Constants
         public const bool EditorPrereleases = false;
         public const bool LauncherAutoUpdate = true;
         public const bool ShowFps = false;
+        public const bool BackupBeforeUpgrade = true;
+        public const int BackupRetention = 5;
         public const float UiScale = 1;
         public const float MinUiScale = 0.5f;
         public const float MaxUiScale = 1.5f;
@@ -45,6 +47,28 @@ public static class Constants
             get;
         } = Array.AsReadOnly<string>(
             ["win-x64", "win-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"]);
+    }
+
+    /// <summary>What project backups leave out: caches the editor regenerates, mirroring the project template's .gitignore.</summary>
+    public static class Backups
+    {
+        public static IReadOnlyList<string> ExcludedRootFolders
+        {
+            get;
+        } = Array.AsReadOnly<string>(["Library", "Temp", "Logs", "Builds", "Backups", ".git", ".hg", ".svn"]);
+        public static IReadOnlyList<string> ExcludedFolders
+        {
+            get;
+        } = Array.AsReadOnly<string>([".vs", "bin", "obj"]);
+        public static IReadOnlyList<string> ExcludedFiles
+        {
+            get;
+        } = Array.AsReadOnly<string>(["*.csproj", "*.sln", "*.slnx", ".DS_Store"]);
+        public static IReadOnlyList<int> RetentionChoices
+        {
+            get;
+        } = Array.AsReadOnly<int>([1, 3, 5, 10, 20]);
+        public static readonly TimeSpan GitCheckTimeout = TimeSpan.FromSeconds(10);
     }
 
     public static class Startup

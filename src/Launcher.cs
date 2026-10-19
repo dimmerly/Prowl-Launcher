@@ -124,8 +124,9 @@ public sealed partial class Launcher(
             () => new Float2(_window.FramebufferSize.X / ModalScale, _window.FramebufferSize.Y / ModalScale));
         _dialogs = new Dialogs(_ui);
 
+        ProjectBackupService backups = new(store);
         _editors = new EditorCoordinator(store, _http, new GitHubReleasesService(_http, store),
-            new EditorInstallerService(_http, store), _operations, _dialogs, _notifications, LogError);
+            new EditorInstallerService(_http, store), backups, _operations, _dialogs, _notifications, LogError);
         _updates = new LauncherUpdateCoordinator(_http, store, _operations, _dialogs, _notifications, LogError,
             !offline && !Capturing);
 
@@ -140,6 +141,7 @@ public sealed partial class Launcher(
         _logs = new LogsDialog(_ui, _editors);
         _news = new NewsSection(store, _ui, _http, LogError, _background, offline, Capturing);
         _projects = new ProjectsView(store, _ui, _dialogs, _editors, _notifications, _logs,
+            new BackupsDialog(store, _ui, _dialogs, backups, _notifications),
             new NewProjectView(store, _ui, _dialogs, _editors, _notifications, _previews.NewProject));
         _versions = new VersionsView(store, _ui, _dialogs, _editors);
         _samples = new SamplesView(store, _ui, _notifications, new SampleService(_http, store), LogError, _background, offline, Capturing);
