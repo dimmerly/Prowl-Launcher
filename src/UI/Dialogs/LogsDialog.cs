@@ -47,13 +47,7 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
         {
             if (editors.Sessions.Count > 1)
             {
-                int parentLayer = 0;
-                for (ElementHandle parent = p.CurrentParent; parent.IsValid; parent = parent.GetParentHandle())
-                {
-                    parentLayer = Math.Max(parentLayer, parent.Data.Layer);
-                }
-                int firstElement = p.ElementCount;
-                Origami.Dropdown(p, "console-session-picker", session.Id,
+                Controls.AboveParentLayer(p, () => Origami.Dropdown(p, "console-session-picker", session.Id,
                         key => _selectedLogSession = editors.Sessions.Single(s => s.Id == key),
                         editors.Sessions.Select(s => s.Id).ToArray())
                     .Display(key =>
@@ -61,17 +55,7 @@ sealed class LogsDialog(Controls ui, EditorCoordinator editors)
                         EditorConsoleSession item = editors.Sessions.Single(s => s.Id == key);
                         return $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
                     })
-                    .Show();
-                // Origami 3.6.7 uses absolute overlay layers for dropdowns. Rebase them
-                // above the containing dialog so both the menu and its backdrop work.
-                for (int i = firstElement; i < p.ElementCount; i++)
-                {
-                    ref ElementData element = ref p.GetElementData(i);
-                    if (element.Layer > 0)
-                    {
-                        element.Layer += parentLayer;
-                    }
-                }
+                    .Show());
             }
             using (p.Row("console-tools").Height(40).Gap(10).Enter())
             {

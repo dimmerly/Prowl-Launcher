@@ -32,6 +32,29 @@ sealed class Controls(LauncherAppearance appearance, FontFile font, FontFile bol
     /// <summary>Wide layouts put card info and actions side by side; narrow ones stack them.</summary>
     public static bool IsWideLayout(Paper p) => ContentWidth(p) >= 800;
 
+    /// <summary>
+    ///     Draws controls inside a dialog. Origami 3.6.7 uses absolute overlay layers for dropdowns, so their layers
+    ///     are rebased above the containing dialog so both the menu and its backdrop work.
+    /// </summary>
+    public static void AboveParentLayer(Paper p, Action draw)
+    {
+        int parentLayer = 0;
+        for (ElementHandle parent = p.CurrentParent; parent.IsValid; parent = parent.GetParentHandle())
+        {
+            parentLayer = Math.Max(parentLayer, parent.Data.Layer);
+        }
+        int firstElement = p.ElementCount;
+        draw();
+        for (int i = firstElement; i < p.ElementCount; i++)
+        {
+            ref ElementData element = ref p.GetElementData(i);
+            if (element.Layer > 0)
+            {
+                element.Layer += parentLayer;
+            }
+        }
+    }
+
     public MarkdownBuilder StyleMarkdown(MarkdownBuilder markdown) =>
         markdown.Colors(Ink, Muted, appearance.Accent, appearance.Panel, appearance.Theme.BorderSoft);
 
