@@ -5,7 +5,7 @@ public static class Constants
     public static class Defaults
     {
         public const bool CloseOnEditorLaunch = true;
-        public const bool LauncherPrereleases = true;
+        public const bool LauncherPrereleases = false;
         public const bool EditorPrereleases = false;
         public const bool LauncherAutoUpdate = true;
         public const bool ShowFps = false;
