@@ -20,7 +20,7 @@ static class DirectoryReplacement
             FileSystemHelper.RejectLink(target);
             if (isValid(target))
             {
-                Directory.Delete(backup, true);
+                FileSystemHelper.DeleteDirectory(backup);
                 return;
             }
             // Retain both copies when neither can be validated.
@@ -28,7 +28,7 @@ static class DirectoryReplacement
             {
                 throw new IOException("The interrupted update has no complete installation; its backup was retained.");
             }
-            Directory.Delete(target, true);
+            FileSystemHelper.DeleteDirectory(target);
         }
         Directory.Move(backup, target);
     }
@@ -66,7 +66,7 @@ static class DirectoryReplacement
         }
         if (Directory.Exists(backup))
         {
-            Directory.Delete(backup, true);
+            FileSystemHelper.DeleteDirectory(backup);
         }
     }
 

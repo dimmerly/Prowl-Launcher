@@ -27,6 +27,30 @@ static class FileSystemHelper
         return fullPath;
     }
 
+    /// <summary>
+    ///     Deletes a directory tree, including read-only files (such as git objects), which Windows otherwise refuses
+    ///     to delete. Links are removed, not followed.
+    /// </summary>
+    internal static void DeleteDirectory(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            EnumerationOptions options = new()
+            {
+                // Hidden folders such as .git are included; links are not entered.
+                RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            foreach (FileInfo file in new DirectoryInfo(path).EnumerateFiles("*", options))
+            {
+                if (file.IsReadOnly)
+                {
+                    file.IsReadOnly = false;
+                }
+            }
+        }
+        Directory.Delete(path, true);
+    }
+
     internal static bool IsLink(string path) => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
 
     /// <summary>Checks only the path itself; use <see cref="RejectLinks" /> for a whole tree.</summary>
