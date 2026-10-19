@@ -10,7 +10,6 @@ public sealed class SourceEditorTests : IDisposable
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSourceTests", Guid.NewGuid().ToString("N"));
     private bool _cancelBuild;
     private string _commit = new( 'a', 40 );
-    private bool _dirty;
     private bool _failBuild;
 
     public void Dispose()
@@ -28,10 +27,6 @@ public sealed class SourceEditorTests : IDisposable
         if (arguments[0] == "clone")
         {
             Directory.CreateDirectory(arguments[^1]);
-        }
-        if (arguments[0] == "status")
-        {
-            return Task.FromResult(_dirty ? " M Prowl.Editor/Program.cs" : "");
         }
         if (arguments[0] == "rev-parse")
         {
@@ -76,7 +71,8 @@ public sealed class SourceEditorTests : IDisposable
             "submodule",
             "update",
             "--init",
-            "--recursive"
+            "--recursive",
+            "--force"
         }));
 
         _commands.Clear();
@@ -98,10 +94,11 @@ public sealed class SourceEditorTests : IDisposable
         Assert.Contains(_commands, command => command.SequenceEqual(new[]
         {
             "git",
-            "pull",
-            "--ff-only",
-            "origin",
-            "main"
+            "checkout",
+            "--force",
+            "-B",
+            "main",
+            "origin/main"
         }));
         string project = ProjectTemplates.CreateBlank(Path.Combine(_home, "Projects"), "Test", updated);
         Assert.True(File.Exists(Path.Combine(project, "Test.prowl")));
@@ -141,18 +138,21 @@ public sealed class SourceEditorTests : IDisposable
     }
 
     [Fact]
-    public async Task DirtyCheckout_IsRejectedBeforePullOrBuild()
+    public async Task DirtyCheckout_IsDiscardedBeforeBuild()
     {
         LauncherStore store = new( _home );
         using HttpClient http = new();
         EditorInstallerService installer = new( http, store );
-        InstalledEditor previous = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
-        _dirty = true;
+        await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        _commit = new string('b', 40);
         _commands.Clear();
-        await Assert.ThrowsAsync<IOException>(() =>
-            installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync));
-        Assert.DoesNotContain(_commands, command => command.Contains("pull") || command[0] == "dotnet");
-        Assert.Equal(previous, Assert.Single(store.InstalledEditors()));
+        InstalledEditor updated = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
+        int reset = _commands.FindIndex(command => command.Contains("checkout") && command.Contains("--force"));
+        int clean = _commands.FindIndex(command => command.SequenceEqual(new[] { "git", "clean", "-fd" }));
+        int build = _commands.FindIndex(command => command[0] == "dotnet");
+        Assert.InRange(reset, 0, clean - 1);
+        Assert.InRange(clean, 0, build - 1);
+        Assert.Equal(_commit, updated.SourceCommit);
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public sealed class SourceEditorTests : IDisposable
         Assert.True(repeated.AlreadyInstalled);
         Assert.Equal(first.Editor, repeated.Editor);
         Assert.Equal(first.Editor, Assert.Single(store.InstalledEditors()));
-        Assert.Contains(_commands, command => command.Contains("pull"));
+        Assert.Contains(_commands, command => command.Contains("fetch"));
         Assert.DoesNotContain(_commands, command => command[0] == "dotnet" || command.Contains("submodule"));
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
     }

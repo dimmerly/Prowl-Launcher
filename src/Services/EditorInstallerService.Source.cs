@@ -9,7 +9,7 @@ public sealed partial class EditorInstallerService
 {
 
     /// <summary>
-    ///     Clones or fast-forwards the repository's main branch into Source/, then publishes and installs the
+    ///     Clones or resets the repository's main branch into Source/, then publishes and installs the
     ///     editor for that commit unless it is already installed.
     /// </summary>
     internal async Task<SourceBuildResult> InstallMainAsync(
@@ -52,14 +52,11 @@ public sealed partial class EditorInstallerService
         else
         {
             RejectLink(checkout);
-            if (!string.IsNullOrWhiteSpace(await Git(checkout, "status", "--porcelain")))
-            {
-                throw new IOException(Loc.Get("launcher.versions.main_dirty"));
-            }
-
-            await Git(checkout, "switch", "main");
             progress?.Report(new TransferProgress("launcher.versions.main_pulling"));
-            await Git(checkout, "pull", "--ff-only", "origin", "main");
+            await Git(checkout, "fetch", "origin", "main");
+            // The checkout is launcher-owned; discard anything a botched install left behind.
+            await Git(checkout, "checkout", "--force", "-B", "main", "origin/main");
+            await Git(checkout, "clean", "-fd");
         }
 
         string commit = (await Git(checkout, "rev-parse", "HEAD")).Trim();
@@ -79,7 +76,8 @@ public sealed partial class EditorInstallerService
         }
 
         await Git(checkout, "submodule", "sync", "--recursive");
-        await Git(checkout, "submodule", "update", "--init", "--recursive");
+        await Git(checkout, "submodule", "update", "--init", "--recursive", "--force");
+        await Git(checkout, "submodule", "foreach", "--recursive", "git", "clean", "-fd");
 
         progress?.Report(new TransferProgress("launcher.versions.main_building"));
         await RunAsync("dotnet", checkout, "publish", "Prowl.Editor/Prowl.Editor.csproj",

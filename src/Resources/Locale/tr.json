@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Editör derleniyor…",
     "launcher.versions.main_cloning": "Editör deposu klonlanıyor…",
     "launcher.versions.main_description": "main dalını yerel olarak derle. Git ve .NET SDK gerekir.",
-    "launcher.versions.main_dirty": "Kaynak kodda yerel değişiklikler var. main dalını güncellemeden önce bunları commit edin veya kaldırın.",
     "launcher.versions.main_pulling": "main güncelleniyor…",
     "launcher.versions.main_ready": "En son editör derlemesi hazır",
     "launcher.versions.main_title": "En son sürüm (main)",

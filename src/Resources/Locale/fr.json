@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Compilation de l’éditeur…",
     "launcher.versions.main_cloning": "Clonage du dépôt de l’éditeur…",
     "launcher.versions.main_description": "Compiler main en local. Git et le SDK .NET sont requis.",
-    "launcher.versions.main_dirty": "Le code source contient des modifications locales. Valide-les ou supprime-les avant de mettre à jour main.",
     "launcher.versions.main_pulling": "Mise à jour de main…",
     "launcher.versions.main_ready": "Dernière compilation de l’éditeur prête",
     "launcher.versions.main_title": "Dernière version (main)",

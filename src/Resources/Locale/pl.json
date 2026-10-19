@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Budowanie edytora…",
     "launcher.versions.main_cloning": "Klonowanie repozytorium edytora…",
     "launcher.versions.main_description": "Zbuduj main lokalnie. Wymaga Git i SDK .NET.",
-    "launcher.versions.main_dirty": "Kod źródłowy zawiera lokalne zmiany. Zatwierdź je lub usuń przed aktualizacją main.",
     "launcher.versions.main_pulling": "Aktualizowanie main…",
     "launcher.versions.main_ready": "Najnowsza kompilacja edytora jest gotowa",
     "launcher.versions.main_title": "Najnowsza wersja (main)",

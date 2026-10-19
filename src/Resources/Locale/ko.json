@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "에디터 빌드 중…",
     "launcher.versions.main_cloning": "에디터 저장소 복제 중…",
     "launcher.versions.main_description": "main을 로컬에서 빌드합니다. Git과 .NET SDK가 필요합니다.",
-    "launcher.versions.main_dirty": "소스에 로컬 변경 사항이 있습니다. main을 업데이트하기 전에 커밋하거나 제거하세요.",
     "launcher.versions.main_pulling": "main 업데이트 중…",
     "launcher.versions.main_ready": "최신 에디터 빌드가 준비되었습니다",
     "launcher.versions.main_title": "최신 버전 (main)",

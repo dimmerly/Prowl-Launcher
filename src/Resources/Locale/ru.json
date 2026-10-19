@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Сборка редактора…",
     "launcher.versions.main_cloning": "Клонирование репозитория редактора…",
     "launcher.versions.main_description": "Сборка main локально. Нужны Git и SDK .NET.",
-    "launcher.versions.main_dirty": "В исходном коде есть локальные изменения. Создайте коммит или отмените их перед обновлением main.",
     "launcher.versions.main_pulling": "Обновление main…",
     "launcher.versions.main_ready": "Последняя сборка редактора готова",
     "launcher.versions.main_title": "Последняя версия (main)",

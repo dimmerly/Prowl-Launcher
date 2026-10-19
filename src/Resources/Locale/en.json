@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Building the editor…",
     "launcher.versions.main_cloning": "Cloning the editor repository…",
     "launcher.versions.main_description": "Build main locally. Requires Git and the .NET SDK.",
-    "launcher.versions.main_dirty": "The source checkout has local changes. Commit or remove them before pulling main.",
     "launcher.versions.main_pulling": "Pulling main…",
     "launcher.versions.main_ready": "Latest editor build ready",
     "launcher.versions.main_title": "Latest (main)",

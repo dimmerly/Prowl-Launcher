@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "エディターをビルド中…",
     "launcher.versions.main_cloning": "エディターのリポジトリをクローン中…",
     "launcher.versions.main_description": "main をローカルでビルド。Git と .NET SDK が必要です。",
-    "launcher.versions.main_dirty": "ソースにローカルの変更があります。main を更新する前にコミットするか、変更を取り消してください。",
     "launcher.versions.main_pulling": "main を更新中…",
     "launcher.versions.main_ready": "最新のエディタービルドが準備できました",
     "launcher.versions.main_title": "最新版 (main)",

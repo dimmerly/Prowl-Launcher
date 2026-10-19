@@ -4,7 +4,6 @@
     "launcher.versions.main_building": "Editor wird erstellt…",
     "launcher.versions.main_cloning": "Editor-Repository wird geklont…",
     "launcher.versions.main_description": "main lokal erstellen. Git und das .NET SDK erforderlich.",
-    "launcher.versions.main_dirty": "Der Quellcode enthält lokale Änderungen. Committe oder entferne sie, bevor du main aktualisierst.",
     "launcher.versions.main_pulling": "main wird aktualisiert…",
     "launcher.versions.main_ready": "Neuester Editor-Build ist bereit",
     "launcher.versions.main_title": "Neueste Version (main)",
