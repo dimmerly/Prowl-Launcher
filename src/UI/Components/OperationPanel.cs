@@ -65,8 +65,8 @@ sealed class OperationPanel(Controls ui)
         {
             using (p.Column("operation-info").Height(UnitValue.Auto).AlignSelf(LayoutAlignment.Start).Gap(0).Clip().Enter())
             {
-                ui.Label(p, "operation-title", cancelling ? "launcher.operations.cancelling" : Operations.Title, 16, ui.Ink, 28, true);
-                ui.Label(p, "operation-detail", Operations.Detail, 12, ui.Muted, 22);
+                ui.Label(p, "operation-title", cancelling ? "launcher.operations.cancelling" : Operations.Title, 19, ui.Ink, 28, true);
+                ui.Label(p, "operation-detail", Operations.Detail, 14, ui.Muted, 22);
             }
             p.Box("operation-percent")
                 .Width(100)
