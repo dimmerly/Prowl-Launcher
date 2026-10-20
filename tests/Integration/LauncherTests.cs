@@ -205,6 +205,22 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public async Task UninstallingRemovesReadOnlyFiles()
+    {
+        LauncherStore store = Store();
+        byte[] bytes = EditorArchive();
+        using HttpClient http = Client(bytes);
+        EditorInstallerService installer = new(http, store);
+        InstalledEditor editor = await installer.InstallAsync(Release(bytes), "win-x64");
+        File.SetAttributes(store.ExecutablePath(editor), FileAttributes.ReadOnly);
+
+        await installer.UninstallAsync(editor, CancellationToken.None);
+
+        Assert.False(Directory.Exists(store.InstallPath(editor)));
+        Assert.Empty(store.InstalledEditors());
+    }
+
+    [Fact]
     public void ArchiveLinksAreRejected()
     {
         Directory.CreateDirectory(_home);

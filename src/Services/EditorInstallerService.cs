@@ -98,7 +98,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         RejectLink(store.Home);
         RejectLink(store.VersionsPath);
         RejectLink(path);
-        Directory.Delete(path, true);
+        FileSystemHelper.DeleteDirectory(path);
         return true;
     }
 
