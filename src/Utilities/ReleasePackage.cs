@@ -196,18 +196,19 @@ internal static class ReleasePackage
 
     /// <summary>
     ///     Extracts a zip into <paramref name="staging" />, rejecting path traversal, links, special files and
-    ///     archives that expand beyond <see cref="Constants.Storage.MaxExpandedArchiveBytes" />. Unix modes are preserved.
+    ///     archives that expand beyond <paramref name="maxExpandedBytes" />. Unix modes are preserved.
     /// </summary>
-    public static void ExtractArchive(string archive, string staging, CancellationToken token = default)
+    public static void ExtractArchive(string archive, string staging, CancellationToken token = default,
+        long maxExpandedBytes = Constants.Storage.MaxExpandedArchiveBytes)
     {
         const int UnixFileTypeMask = 0xf000, UnixRegularFile = 0x8000, UnixDirectory = 0x4000;
 
         Directory.CreateDirectory(staging);
         using ZipArchive zip = ZipFile.OpenRead(archive);
-        long declared = zip.Entries.Aggregate(0L, (total, entry) => total > Constants.Storage.MaxExpandedArchiveBytes
+        long declared = zip.Entries.Aggregate(0L, (total, entry) => total > maxExpandedBytes
             ? total
             : total + entry.Length);
-        if (declared <= Constants.Storage.MaxExpandedArchiveBytes)
+        if (declared <= maxExpandedBytes)
         {
             RequireFreeSpace(staging, declared);
         }
@@ -231,7 +232,7 @@ internal static class ReleasePackage
             }
 
             expanded = checked(expanded + entry.Length);
-            if (expanded > Constants.Storage.MaxExpandedArchiveBytes)
+            if (expanded > maxExpandedBytes)
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.archive_too_large"));
             }

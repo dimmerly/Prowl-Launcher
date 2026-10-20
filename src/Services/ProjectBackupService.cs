@@ -88,7 +88,8 @@ internal sealed class ProjectBackupService(LauncherStore store)
         try
         {
             progress?.Report(new TransferProgress("launcher.backups.extracting"));
-            ReleasePackage.ExtractArchive(archive, staging, token);
+            // The size limit guards against hostile downloads; a backup of a large project is expected to be large.
+            ReleasePackage.ExtractArchive(archive, staging, token, long.MaxValue);
             if (!Directory.Exists(Path.Combine(staging, "Assets")))
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.backup_damaged"));

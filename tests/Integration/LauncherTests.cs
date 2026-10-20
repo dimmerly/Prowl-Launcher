@@ -184,6 +184,18 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public void ArchivesCannotExpandBeyondTheirLimit()
+    {
+        Directory.CreateDirectory(_home);
+        string archive = Path.Combine(_home, "large.zip");
+        File.WriteAllBytes(archive, Archive(("Prowl/data.txt", new string('a', 1000))));
+
+        Assert.Throws<InvalidDataException>(() =>
+            ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "under"), maxExpandedBytes: 999));
+        ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "exact"), maxExpandedBytes: 1000);
+    }
+
+    [Fact]
     public void UninstallingClearsTheDefaultEditorOnTheUiThread()
     {
         UiThread.Run(async () =>
