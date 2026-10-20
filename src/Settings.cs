@@ -62,6 +62,12 @@ public sealed class Settings
         set;
     } = Constants.Defaults.LauncherPrereleases;
 
+    public bool EditorPrereleases
+    {
+        get;
+        set;
+    } = Constants.Defaults.EditorPrereleases;
+
     public bool LauncherAutoUpdate
     {
         get;

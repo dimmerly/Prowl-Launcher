@@ -30,11 +30,7 @@ internal sealed class EditorCoordinator(
         private set;
     } = [];
 
-    public bool IncludePrereleases
-    {
-        get;
-        private set;
-    } = Constants.Defaults.EditorPrereleases;
+    public bool IncludePrereleases => store.Settings.EditorPrereleases;
 
     /// <summary>Every editor started from this launcher, oldest first.</summary>
     public IReadOnlyList<EditorConsoleSession> Sessions => _editorSessions;
@@ -66,7 +62,8 @@ internal sealed class EditorCoordinator(
             return;
         }
 
-        IncludePrereleases = enabled;
+        store.Settings.EditorPrereleases = enabled;
+        store.Save();
     }
 
     /// <summary>Raised when an editor process has been started, before it reports ready.</summary>
