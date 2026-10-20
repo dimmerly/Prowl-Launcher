@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "The editor could not be started.",
     "launcher.errors.github_rate_limit": "GitHub's request limit was reached. Try again later.",
     "launcher.errors.incomplete_download": "The downloaded archive is incomplete. Try installing again.",
+    "launcher.errors.download_stalled": "The download stopped receiving data. Check your connection and try again; it will resume where it stopped.",
     "launcher.errors.incomplete_update": "An incomplete launcher update already exists. Remove it before trying again.",
     "launcher.errors.install_editor_first": "Install an editor from Editor Versions first.",
     "launcher.errors.installation_link": "The managed installation folder must not be a symbolic link.",

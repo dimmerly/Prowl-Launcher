@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Impossibile avviare l’editor.",
     "launcher.errors.github_rate_limit": "È stato raggiunto il limite di richieste di GitHub. Riprova più tardi.",
     "launcher.errors.incomplete_download": "L’archivio scaricato è incompleto. Riprova l’installazione.",
+    "launcher.errors.download_stalled": "Il download ha smesso di ricevere dati. Controlla la connessione e riprova; riprenderà da dove si è interrotto.",
     "launcher.errors.incomplete_update": "Esiste già un aggiornamento incompleto del launcher. Rimuovilo prima di riprovare.",
     "launcher.errors.install_editor_first": "Installa prima un editor dalla pagina Versioni.",
     "launcher.errors.installation_link": "La cartella di installazione gestita non deve essere un collegamento simbolico.",

@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Nie udało się uruchomić edytora.",
     "launcher.errors.github_rate_limit": "Osiągnięto limit żądań GitHub. Spróbuj ponownie później.",
     "launcher.errors.incomplete_download": "Pobrane archiwum jest niekompletne. Spróbuj zainstalować ponownie.",
+    "launcher.errors.download_stalled": "Pobieranie przestało otrzymywać dane. Sprawdź połączenie i spróbuj ponownie; zostanie wznowione od miejsca przerwania.",
     "launcher.errors.incomplete_update": "Istnieje już niekompletna aktualizacja launchera. Usuń ją przed ponowną próbą.",
     "launcher.errors.install_editor_first": "Najpierw zainstaluj edytor na stronie Wersje.",
     "launcher.errors.installation_link": "Zarządzany folder instalacji nie może być dowiązaniem symbolicznym.",

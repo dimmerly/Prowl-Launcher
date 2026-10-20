@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Не удалось запустить редактор.",
     "launcher.errors.github_rate_limit": "Достигнут лимит запросов GitHub. Повторите попытку позже.",
     "launcher.errors.incomplete_download": "Скачанный архив неполный. Повторите установку.",
+    "launcher.errors.download_stalled": "Загрузка перестала получать данные. Проверьте подключение и повторите попытку; загрузка продолжится с места остановки.",
     "launcher.errors.incomplete_update": "Уже существует неполное обновление лаунчера. Удалите его перед повторной попыткой.",
     "launcher.errors.install_editor_first": "Сначала установите редактор на странице версий.",
     "launcher.errors.installation_link": "Управляемая папка установки не должна быть символической ссылкой.",

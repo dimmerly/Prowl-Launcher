@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Editör başlatılamadı.",
     "launcher.errors.github_rate_limit": "GitHub istek sınırına ulaşıldı. Daha sonra tekrar deneyin.",
     "launcher.errors.incomplete_download": "İndirilen arşiv eksik. Yeniden yüklemeyi deneyin.",
+    "launcher.errors.download_stalled": "İndirme veri almayı durdurdu. Bağlantınızı kontrol edip yeniden deneyin; kaldığı yerden devam edecek.",
     "launcher.errors.incomplete_update": "Eksik bir başlatıcı güncellemesi zaten var. Tekrar denemeden önce kaldırın.",
     "launcher.errors.install_editor_first": "Önce Sürümler sayfasından bir editör yükleyin.",
     "launcher.errors.installation_link": "Yönetilen kurulum klasörü sembolik bağlantı olamaz.",

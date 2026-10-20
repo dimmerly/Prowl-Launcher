@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Der Editor konnte nicht gestartet werden.",
     "launcher.errors.github_rate_limit": "Das Anfragelimit von GitHub wurde erreicht. Versuche es später erneut.",
     "launcher.errors.incomplete_download": "Das heruntergeladene Archiv ist unvollständig. Versuche die Installation erneut.",
+    "launcher.errors.download_stalled": "Der Download empfängt keine Daten mehr. Prüfe deine Verbindung und versuche es erneut; der Download wird dort fortgesetzt, wo er stehen geblieben ist.",
     "launcher.errors.incomplete_update": "Ein unvollständiges Launcher-Update ist bereits vorhanden. Entferne es vor einem erneuten Versuch.",
     "launcher.errors.install_editor_first": "Installiere zuerst einen Editor unter Versionen.",
     "launcher.errors.installation_link": "Der verwaltete Installationsordner darf kein symbolischer Link sein.",

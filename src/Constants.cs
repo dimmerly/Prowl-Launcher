@@ -28,6 +28,9 @@ public static class Constants
         public const int TransferBufferSize = 81920;
         public const int ProgressIntervalMilliseconds = 100;
         public static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(30);
+
+        /// <summary>How long a download may go without receiving data. HttpClient's timeout stops at the headers.</summary>
+        public static readonly TimeSpan DownloadIdleTimeout = TimeSpan.FromMinutes(1);
         public static readonly TimeSpan ReleaseCheckTimeout = TimeSpan.FromSeconds(15);
     }
 

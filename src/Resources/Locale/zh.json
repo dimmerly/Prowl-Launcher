@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "无法启动编辑器。",
     "launcher.errors.github_rate_limit": "已达到 GitHub 请求限制。请稍后重试。",
     "launcher.errors.incomplete_download": "下载的压缩包不完整。请重新安装。",
+    "launcher.errors.download_stalled": "下载已停止接收数据。请检查网络连接后重试；下载将从中断处继续。",
     "launcher.errors.incomplete_update": "已存在未完成的启动器更新。请先移除再重试。",
     "launcher.errors.install_editor_first": "请先从版本页面安装编辑器。",
     "launcher.errors.installation_link": "受管理的安装文件夹不能是符号链接。",

@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "Não foi possível iniciar o editor.",
     "launcher.errors.github_rate_limit": "O limite de solicitações do GitHub foi atingido. Tente mais tarde.",
     "launcher.errors.incomplete_download": "O arquivo baixado está incompleto. Tente instalar novamente.",
+    "launcher.errors.download_stalled": "O download parou de receber dados. Verifique sua conexão e tente novamente; ele continuará de onde parou.",
     "launcher.errors.incomplete_update": "Já existe uma atualização incompleta do inicializador. Remova-a antes de tentar novamente.",
     "launcher.errors.install_editor_first": "Instale primeiro um editor em Versões.",
     "launcher.errors.installation_link": "A pasta de instalação gerenciada não pode ser um link simbólico.",

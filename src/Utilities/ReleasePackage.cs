@@ -34,7 +34,8 @@ internal static class ReleasePackage
     /// <summary>
     ///     Downloads <paramref name="asset" /> to <paramref name="archive" /> and verifies its SHA-256 digest. With a
     ///     <paramref name="partialDirectory" />, an interrupted or cancelled download is kept there (named by its
-    ///     digest) and the next attempt resumes it with a range request.
+    ///     digest) and the next attempt resumes it with a range request. The download fails when no data arrives for
+    ///     <paramref name="idleTimeout" /> (default <see cref="Constants.Network.DownloadIdleTimeout" />).
     /// </summary>
     public static async Task DownloadVerifiedAsync(
         HttpClient http,
@@ -42,7 +43,8 @@ internal static class ReleasePackage
         string archive,
         IProgress<TransferProgress>? progress = null,
         CancellationToken token = default,
-        string? partialDirectory = null
+        string? partialDirectory = null,
+        TimeSpan? idleTimeout = null
     )
     {
         if (!TryGetGitHubUri(asset, out Uri? download))
@@ -76,7 +78,8 @@ internal static class ReleasePackage
         if (asset.Size <= 0 || existing < asset.Size)
         {
             RequireFreeSpace(partial, asset.Size - existing);
-            await DownloadAsync(http, download, asset, partial, existing, progress, token);
+            await DownloadAsync(http, download, asset, partial, existing, progress,
+                idleTimeout ?? Constants.Network.DownloadIdleTimeout, token);
         }
 
         progress?.Report(new TransferProgress("launcher.download.verifying"));
@@ -101,7 +104,7 @@ internal static class ReleasePackage
 
     private static async Task DownloadAsync(HttpClient http, Uri download, ReleaseAsset asset, string path,
         long existing,
-        IProgress<TransferProgress>? progress, CancellationToken token)
+        IProgress<TransferProgress>? progress, TimeSpan idleTimeout, CancellationToken token)
     {
         using HttpRequestMessage request = new(HttpMethod.Get, download);
         if (existing > 0)
@@ -115,7 +118,7 @@ internal static class ReleasePackage
         {
             // The kept bytes no longer match the server's file; start over.
             File.Delete(path);
-            await DownloadAsync(http, download, asset, path, 0, progress, token);
+            await DownloadAsync(http, download, asset, path, 0, progress, idleTimeout, token);
             return;
         }
 
@@ -129,7 +132,8 @@ internal static class ReleasePackage
         await using FileStream output = new(path, resumed ? FileMode.Append : FileMode.Create, FileAccess.Write,
             FileShare.None,
             Constants.Network.TransferBufferSize, true);
-        long received = await CopyWithProgressAsync(input, output, asset.Name, offset, size, progress, token);
+        long received =
+            await CopyWithProgressAsync(input, output, asset.Name, offset, size, progress, idleTimeout, token);
         if (asset.Size > 0 && received != asset.Size)
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.incomplete_download"));
@@ -272,13 +276,14 @@ internal static class ReleasePackage
 
     private static async Task<long> CopyWithProgressAsync(Stream input, Stream output, string name, long offset,
         long size,
-        IProgress<TransferProgress>? progress, CancellationToken token)
+        IProgress<TransferProgress>? progress, TimeSpan idleTimeout, CancellationToken token)
     {
         byte[] buffer = new byte[Constants.Network.TransferBufferSize];
         Stopwatch clock = Stopwatch.StartNew();
         long received = offset, lastReport = 0;
         int count;
-        while ((count = await input.ReadAsync(buffer, token)) > 0)
+        using CancellationTokenSource idle = CancellationTokenSource.CreateLinkedTokenSource(token);
+        while ((count = await ReadAsync()) > 0)
         {
             await output.WriteAsync(buffer.AsMemory(0, count), token);
             received += count;
@@ -299,6 +304,20 @@ internal static class ReleasePackage
         }
 
         return received;
+
+        async Task<int> ReadAsync()
+        {
+            idle.CancelAfter(idleTimeout);
+            try
+            {
+                return await input.ReadAsync(buffer, idle.Token);
+            }
+            catch (OperationCanceledException error) when (!token.IsCancellationRequested)
+            {
+                // The bytes received so far stay in the partial file for the next attempt to resume.
+                throw new TimeoutException(Loc.Get("launcher.errors.download_stalled"), error);
+            }
+        }
     }
 
     private static string Megabytes(long bytes) => (bytes / 1048576d).ToString("F1");

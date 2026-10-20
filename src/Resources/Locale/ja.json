@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "エディターを起動できませんでした。",
     "launcher.errors.github_rate_limit": "GitHubのリクエスト上限に達しました。後で再試行してください。",
     "launcher.errors.incomplete_download": "ダウンロードしたアーカイブが不完全です。再度インストールしてください。",
+    "launcher.errors.download_stalled": "ダウンロードでデータを受信できなくなりました。接続を確認して再試行してください。中断したところから再開されます。",
     "launcher.errors.incomplete_update": "不完全なランチャー更新が既に存在します。削除してから再試行してください。",
     "launcher.errors.install_editor_first": "先に「バージョン」からエディターをインストールしてください。",
     "launcher.errors.installation_link": "管理対象のインストールフォルダーにシンボリックリンクは使用できません。",

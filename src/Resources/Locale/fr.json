@@ -27,6 +27,7 @@
     "launcher.errors.editor_start_failed": "L’éditeur n’a pas pu démarrer.",
     "launcher.errors.github_rate_limit": "La limite de requêtes de GitHub a été atteinte. Réessayez plus tard.",
     "launcher.errors.incomplete_download": "L’archive téléchargée est incomplète. Réessayez l’installation.",
+    "launcher.errors.download_stalled": "Le téléchargement ne reçoit plus de données. Vérifiez votre connexion et réessayez ; il reprendra là où il s’est arrêté.",
     "launcher.errors.incomplete_update": "Une mise à jour incomplète du lanceur existe déjà. Supprimez-la avant de réessayer.",
     "launcher.errors.install_editor_first": "Installez d’abord un éditeur depuis Versions.",
     "launcher.errors.installation_link": "Le dossier d’installation géré ne doit pas être un lien symbolique.",

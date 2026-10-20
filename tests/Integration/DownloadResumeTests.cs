@@ -104,6 +104,30 @@ public sealed class DownloadResumeTests : IDisposable
     }
 
     [Fact]
+    public async Task AStalledDownloadFailsAndKeepsItsProgress()
+    {
+        using CancellationTokenSource cleanup = new();
+        using HttpClient http = new(new Handler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new StallingStream(_file, 100_000))
+        }));
+
+        Task download = ReleasePackage.DownloadVerifiedAsync(http, Asset(), Archive(), token: cleanup.Token,
+            partialDirectory: Partials, idleTimeout: TimeSpan.FromMilliseconds(200));
+        try
+        {
+            await Task.WhenAny(download, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.True(download.IsCompleted, "The download is still waiting for data.");
+            await Assert.ThrowsAsync<TimeoutException>(() => download);
+            Assert.Equal(100_000, new FileInfo(Assert.Single(Directory.GetFiles(Partials, "*.part"))).Length);
+        }
+        finally
+        {
+            await cleanup.CancelAsync();
+        }
+    }
+
+    [Fact]
     public void DownloadsNeedRoomOnTheirDrive()
     {
         Directory.CreateDirectory(_home);
@@ -115,6 +139,46 @@ public sealed class DownloadResumeTests : IDisposable
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) =>
             Task.FromResult(respond(request));
+    }
+
+    /// <summary>Serves the first <c>count</c> bytes, then waits forever like a connection that went quiet.</summary>
+    private sealed class StallingStream(byte[] data, int count) : Stream
+    {
+        private int _position;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => data.Length;
+
+        public override long Position
+        {
+            get => _position;
+            set => throw new NotSupportedException();
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken token = default)
+        {
+            if (_position >= count)
+            {
+                await Task.Delay(Timeout.Infinite, token);
+            }
+
+            int read = Math.Min(buffer.Length, count - _position);
+            data.AsMemory(_position, read).CopyTo(buffer);
+            _position += read;
+            return read;
+        }
+
+        public override int Read(byte[] buffer, int offset, int length) =>
+            ReadAsync(buffer.AsMemory(offset, length)).AsTask().GetAwaiter().GetResult();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int length) => throw new NotSupportedException();
     }
 
     /// <summary>Serves the first <c>count</c> bytes, then fails like a dropped connection.</summary>
