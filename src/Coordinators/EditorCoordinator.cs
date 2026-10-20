@@ -227,7 +227,7 @@ internal sealed class EditorCoordinator(
             return;
         }
 
-        await Task.Run(() => installer.Uninstall(editor), token);
+        await installer.UninstallAsync(editor, token);
         notifications.Notify("launcher.versions.uninstalled",
             Loc.Get("launcher.versions.uninstalled_description", new { version = editor.Tag }));
     }

@@ -51,16 +51,23 @@ internal sealed class ProjectBackupService(LauncherStore store)
         DeleteFile(FileSystemHelper.SafeChildPath(folder, backup.Id + ".zip"));
     });
 
-    public Task<Project> RestoreAsCopyAsync(ProjectBackup backup, IProgress<TransferProgress>? progress,
-        CancellationToken token) =>
-        Task.Run(() => RestoreAsCopy(backup, progress, token), token);
+    /// <summary>Extracts in the background, then adds the copy to the project list on the calling (UI) thread.</summary>
+    public async Task<Project> RestoreAsCopyAsync(ProjectBackup backup, IProgress<TransferProgress>? progress,
+        CancellationToken token)
+    {
+        string copy = await Task.Run(() => ExtractCopy(backup, progress, token), token);
+        return store.AddProject(copy);
+    }
+
+    internal Project RestoreAsCopy(ProjectBackup backup, IProgress<TransferProgress>? progress = null,
+        CancellationToken token = default) => store.AddProject(ExtractCopy(backup, progress, token));
 
     /// <summary>
     ///     Unzips <paramref name="backup" /> into a new folder next to the original project (or in the default
-    ///     projects folder when that's gone) and adds it to the project list. The original is never touched.
+    ///     projects folder when that's gone) and returns that folder. The original is never touched.
     /// </summary>
-    internal Project RestoreAsCopy(ProjectBackup backup, IProgress<TransferProgress>? progress = null,
-        CancellationToken token = default)
+    private string ExtractCopy(ProjectBackup backup, IProgress<TransferProgress>? progress,
+        CancellationToken token)
     {
         string archive = FileSystemHelper.SafeChildPath(BackupFolder(backup), backup.Id + ".zip");
         string? original = Path.IsPathFullyQualified(backup.ProjectPath)
@@ -97,12 +104,16 @@ internal sealed class ProjectBackupService(LauncherStore store)
             }
         }
 
-        return store.AddProject(destination);
+        return destination;
     }
 
+    /// <summary>Assigns the project's backup folder on the calling (UI) thread, then zips in the background.</summary>
     public Task<ProjectBackup> CreateAsync(Project project, BackupReason reason, string? targetVersion,
-        IProgress<TransferProgress>? progress, CancellationToken token) =>
-        Task.Run(() => Create(project, reason, targetVersion, progress, token), token);
+        IProgress<TransferProgress>? progress, CancellationToken token)
+    {
+        AssignBackupId(project);
+        return Task.Run(() => Create(project, reason, targetVersion, progress, token), token);
+    }
 
     /// <summary>
     ///     Zips the project, leaving out regenerated caches, builds, version control and filesystem links, then
@@ -397,14 +408,19 @@ internal sealed class ProjectBackupService(LauncherStore store)
         ? FileSystemHelper.SafeChildPath(store.BackupsPath, id)
         : null;
 
-    private string EnsureFolder(Project project)
+    /// <summary>Gives the project a backup folder id. This saves settings, so it belongs on the UI thread.</summary>
+    private void AssignBackupId(Project project)
     {
         if (FolderFor(project) == null)
         {
             project.BackupId = Guid.NewGuid().ToString("N");
             store.Save();
         }
+    }
 
+    private string EnsureFolder(Project project)
+    {
+        AssignBackupId(project);
         Directory.CreateDirectory(store.BackupsPath);
         FileSystemHelper.RejectLink(store.BackupsPath);
         string folder = FolderFor(project)!;

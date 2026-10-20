@@ -74,6 +74,25 @@ public sealed class ProjectBackupTests : IDisposable
     }
 
     [Fact]
+    public void BackupsAndRestoresChangeSettingsOnlyOnTheUiThread()
+    {
+        UiThread.Run(async () =>
+        {
+            (LauncherStore store, ProjectBackupService backups, Project project) = CreateProject();
+            store.BindToCurrentThread();
+
+            ProjectBackup backup =
+                await backups.CreateAsync(project, BackupReason.Manual, null, null, CancellationToken.None);
+            Project copy = await backups.RestoreAsCopyAsync(backup, null, CancellationToken.None);
+
+            Assert.Contains(copy, store.Settings.Projects);
+            Settings saved = new LauncherStore(store.Home).Settings;
+            Assert.Equal(project.BackupId, saved.Projects.Single(p => p.Path == project.Path).BackupId);
+            Assert.Contains(saved.Projects, p => p.Path == copy.Path);
+        });
+    }
+
+    [Fact]
     public void UnzippingABackupRestoresTheProject()
     {
         (_, ProjectBackupService backups, Project project) = CreateProject();

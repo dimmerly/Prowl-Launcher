@@ -15,6 +15,7 @@ namespace Prowl.Launcher;
 public sealed class LauncherStore
 {
     private JsonObject _savedSettings;
+    private Thread? _owner;
 
     public LauncherStore(string? home = null)
     {
@@ -51,6 +52,20 @@ public sealed class LauncherStore
             ? Platform.DefaultVersionsPath
             : Path.Combine(Home, "Versions");
 
+    /// <summary>
+    ///     Restricts saving and project list changes to the calling thread. The UI reads <see cref="Settings" /> every
+    ///     frame, so background work must hand its changes back to the UI thread instead.
+    /// </summary>
+    internal void BindToCurrentThread() => _owner = Thread.CurrentThread;
+
+    private void RequireOwnerThread()
+    {
+        if (_owner != null && _owner != Thread.CurrentThread)
+        {
+            throw new InvalidOperationException("Launcher settings can only be changed on the UI thread.");
+        }
+    }
+
     #region Settings
 
     /// <summary>
@@ -59,6 +74,7 @@ public sealed class LauncherStore
     /// </summary>
     public void Save()
     {
+        RequireOwnerThread();
         using FileStream writeLock = AcquireSettingsLock();
         NormalizeSettings(Settings);
         JsonObject local = Snapshot(Settings);
@@ -385,6 +401,7 @@ public sealed class LauncherStore
     /// </summary>
     public void RelocateProject(Project project, string path)
     {
+        RequireOwnerThread();
         bool isMarker = File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase);
         string root = Path.GetFullPath(isMarker ? Path.GetDirectoryName(path)! : path);
         if (!Directory.Exists(Path.Combine(root, "Assets")))
@@ -404,6 +421,7 @@ public sealed class LauncherStore
 
     private Project AddProject(string path, bool save)
     {
+        RequireOwnerThread();
         bool isMarker = File.Exists(path) && path.EndsWith(".prowl", StringComparison.OrdinalIgnoreCase);
         string root = Path.GetFullPath(isMarker ? Path.GetDirectoryName(path)! : path);
         if (!Directory.Exists(Path.Combine(root, "Assets")))

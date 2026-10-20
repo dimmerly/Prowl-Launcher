@@ -109,7 +109,7 @@ public sealed class LauncherTests : IDisposable
         store.Save();
         ProcessStartInfo launch = installer.LaunchInfo(editor, project);
         Assert.Equal(new[] { "--project", project }, launch.ArgumentList);
-        installer.Uninstall(editor);
+        await installer.UninstallAsync(editor, CancellationToken.None);
         Assert.Single(store.InstalledEditors());
         Assert.True(File.Exists(store.ExecutablePath(other)));
         Assert.True(Directory.Exists(project));
@@ -150,7 +150,7 @@ public sealed class LauncherTests : IDisposable
         Assert.Equal("someone/custom-editor", store.InstalledEditors().Single(e => e.Key == custom.Key).Repository);
         // Repair uses recorded provenance even after changing the configured source.
         await installer.InstallAsync(release, "win-x64", sourceRepository: official.Repository);
-        installer.Uninstall(custom);
+        await installer.UninstallAsync(custom, CancellationToken.None);
         Assert.True(File.Exists(store.ExecutablePath(official)));
         Assert.Equal(official.Key, store.Settings.Projects.Single().EditorKey);
     }
@@ -181,6 +181,27 @@ public sealed class LauncherTests : IDisposable
         File.WriteAllBytes(archive, Archive((name, "bad")));
         Assert.Throws<InvalidDataException>(() => ReleasePackage.ExtractArchive(archive, Path.Combine(_home, "stage")));
         Assert.False(File.Exists(Path.Combine(_home, "outside.txt")));
+    }
+
+    [Fact]
+    public void UninstallingClearsTheDefaultEditorOnTheUiThread()
+    {
+        UiThread.Run(async () =>
+        {
+            LauncherStore store = Store();
+            store.BindToCurrentThread();
+            byte[] bytes = EditorArchive();
+            using HttpClient http = Client(bytes);
+            EditorInstallerService installer = new(http, store);
+            InstalledEditor editor = await installer.InstallAsync(Release(bytes), "win-x64");
+            Assert.Equal(editor.Key, store.Settings.DefaultEditorKey);
+
+            await installer.UninstallAsync(editor, CancellationToken.None);
+
+            Assert.Empty(store.InstalledEditors());
+            Assert.Null(store.Settings.DefaultEditorKey);
+            Assert.Null(new LauncherStore(_home).Settings.DefaultEditorKey);
+        });
     }
 
     [Fact]
@@ -575,7 +596,7 @@ public sealed class LauncherTests : IDisposable
         Assert.True(new FileInfo(store.ExecutablePath(editor)).Length > 0);
         Assert.Single(store.InstalledEditors());
         Assert.True(installer.RequiredSdkMajor(editor) >= 8);
-        installer.Uninstall(editor);
+        await installer.UninstallAsync(editor, CancellationToken.None);
         Assert.Empty(store.InstalledEditors());
     }
 

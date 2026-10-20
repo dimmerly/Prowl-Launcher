@@ -90,6 +90,7 @@ public sealed partial class Launcher(
 
     private void Initialize()
     {
+        store.BindToCurrentThread();
         _font = Fonts.Load("Geist-Regular.ttf");
         _bold = Fonts.Load("Geist-Bold.ttf");
         Appearance = new LauncherAppearance(store.Home, _font, _bold);

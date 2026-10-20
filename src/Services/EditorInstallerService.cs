@@ -62,14 +62,32 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         return editor;
     }
 
-    public void Uninstall(InstalledEditor editor)
+    /// <summary>Deletes the installation in the background, then updates settings on the calling (UI) thread.</summary>
+    public async Task UninstallAsync(InstalledEditor editor, CancellationToken token)
+    {
+        if (!await Task.Run(() => DeleteInstallation(editor), token))
+        {
+            return;
+        }
+
+        // Projects keep their pinned editor so reinstalling this version restores the association.
+        if (store.Settings.DefaultEditorKey == editor.Key)
+        {
+            store.Settings.DefaultEditorKey = null;
+        }
+
+        store.Save();
+    }
+
+    /// <summary>Returns false when the installation was already gone.</summary>
+    private bool DeleteInstallation(InstalledEditor editor)
     {
         using FileStream operation = store.AcquireOperationLock();
         RecoverInterruptedInstalls();
         string path = store.InstallPath(editor);
         if (!Directory.Exists(path))
         {
-            return;
+            return false;
         }
 
         if (IsRunning(editor))
@@ -81,13 +99,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         RejectLink(store.VersionsPath);
         RejectLink(path);
         Directory.Delete(path, true);
-        // Projects keep their pinned editor so reinstalling this version restores the association.
-        if (store.Settings.DefaultEditorKey == editor.Key)
-        {
-            store.Settings.DefaultEditorKey = null;
-        }
-
-        store.Save();
+        return true;
     }
 
     public void RecoverInterruptedOperations()

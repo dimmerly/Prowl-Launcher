@@ -99,7 +99,7 @@ public sealed class SourceEditorTests : IDisposable
         Assert.True(File.Exists(Path.Combine(project, "Test.prowl")));
         Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
 
-        installer.Uninstall(updated);
+        await installer.UninstallAsync(updated, CancellationToken.None);
         Assert.Equal(first, Assert.Single(store.InstalledEditors()));
         Assert.Single(Directory.EnumerateDirectories(Path.Combine(_home, "Source")));
     }

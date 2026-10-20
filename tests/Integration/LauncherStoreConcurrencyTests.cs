@@ -24,6 +24,38 @@ public sealed class LauncherStoreConcurrencyTests : IDisposable
     }
 
     [Fact]
+    public void ABoundStoreRejectsChangesFromOtherThreads()
+    {
+        LauncherStore store = new(_home);
+        store.BindToCurrentThread();
+        string game = ProjectFolder("Game");
+
+        Assert.IsType<InvalidOperationException>(OnOtherThread(store.Save));
+        Assert.IsType<InvalidOperationException>(OnOtherThread(() => store.AddProject(game)));
+        Assert.Empty(store.Settings.Projects);
+        store.AddProject(game);
+
+        static Exception? OnOtherThread(Action action)
+        {
+            Exception? error = null;
+            Thread thread = new(() =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception e)
+                {
+                    error = e;
+                }
+            });
+            thread.Start();
+            thread.Join();
+            return error;
+        }
+    }
+
+    [Fact]
     public void StaleSettingsSavePreservesOtherInstancesProjects()
     {
         LauncherStore first = new(_home), second = new(_home);
