@@ -53,7 +53,7 @@ public sealed class SourceEditorTests : IDisposable
 
             File.Copy(typeof(Launcher).Assembly.Location, Path.Combine(staging, "Prowl.Editor.dll"));
             File.WriteAllText(Path.Combine(staging, "Prowl.Editor.runtimeconfig.json"), """
-                {"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}
+                {"runtimeOptions":{"tfm":"net11.0","framework":{"name":"Microsoft.NETCore.App","version":"11.0.0"}}}
                 """);
         }
 

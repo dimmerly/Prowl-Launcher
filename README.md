@@ -33,7 +33,7 @@ stable release. Editor and launcher release repositories can also be changed in 
 
 In **Editor Versions**, enable prereleases, then choose **Latest (main)** and click **Pull & build** to compile
 the editor from the configured Prowl repository's `main` branch. Install Git and the
-.NET 10 SDK first, and make sure both are on your `PATH`.
+.NET 11 SDK first, and make sure both are on your `PATH`.
 
 The launcher clones once, then resets to the latest `origin/main`, updates submodules,
 and builds in Release mode. Launch it or select it for a project like any other
@@ -127,7 +127,7 @@ of its Desktop and Start menu shortcuts.
 
 ## Development
 
-Install the .NET 10 SDK, then run:
+Install the .NET 11 SDK, then run:
 
 ```sh
 dotnet run --project src/Prowl.Launcher.csproj

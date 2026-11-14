@@ -216,8 +216,8 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         string path = Path.Combine(Path.GetDirectoryName(store.ExecutablePath(editor))!,
             EditorName + ".runtimeconfig.json");
         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
-        string tfm = document.RootElement.GetProperty("runtimeOptions").GetProperty("tfm").GetString() ?? "net10.0";
-        return int.TryParse(tfm.Replace("net", "").Split('.')[0], out int major) ? major : 10;
+        string tfm = document.RootElement.GetProperty("runtimeOptions").GetProperty("tfm").GetString() ?? "net11.0";
+        return int.TryParse(tfm.Replace("net", "").Split('.')[0], out int major) ? major : 11;
     }
 
     public static async Task<bool> HasSdkAsync(int major, CancellationToken token = default)

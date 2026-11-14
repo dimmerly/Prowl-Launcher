@@ -81,7 +81,7 @@ public sealed class LauncherTests : IDisposable
         ]);
 
     private static byte[] EditorArchive(string text = "editor") => Archive(("Prowl/Prowl.Editor.exe", text),
-        ("Prowl/Prowl.Editor.runtimeconfig.json", "{\"runtimeOptions\":{\"tfm\":\"net10.0\"}}"));
+        ("Prowl/Prowl.Editor.runtimeconfig.json", "{\"runtimeOptions\":{\"tfm\":\"net11.0\"}}"));
 
     private static HttpClient Client(byte[] content) => new(new Handler(_ =>
         new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(content) }));
@@ -96,7 +96,7 @@ public sealed class LauncherTests : IDisposable
         InstalledEditor editor = await installer.InstallAsync(Release(bytes), "win-x64");
         Assert.Equal(editor.Key, store.Settings.DefaultEditorKey);
         Assert.Equal("editor", File.ReadAllText(store.ExecutablePath(editor)));
-        Assert.Equal(10, installer.RequiredSdkMajor(editor));
+        Assert.Equal(11, installer.RequiredSdkMajor(editor));
         InstalledEditor other = await installer.InstallAsync(Release(bytes, 2, tag: "v1.0-preview-5"), "win-x64");
         Assert.Equal(2, store.InstalledEditors().Count);
         File.WriteAllText(store.ExecutablePath(editor), "corrupted");

@@ -230,7 +230,7 @@ internal sealed class LauncherFixture : IDisposable
             if (name == "Prowl.Editor")
             {
                 using StreamWriter config = new(archive.CreateEntry("Probe/Prowl.Editor.runtimeconfig.json").Open());
-                config.Write("{\"runtimeOptions\":{\"tfm\":\"net10.0\"}}");
+                config.Write("{\"runtimeOptions\":{\"tfm\":\"net11.0\"}}");
             }
         }
 
