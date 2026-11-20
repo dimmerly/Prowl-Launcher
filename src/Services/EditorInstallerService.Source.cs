@@ -33,14 +33,22 @@ public sealed partial class EditorInstallerService
         using InstallWorkspace workspace = new(store);
         string checkout = Path.Combine(sources, GitHubRepository.CacheKey(repository));
 
-        Task<string> Git(string directory, params string[] arguments) => RunAsync("git", directory, arguments);
+        // Git's output is labelled with the repository it's working on, since several are synced in turn.
+        Task<string> Git(string remote, string directory, params string[] arguments) =>
+            RunAsync("git", directory, remote + ": ", arguments);
 
-        Task<string> RunAsync(string executable, string directory, params string[] arguments)
+        Task<string> RunAsync(string executable, string directory, string? label, params string[] arguments)
         {
             ProcessStartInfo info = ProcessHelper.Captured(executable, directory, arguments);
             // Avoid interactive Git prompts in the launcher's background operation.
             info.Environment["GIT_TERMINAL_PROMPT"] = "0";
-            return runCommand != null ? runCommand(info, token) : RunSourceCommandAsync(info, progress, token);
+            // Abort clones and fetches whose transfer stalls instead of hanging on a dead connection.
+            info.Environment["GIT_HTTP_LOW_SPEED_LIMIT"] = "1000";
+            info.Environment["GIT_HTTP_LOW_SPEED_TIME"] =
+                ((int)Constants.Network.DownloadIdleTimeout.TotalSeconds).ToString();
+            return runCommand != null
+                ? runCommand(info, token)
+                : RunSourceCommandAsync(info, progress, label, token);
         }
 
         async Task<string> SyncMainAsync(string remote, string directory, string cloning, string pulling)
@@ -49,7 +57,7 @@ public sealed partial class EditorInstallerService
             {
                 progress?.Report(new TransferProgress(cloning));
                 string cloned = Path.Combine(workspace.Work, Path.GetFileName(directory));
-                await Git(workspace.Work, "clone", "--branch", "main", "--single-branch",
+                await Git(remote, workspace.Work, "clone", "--progress", "--depth", "1", "--branch", "main",
                     Constants.Network.GitHubUrl + remote + ".git", cloned);
                 Directory.Move(cloned, directory);
             }
@@ -57,13 +65,13 @@ public sealed partial class EditorInstallerService
             {
                 RejectLink(directory);
                 progress?.Report(new TransferProgress(pulling));
-                await Git(directory, "fetch", "origin", "main");
+                await Git(remote, directory, "fetch", "--progress", "--depth", "1", "origin", "main");
                 // The checkout is launcher-owned; discard anything a botched install left behind.
-                await Git(directory, "checkout", "--force", "-B", "main", "origin/main");
-                await Git(directory, "clean", "-fd");
+                await Git(remote, directory, "checkout", "--force", "-B", "main", "origin/main");
+                await Git(remote, directory, "clean", "-fd");
             }
 
-            string head = (await Git(directory, "rev-parse", "HEAD")).Trim();
+            string head = (await Git(remote, directory, "rev-parse", "HEAD")).Trim();
             if (!Regex.IsMatch(head, @"\A[0-9a-f]{40}\z"))
             {
                 throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
@@ -72,11 +80,11 @@ public sealed partial class EditorInstallerService
             return head;
         }
 
-        async Task PrepareSubmodulesAsync(string directory)
+        async Task PrepareSubmodulesAsync(string remote, string directory)
         {
-            await Git(directory, "submodule", "sync", "--recursive");
-            await Git(directory, "submodule", "update", "--init", "--recursive", "--force");
-            await Git(directory, "submodule", "foreach", "--recursive", "git", "clean", "-fd");
+            await Git(remote, directory, "submodule", "sync", "--recursive");
+            await Git(remote, directory, "submodule", "update", "--init", "--recursive", "--force", "--depth", "1");
+            await Git(remote, directory, "submodule", "foreach", "--recursive", "git", "clean", "-fd");
         }
 
         string commit = await SyncMainAsync(repository, checkout,
@@ -104,7 +112,7 @@ public sealed partial class EditorInstallerService
 
         // A rebuild of this commit (new Anthology, missing files) replaces its folder; fail before the long build.
         ThrowIfRunning(editor);
-        await PrepareSubmodulesAsync(checkout);
+        await PrepareSubmodulesAsync(repository, checkout);
         List<string> publish =
         [
             "publish", "Prowl.Editor/Prowl.Editor.csproj", "-c", "Release", "-r", platform,
@@ -112,12 +120,12 @@ public sealed partial class EditorInstallerService
         ];
         if (anthologyCommit != null)
         {
-            await PrepareSubmodulesAsync(anthology);
+            await PrepareSubmodulesAsync(Constants.Defaults.AnthologyRepository, anthology);
             publish.AddRange(["-p:ProwlLocalAnthology=true", "-p:AnthologyDir=" + anthology + Path.DirectorySeparatorChar]);
         }
 
         progress?.Report(new TransferProgress("launcher.versions.main_building"));
-        await RunAsync("dotnet", checkout, [.. publish, "-o", workspace.Staging]);
+        await RunAsync("dotnet", checkout, null, [.. publish, "-o", workspace.Staging]);
         if (!File.Exists(Path.Combine(workspace.Staging, editor.ExecutableRelativePath)))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
@@ -146,10 +154,11 @@ public sealed partial class EditorInstallerService
             && File.Exists(Path.Combine(store.InstallPath(candidate), EditorName + ".dll"))
             && File.Exists(Path.Combine(store.InstallPath(candidate), EditorName + ".runtimeconfig.json")));
 
-    /// <summary>Runs a build tool, streaming its output as progress. Returns stdout; throws with the output tail on failure.</summary>
+    /// <summary>Runs a build tool, streaming its output (prefixed with <paramref name="label" />) as progress. Returns stdout; throws with the output tail on failure.</summary>
     private static async Task<string> RunSourceCommandAsync(
         ProcessStartInfo info,
         IProgress<TransferProgress>? progress,
+        string? label,
         CancellationToken token)
     {
         const int MaxRetainedLines = 30;
@@ -177,7 +186,7 @@ public sealed partial class EditorInstallerService
                     lines.RemoveAt(0);
                 }
 
-                progress?.Report(new TransferProgress(line));
+                progress?.Report(new TransferProgress(label + line));
             }
         }
 

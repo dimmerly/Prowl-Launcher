@@ -149,7 +149,7 @@ public sealed class SourceEditorTests : IDisposable
         Assert.Contains(_commands,
             command => command.SequenceEqual(new[]
             {
-                "git", "submodule", "update", "--init", "--recursive", "--force"
+                "git", "submodule", "update", "--init", "--recursive", "--force", "--depth", "1"
             }));
 
         _commands.Clear();
