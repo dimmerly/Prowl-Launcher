@@ -50,6 +50,13 @@ public sealed class Settings
         set;
     } = Constants.Defaults.ProwlRepository;
 
+    /// <summary>Whether main builds clone Anthology and reference it directly instead of its NuGet packages.</summary>
+    public bool BuildWithLocalAnthology
+    {
+        get;
+        set;
+    } = Constants.Defaults.BuildWithLocalAnthology;
+
     public string LauncherRepository
     {
         get;

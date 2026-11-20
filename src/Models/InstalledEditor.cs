@@ -18,6 +18,13 @@ public sealed record InstalledEditor(
         init;
     }
 
+    /// <summary>The Anthology commit a source build was compiled against.</summary>
+    public string? AnthologyCommit
+    {
+        get;
+        init;
+    }
+
     public string? EditorVersion
     {
         get;

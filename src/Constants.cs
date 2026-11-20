@@ -9,6 +9,7 @@ public static class Constants
         public const bool EditorPrereleases = false;
         public const bool LauncherAutoUpdate = true;
         public const bool ShowFps = false;
+        public const bool BuildWithLocalAnthology = true;
         public const bool BackupBeforeUpgrade = true;
         public const int BackupRetention = 5;
         public const float UiScale = 1;
@@ -16,6 +17,7 @@ public static class Constants
         public const float MaxUiScale = 1.5f;
         public const string Locale = "en";
         public const string ProwlRepository = "ProwlEngine/Prowl";
+        public const string AnthologyRepository = "ProwlEngine/Anthology";
         public const string LauncherRepository = "dimmerly/Prowl-Launcher";
     }
 

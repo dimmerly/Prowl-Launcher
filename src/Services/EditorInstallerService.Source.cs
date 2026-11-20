@@ -9,8 +9,8 @@ namespace Prowl.Launcher;
 public sealed partial class EditorInstallerService
 {
     /// <summary>
-    ///     Clones or resets the repository's main branch into Source/, then publishes and installs the
-    ///     editor for that commit unless it is already installed.
+    ///     Clones or resets the repository's main branch into Source/ (and Anthology's, when building against it),
+    ///     then publishes and installs the editor unless that build is already installed.
     /// </summary>
     internal async Task<SourceBuildResult> InstallMainAsync(
         string platform,
@@ -43,45 +43,81 @@ public sealed partial class EditorInstallerService
             return runCommand != null ? runCommand(info, token) : RunSourceCommandAsync(info, progress, token);
         }
 
-        if (!Directory.Exists(checkout))
+        async Task<string> SyncMainAsync(string remote, string directory, string cloning, string pulling)
         {
-            progress?.Report(new TransferProgress("launcher.versions.main_cloning"));
-            string cloned = Path.Combine(workspace.Work, "source");
-            await Git(workspace.Work, "clone", "--branch", "main", "--single-branch",
-                Constants.Network.GitHubUrl + repository + ".git", cloned);
-            Directory.Move(cloned, checkout);
-        }
-        else
-        {
-            RejectLink(checkout);
-            progress?.Report(new TransferProgress("launcher.versions.main_pulling"));
-            await Git(checkout, "fetch", "origin", "main");
-            // The checkout is launcher-owned; discard anything a botched install left behind.
-            await Git(checkout, "checkout", "--force", "-B", "main", "origin/main");
-            await Git(checkout, "clean", "-fd");
+            if (!Directory.Exists(directory))
+            {
+                progress?.Report(new TransferProgress(cloning));
+                string cloned = Path.Combine(workspace.Work, Path.GetFileName(directory));
+                await Git(workspace.Work, "clone", "--branch", "main", "--single-branch",
+                    Constants.Network.GitHubUrl + remote + ".git", cloned);
+                Directory.Move(cloned, directory);
+            }
+            else
+            {
+                RejectLink(directory);
+                progress?.Report(new TransferProgress(pulling));
+                await Git(directory, "fetch", "origin", "main");
+                // The checkout is launcher-owned; discard anything a botched install left behind.
+                await Git(directory, "checkout", "--force", "-B", "main", "origin/main");
+                await Git(directory, "clean", "-fd");
+            }
+
+            string head = (await Git(directory, "rev-parse", "HEAD")).Trim();
+            if (!Regex.IsMatch(head, @"\A[0-9a-f]{40}\z"))
+            {
+                throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
+            }
+
+            return head;
         }
 
-        string commit = (await Git(checkout, "rev-parse", "HEAD")).Trim();
-        if (!Regex.IsMatch(commit, @"\A[0-9a-f]{40}\z"))
+        async Task PrepareSubmodulesAsync(string directory)
         {
-            throw new InvalidDataException(Loc.Get("launcher.errors.invalid_installation"));
+            await Git(directory, "submodule", "sync", "--recursive");
+            await Git(directory, "submodule", "update", "--init", "--recursive", "--force");
+            await Git(directory, "submodule", "foreach", "--recursive", "git", "clean", "-fd");
         }
 
-        editor = editor with { Tag = "main-" + commit[..7], SourceCommit = commit };
+        string commit = await SyncMainAsync(repository, checkout,
+            "launcher.versions.main_cloning", "launcher.versions.main_pulling");
+        // Optionally build against Anthology's main branch directly instead of its published NuGet packages.
+        // Anthology itself as the source repository would share its checkout, so it never gets one.
+        string anthology = Path.Combine(sources, GitHubRepository.CacheKey(Constants.Defaults.AnthologyRepository));
+        string? anthologyCommit =
+            store.Settings.BuildWithLocalAnthology
+            && !repository.Equals(Constants.Defaults.AnthologyRepository, StringComparison.OrdinalIgnoreCase)
+                ? await SyncMainAsync(Constants.Defaults.AnthologyRepository, anthology,
+                    "launcher.versions.anthology_cloning", "launcher.versions.anthology_pulling")
+                : null;
 
-        if (FindInstalledBuild(commit, platform, repository) is { } installed)
+        editor = editor with
+        {
+            Tag = "main-" + commit[..7], SourceCommit = commit, AnthologyCommit = anthologyCommit
+        };
+
+        if (FindInstalledBuild(commit, anthologyCommit, platform, repository) is { } installed)
         {
             progress?.Report(new TransferProgress("launcher.versions.main_current", 1));
             return new SourceBuildResult(installed, true);
         }
 
-        await Git(checkout, "submodule", "sync", "--recursive");
-        await Git(checkout, "submodule", "update", "--init", "--recursive", "--force");
-        await Git(checkout, "submodule", "foreach", "--recursive", "git", "clean", "-fd");
+        // A rebuild of this commit (new Anthology, missing files) replaces its folder; fail before the long build.
+        ThrowIfRunning(editor);
+        await PrepareSubmodulesAsync(checkout);
+        List<string> publish =
+        [
+            "publish", "Prowl.Editor/Prowl.Editor.csproj", "-c", "Release", "-r", platform,
+            "--self-contained", "false"
+        ];
+        if (anthologyCommit != null)
+        {
+            await PrepareSubmodulesAsync(anthology);
+            publish.AddRange(["-p:ProwlLocalAnthology=true", "-p:AnthologyDir=" + anthology + Path.DirectorySeparatorChar]);
+        }
 
         progress?.Report(new TransferProgress("launcher.versions.main_building"));
-        await RunAsync("dotnet", checkout, "publish", "Prowl.Editor/Prowl.Editor.csproj",
-            "-c", "Release", "-r", platform, "--self-contained", "false", "-o", workspace.Staging);
+        await RunAsync("dotnet", checkout, [.. publish, "-o", workspace.Staging]);
         if (!File.Exists(Path.Combine(workspace.Staging, editor.ExecutableRelativePath)))
         {
             throw new InvalidDataException(Loc.Get("launcher.errors.missing_editor_archive"));
@@ -97,11 +133,13 @@ public sealed partial class EditorInstallerService
         return new SourceBuildResult(editor, false);
     }
 
-    /// <summary>A complete existing installation built from <paramref name="commit" />, if any.</summary>
-    private InstalledEditor? FindInstalledBuild(string commit, string platform, string repository) =>
+    /// <summary>A complete existing installation built from <paramref name="commit" /> and <paramref name="anthologyCommit" />, if any.</summary>
+    private InstalledEditor? FindInstalledBuild(string commit, string? anthologyCommit, string platform,
+        string repository) =>
         store.InstalledEditors().FirstOrDefault(candidate =>
             candidate.IsMain
             && candidate.SourceCommit == commit
+            && candidate.AnthologyCommit == anthologyCommit
             && candidate.Platform == platform
             && candidate.Repository.Equals(repository, StringComparison.OrdinalIgnoreCase)
             && File.Exists(store.ExecutablePath(candidate))

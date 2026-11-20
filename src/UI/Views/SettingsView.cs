@@ -211,6 +211,14 @@ internal sealed class SettingsView(
                 .LabelLeft(Loc.Get("launcher.settings.show_fps"))
                 .Stretch()
                 .Show();
+            Origami.Switch(p, "local-anthology", store.Settings.BuildWithLocalAnthology, value =>
+                {
+                    store.Settings.BuildWithLocalAnthology = value;
+                    store.Save();
+                })
+                .LabelLeft(Loc.Get("launcher.settings.local_anthology"))
+                .Stretch()
+                .Show();
         }
 
         using (ui.Card(p, "backup-settings"))

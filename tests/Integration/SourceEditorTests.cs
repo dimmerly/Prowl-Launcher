@@ -10,6 +10,7 @@ public sealed class SourceEditorTests : IDisposable
     private readonly List<string[]> _commands = [];
     private readonly string _home = Path.Combine(Path.GetTempPath(), "ProwlSourceTests", Guid.NewGuid().ToString("N"));
     private bool _cancelBuild;
+    private string _anthologyCommit = new('c', 40);
     private string _commit = new('a', 40);
     private bool _failBuild;
 
@@ -32,7 +33,7 @@ public sealed class SourceEditorTests : IDisposable
 
         if (arguments[0] == "rev-parse")
         {
-            return Task.FromResult(_commit);
+            return Task.FromResult(IsAnthology(info.WorkingDirectory) ? _anthologyCommit : _commit);
         }
 
         if (info.FileName == "dotnet")
@@ -58,6 +59,80 @@ public sealed class SourceEditorTests : IDisposable
         }
 
         return Task.FromResult("");
+    }
+
+    private static bool IsAnthology(string directory) =>
+        Path.GetFileName(directory) == GitHubRepository.CacheKey(Constants.Defaults.AnthologyRepository);
+
+    [Fact]
+    public async Task Build_ClonesAnthologyAndReferencesItDirectly()
+    {
+        LauncherStore store = new(_home);
+        using HttpClient http = new();
+        EditorInstallerService installer = new(http, store);
+        InstalledEditor editor = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
+        Assert.Equal(_anthologyCommit, editor.AnthologyCommit);
+
+        string anthology = Path.Combine(_home, "Source",
+            GitHubRepository.CacheKey(Constants.Defaults.AnthologyRepository));
+        Assert.True(Directory.Exists(anthology));
+        Assert.Contains(_commands,
+            command => command.Contains("clone") && command.Contains("https://github.com/ProwlEngine/Anthology.git"));
+        string[] publish = Assert.Single(_commands, command => command[0] == "dotnet");
+        Assert.Contains("-p:ProwlLocalAnthology=true", publish);
+        Assert.Contains("-p:AnthologyDir=" + anthology + Path.DirectorySeparatorChar, publish);
+    }
+
+    [Fact]
+    public async Task DisabledLocalAnthology_BuildsAgainstPackages()
+    {
+        LauncherStore store = new(_home);
+        store.Settings.BuildWithLocalAnthology = false;
+        using HttpClient http = new();
+        EditorInstallerService installer = new(http, store);
+        InstalledEditor editor = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
+        Assert.Null(editor.AnthologyCommit);
+        Assert.DoesNotContain(_commands, command => command.Any(argument => argument.Contains("Anthology")));
+        Assert.Single(Directory.EnumerateDirectories(Path.Combine(_home, "Source")));
+
+        // Switching the option on rebuilds the same commit against Anthology.
+        store.Settings.BuildWithLocalAnthology = true;
+        EditorInstallerService.SourceBuildResult rebuilt =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        Assert.False(rebuilt.AlreadyInstalled);
+        Assert.Equal(_anthologyCommit, rebuilt.Editor.AnthologyCommit);
+    }
+
+    [Fact]
+    public async Task AnthologyAsSourceRepository_DoesNotCloneItTwice()
+    {
+        LauncherStore store = new(_home);
+        using HttpClient http = new();
+        EditorInstallerService installer = new(http, store);
+        InstalledEditor editor = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync,
+            sourceRepository: "prowlengine/anthology")).Editor;
+        Assert.Null(editor.AnthologyCommit);
+        Assert.Single(_commands, command => command.Contains("clone"));
+        Assert.DoesNotContain(_commands, command => command.Contains("-p:ProwlLocalAnthology=true"));
+    }
+
+    [Fact]
+    public async Task NewAnthologyCommit_RebuildsTheInstalledCommit()
+    {
+        LauncherStore store = new(_home);
+        using HttpClient http = new();
+        EditorInstallerService installer = new(http, store);
+        InstalledEditor first = (await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync)).Editor;
+        _anthologyCommit = new string('d', 40);
+        _commands.Clear();
+
+        EditorInstallerService.SourceBuildResult rebuilt =
+            await installer.InstallMainAsync(Platform.Identifier, runCommand: RunAsync);
+        Assert.False(rebuilt.AlreadyInstalled);
+        Assert.Equal(first.Key, rebuilt.Editor.Key);
+        Assert.Equal(_anthologyCommit, rebuilt.Editor.AnthologyCommit);
+        Assert.Equal(rebuilt.Editor, Assert.Single(store.InstalledEditors()));
+        Assert.Contains(_commands, command => command[0] == "dotnet");
     }
 
     [Fact]
@@ -101,7 +176,7 @@ public sealed class SourceEditorTests : IDisposable
 
         await installer.UninstallAsync(updated, CancellationToken.None);
         Assert.Equal(first, Assert.Single(store.InstalledEditors()));
-        Assert.Single(Directory.EnumerateDirectories(Path.Combine(_home, "Source")));
+        Assert.Equal(2, Directory.EnumerateDirectories(Path.Combine(_home, "Source")).Count());
     }
 
     [Theory]
