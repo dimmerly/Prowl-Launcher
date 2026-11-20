@@ -657,7 +657,7 @@ internal static class LauncherScenarios
                 List<EditorConsoleSession> sessions = ui.Launcher.Editors.Sessions.ToList();
 
                 string SessionLabel(EditorConsoleSession item) =>
-                    $"{sessions.IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+                    $"{sessions.IndexOf(item) + 1}. {item.Request.Name} {item.Request.Version} ({item.State.Started.ToLocalTime():HH:mm:ss})";
 
                 await ui.ClickText(SessionLabel(sessions[1]));
                 await ui.Frame(2);

@@ -221,7 +221,7 @@ sealed class VersionsView(LauncherStore store, Controls ui, Dialogs dialogs, Edi
                         ui.Label(
                             p,
                             id + "meta",
-                            $"{release.Published.LocalDateTime:d} · {release.AssetFor(Platform.Identifier)!.Size / 1048576d:F0} MB",
+                            $"{release.Published.LocalDateTime:d} ({release.AssetFor(Platform.Identifier)!.Size / 1048576d:F0} MB)",
                             12,
                             ui.Muted,
                             22

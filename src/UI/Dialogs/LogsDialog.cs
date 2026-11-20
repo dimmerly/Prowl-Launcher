@@ -55,7 +55,7 @@ internal sealed class LogsDialog(Controls ui, EditorCoordinator editors)
                     {
                         EditorConsoleSession item = editors.Sessions.Single(s => s.Id == key);
                         return
-                            $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} · {item.Request.Version} · {item.State.Started.ToLocalTime():HH:mm:ss}";
+                            $"{editors.Sessions.ToList().IndexOf(item) + 1}. {item.Request.Name} {item.Request.Version} ({item.State.Started.ToLocalTime():HH:mm:ss})";
                     })
                     .Show());
             }

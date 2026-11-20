@@ -139,7 +139,7 @@ internal sealed class BackupsDialog(
                     ? "launcher.backups.reason_upgrade"
                     : "launcher.backups.reason_manual");
                 ui.Label(p, id + "details",
-                    $"{backup.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm} ({RelativeDate.FormatElapsed(backup.CreatedAt)}) · {reason} · {version} · {Size(backup.ArchiveBytes)}",
+                    $"{backup.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm} ({RelativeDate.FormatElapsed(backup.CreatedAt)}), {reason}, {version}, {Size(backup.ArchiveBytes)}",
                     13, ui.Muted, 22);
             }
 
