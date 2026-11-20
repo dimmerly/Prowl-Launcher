@@ -144,7 +144,7 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
             try
             {
                 RestoreBackup(editor, Path.Combine(work, InstallWorkspace.BackupName), move ?? Directory.Move);
-                Directory.Delete(work, true);
+                FileSystemHelper.DeleteDirectory(work);
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
             {
@@ -319,8 +319,11 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
     {
         internal const string BackupName = "previous";
 
+        private readonly LauncherStore _store;
+
         public InstallWorkspace(LauncherStore store)
         {
+            _store = store;
             Work = Path.Combine(store.WorkPath, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Work);
         }
@@ -336,9 +339,20 @@ public sealed partial class EditorInstallerService(HttpClient http, LauncherStor
         // Keep the journal and old installation if rollback or backup cleanup failed.
         public void Dispose()
         {
-            if (Directory.Exists(Work) && !Directory.Exists(Backup))
+            if (!Directory.Exists(Work) || Directory.Exists(Backup))
             {
-                Directory.Delete(Work, true);
+                return;
+            }
+
+            // Work may hold a git clone, whose objects are read-only. A failed cleanup is logged rather than thrown,
+            // so it never replaces the error that ended the install.
+            try
+            {
+                FileSystemHelper.DeleteDirectory(Work);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                LauncherLog.Append(_store.Home, $"Could not clean up {Work}: {error}");
             }
         }
     }

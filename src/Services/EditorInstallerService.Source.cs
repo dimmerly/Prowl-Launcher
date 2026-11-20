@@ -46,6 +46,10 @@ public sealed partial class EditorInstallerService
             info.Environment["GIT_HTTP_LOW_SPEED_LIMIT"] = "1000";
             info.Environment["GIT_HTTP_LOW_SPEED_TIME"] =
                 ((int)Constants.Network.DownloadIdleTimeout.TotalSeconds).ToString();
+            // Anthology has test files whose paths exceed Windows' 260-character limit under the launcher's folders.
+            info.Environment["GIT_CONFIG_COUNT"] = "1";
+            info.Environment["GIT_CONFIG_KEY_0"] = "core.longpaths";
+            info.Environment["GIT_CONFIG_VALUE_0"] = "true";
             return runCommand != null
                 ? runCommand(info, token)
                 : RunSourceCommandAsync(info, progress, label, token);

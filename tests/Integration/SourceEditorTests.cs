@@ -65,6 +65,36 @@ public sealed class SourceEditorTests : IDisposable
         Path.GetFileName(directory) == GitHubRepository.CacheKey(Constants.Defaults.AnthologyRepository);
 
     [Fact]
+    public async Task FailedClone_ReportsGitsErrorAndRemovesItsReadOnlyObjects()
+    {
+        LauncherStore store = new(_home);
+        using HttpClient http = new();
+        EditorInstallerService installer = new(http, store);
+
+        // Git leaves read-only pack files behind when a clone fails part-way, such as at checkout.
+        Task<string> FailAnthologyClone(ProcessStartInfo info, CancellationToken token)
+        {
+            string[] arguments = info.ArgumentList.ToArray();
+            if (arguments[0] == "clone" && arguments.Contains("https://github.com/ProwlEngine/Anthology.git"))
+            {
+                string pack = Path.Combine(arguments[^1], ".git", "objects", "pack");
+                Directory.CreateDirectory(pack);
+                string index = Path.Combine(pack, "pack-1.idx");
+                File.WriteAllText(index, "");
+                File.SetAttributes(index, FileAttributes.ReadOnly);
+                throw new IOException("fatal: unable to checkout working tree");
+            }
+
+            return RunAsync(info, token);
+        }
+
+        IOException error = await Assert.ThrowsAsync<IOException>(() =>
+            installer.InstallMainAsync(Platform.Identifier, runCommand: FailAnthologyClone));
+        Assert.Equal("fatal: unable to checkout working tree", error.Message);
+        Assert.Empty(Directory.EnumerateDirectories(store.WorkPath));
+    }
+
+    [Fact]
     public async Task Build_ClonesAnthologyAndReferencesItDirectly()
     {
         LauncherStore store = new(_home);
